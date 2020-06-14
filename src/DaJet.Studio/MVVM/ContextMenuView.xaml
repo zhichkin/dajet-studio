@@ -1,0 +1,36 @@
+﻿<ContextMenu x:Class="DaJet.Studio.MVVM.ContextMenuView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:mvvm="clr-namespace:DaJet.Studio.MVVM"
+             mc:Ignorable="d" d:DesignHeight="450" d:DesignWidth="800">
+
+    <ContextMenu.Resources>
+        <Image x:Key="MenuItemIcon" Source="{Binding MenuItemIcon}" x:Shared="false"/>
+        <Style TargetType="MenuItem">
+            <Setter Property="Icon" Value="{StaticResource MenuItemIcon}"/>
+            <Setter Property="Command" Value="{Binding MenuItemCommand}" />
+            <Setter Property="CommandParameter" Value="{Binding MenuItemPayload}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsSeparator}" Value="True">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="{x:Type MenuItem}">
+                                <Separator />
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </ContextMenu.Resources>
+    <ContextMenu.ItemTemplate>
+        <HierarchicalDataTemplate DataType="{x:Type mvvm:MenuItemViewModel}" ItemsSource="{Binding MenuItems}">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding MenuItemHeader}"/>
+            </StackPanel>
+        </HierarchicalDataTemplate>
+    </ContextMenu.ItemTemplate>
+
+</ContextMenu>

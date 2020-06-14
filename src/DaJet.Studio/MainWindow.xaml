@@ -1,0 +1,74 @@
+﻿<Window x:Class="DaJet.Studio.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:dajet="clr-namespace:DaJet.Studio"
+        xmlns:mvvm="clr-namespace:DaJet.Studio.MVVM"
+        mc:Ignorable="d" Height="600" Width="800"
+        WindowStartupLocation="CenterScreen" Title="DaJet © 2020" Icon="DaJet.ico">
+
+    <Window.Resources>
+        <DataTemplate x:Key="TreeViewTemplate">
+            <mvvm:TreeNodeView/>
+        </DataTemplate>
+        <dajet:ContentTemplateSelector x:Key="Selector" LeftRegionTemplate="{StaticResource TreeViewTemplate}"/>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="25" />
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="25"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="1*" MinWidth="200" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="3*" MinWidth="200" />
+        </Grid.ColumnDefinitions>
+
+        <Menu Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3"
+              BorderBrush="Black" BorderThickness="0,1,0,1"
+              ItemsSource="{Binding MainMenuRegion}">
+            <Menu.ItemTemplate>
+                <DataTemplate>
+                    <Button ToolTip="{Binding MenuItemHeader}"
+                            Command="{Binding MenuItemCommand}"
+                            CommandParameter="{Binding MenuItemPayload}">
+                        <Image Source="{Binding MenuItemIcon}"/>
+                    </Button>
+                </DataTemplate>
+            </Menu.ItemTemplate>
+        </Menu>
+
+        <ContentControl Grid.Row="1" Grid.Column="0" Margin="5"
+                        VerticalContentAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                        Content="{Binding MainTreeRegion}" ContentTemplateSelector="{StaticResource Selector}"/>
+
+        <GridSplitter Grid.Row="1" Grid.Column="1" Width="3" ResizeBehavior="PreviousAndNext" VerticalAlignment="Stretch"/>
+
+        <TabControl Grid.Row="1" Grid.Column="2" Margin="5"
+                    ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}">
+            <TabControl.ItemTemplate>
+                <!-- this is the header template-->
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding Header}" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                    </StackPanel>
+                </DataTemplate>
+            </TabControl.ItemTemplate>
+            <TabControl.ContentTemplate>
+                <!-- this is the body of the TabItem template-->
+                <DataTemplate>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                        <ContentControl Content="{Binding Content}" Margin="5"/>
+                    </ScrollViewer>
+                </DataTemplate>
+            </TabControl.ContentTemplate>
+        </TabControl>
+
+        <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Margin="5,0,0,0" Text="{Binding StatusBarRegion}"/>
+        
+    </Grid>
+    
+</Window>
