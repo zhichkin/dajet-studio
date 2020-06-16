@@ -14,6 +14,7 @@
         <TreeView.Resources>
             <Style TargetType="{x:Type TreeViewItem}">
                 <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
             </Style>
         </TreeView.Resources>
         
@@ -34,8 +35,14 @@
                     </StackPanel.ContextMenu>
 
                     <Image Source="{Binding NodeIcon}" Height="16" Width="16" VerticalAlignment="Center"/>
-                    
-                    <TextBlock Text="{Binding NodeText}" ToolTip="{Binding NodeToolTip}" Margin="3,0,3,0" VerticalAlignment="Center"/>
+
+                    <TextBlock Text="{Binding NodeText}" ToolTip="{Binding NodeToolTip}" Margin="3,0,3,0" VerticalAlignment="Center">
+                        <behaviors:Interaction.Triggers>
+                            <behaviors:EventTrigger EventName="PreviewMouseRightButtonDown">
+                                <behaviors:ChangePropertyAction PropertyName="IsSelected" Value="True" TargetObject="{Binding}"/>
+                            </behaviors:EventTrigger>
+                        </behaviors:Interaction.Triggers>
+                    </TextBlock>
 
                 </StackPanel>
 

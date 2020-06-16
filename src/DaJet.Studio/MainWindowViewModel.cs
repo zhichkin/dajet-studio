@@ -1,8 +1,8 @@
 ﻿using DaJet.Studio.MVVM;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.ObjectModel;
-using System.Windows;
 using System.Windows.Media.Imaging;
 
 namespace DaJet.Studio
@@ -30,36 +30,19 @@ namespace DaJet.Studio
         public ObservableCollection<MenuItemViewModel> MainMenuRegion { get; } = new ObservableCollection<MenuItemViewModel>();
         private void InitializeViewModel()
         {
-            MainMenuRegion.Add(new MenuItemViewModel()
-            {
-                MenuItemIcon = CATALOG_ICON,
-                MenuItemHeader = "About",
-                MenuItemCommand = new RelayCommand(ConnectDataServerCommand),
-                MenuItemPayload = this
-            });
+            //MainMenuRegion.Add(new MenuItemViewModel()
+            //{
+            //    MenuItemIcon = CATALOG_ICON,
+            //    MenuItemHeader = "About",
+            //    MenuItemCommand = new RelayCommand(ConnectDataServerCommand),
+            //    MenuItemPayload = this
+            //});
 
-            TreeNodeViewModel node = new TreeNodeViewModel()
+            ITreeNodeController controller = Services.GetService<DataServersNodeController>();
+            if (controller != null)
             {
-                IsExpanded = false,
-                NodeIcon = CATALOG_ICON,
-                NodeText = "SQL Servers",
-                NodeToolTip = "Data servers",
-                NodePayload = null
-            };
-            node.ContextMenuItems.Add(new MenuItemViewModel()
-            {
-                MenuItemHeader = "Connect server",
-                MenuItemIcon = CATALOG_ICON,
-                MenuItemCommand = new RelayCommand(ConnectDataServerCommand),
-                MenuItemPayload = node
-            });
-            MainTreeRegion.TreeNodes.Add(node);
-        }
-        private void ConnectDataServerCommand(object parameter)
-        {
-            if (!(parameter is TreeNodeViewModel treeNode)) return;
-            if (treeNode.NodeText != "SQL Servers") return;
-            MessageBox.Show("Under construction.", "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
+                MainTreeRegion.TreeNodes.Add(controller.CreateTreeNode());
+            }
         }
     }
 }

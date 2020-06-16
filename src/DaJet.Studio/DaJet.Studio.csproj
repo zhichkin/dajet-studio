@@ -17,7 +17,15 @@
 
   <ItemGroup>
     <None Remove="DaJet.ico" />
+    <None Remove="images\add-server.png" />
     <None Remove="images\catalog.png" />
+    <None Remove="images\connect-database.png" />
+    <None Remove="images\data-server.png" />
+    <None Remove="images\database.png" />
+    <None Remove="images\DataServer.png" />
+    <None Remove="images\nested-table.png" />
+    <None Remove="images\table.png" />
+    <None Remove="images\web-server.png" />
   </ItemGroup>
 
   <ItemGroup>
@@ -28,17 +36,20 @@
 
   <ItemGroup>
     <Resource Include="DaJet.ico" />
+    <Resource Include="images\add-server.png" />
     <Resource Include="images\catalog.png" />
+    <Resource Include="images\connect-database.png" />
+    <Resource Include="images\data-server.png" />
+    <Resource Include="images\database.png" />
+    <Resource Include="images\nested-table.png" />
+    <Resource Include="images\table.png" />
+    <Resource Include="images\web-server.png" />
   </ItemGroup>
 
   <ItemGroup>
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="MVVM\" />
   </ItemGroup>
 
 </Project>

@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using DaJet.Studio.MVVM;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
@@ -32,7 +33,7 @@ namespace DaJet.Studio
             services.AddOptions();
             services.Configure<AppSettings>(configuration.GetSection(nameof(AppSettings)));
             services.AddSingleton<MainWindowViewModel>();
-            //services.AddSingleton<IMetadataReader, MetadataReader>();
+            services.AddSingleton<DataServersNodeController>();
         }
         protected override async void OnStartup(StartupEventArgs e)
         {

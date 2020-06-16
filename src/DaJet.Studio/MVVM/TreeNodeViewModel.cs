@@ -12,6 +12,7 @@ namespace DaJet.Studio.MVVM
         private BitmapImage _nodeIcon;
         private object _nodePayload;
         private bool _isExpanded;
+        private bool _isSelected;
         public TreeNodeViewModel()
         {
             SelectedItemChanged = new RelayCommand(SelectedItemChangedHandler);
@@ -43,6 +44,16 @@ namespace DaJet.Studio.MVVM
             {
                 if (_isExpanded == value) return;
                 _isExpanded = value;
+                OnPropertyChanged();
+            }
+        }
+        public bool IsSelected
+        {
+            get { return _isSelected; }
+            set
+            {
+                if (_isSelected == value) return;
+                _isSelected = value;
                 OnPropertyChanged();
             }
         }
