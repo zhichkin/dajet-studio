@@ -24,6 +24,8 @@
     <None Remove="images\database.png" />
     <None Remove="images\DataServer.png" />
     <None Remove="images\nested-table.png" />
+    <None Remove="images\server-warning.png" />
+    <None Remove="images\server.png" />
     <None Remove="images\table.png" />
     <None Remove="images\web-server.png" />
   </ItemGroup>
@@ -35,6 +37,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\DaJet.Messaging\DaJet.Messaging.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Resource Include="DaJet.ico" />
     <Resource Include="images\add-server.png" />
     <Resource Include="images\catalog.png" />
@@ -42,6 +48,8 @@
     <Resource Include="images\data-server.png" />
     <Resource Include="images\database.png" />
     <Resource Include="images\nested-table.png" />
+    <Resource Include="images\server-warning.png" />
+    <Resource Include="images\server.png" />
     <Resource Include="images\table.png" />
     <Resource Include="images\web-server.png" />
   </ItemGroup>

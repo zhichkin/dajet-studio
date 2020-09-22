@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Text;
 
-namespace OneCSharp.Messaging
+namespace DaJet.Messaging
 {
     internal static class SqlScripts
     {

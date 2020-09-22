@@ -5,7 +5,9 @@ VisualStudioVersion = 16.0.30204.135
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DaJet", "DaJet\DaJet.csproj", "{C212745B-0B7B-4A76-B0B1-107ECD213D67}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DaJet.Studio", "DaJet.Studio\DaJet.Studio.csproj", "{165343D4-78F9-4209-B295-F2761413CEF9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DaJet.Studio", "DaJet.Studio\DaJet.Studio.csproj", "{165343D4-78F9-4209-B295-F2761413CEF9}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DaJet.Messaging", "DaJet.Messaging\DaJet.Messaging.csproj", "{E502970E-6799-411B-B708-B0D4AD646524}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{165343D4-78F9-4209-B295-F2761413CEF9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{165343D4-78F9-4209-B295-F2761413CEF9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{165343D4-78F9-4209-B295-F2761413CEF9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E502970E-6799-411B-B708-B0D4AD646524}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E502970E-6799-411B-B708-B0D4AD646524}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E502970E-6799-411B-B708-B0D4AD646524}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E502970E-6799-411B-B708-B0D4AD646524}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
