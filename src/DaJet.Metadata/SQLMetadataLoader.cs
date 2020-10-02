@@ -1,9 +1,8 @@
 ﻿using Microsoft.Data.SqlClient;
-using OneCSharp.Metadata.Model;
 using System.Collections.Generic;
 using System.Text;
 
-namespace OneCSharp.Metadata.Services
+namespace DaJet.Metadata
 {
     public sealed class SQLMetadataLoader
     {
@@ -58,10 +57,10 @@ namespace OneCSharp.Metadata.Services
             public bool   IS_NULLABLE;
         }
         private string ConnectionString { get; set; }
-        public void Load(string connectionString, InfoBase infoBase)
+        public void Load(string connectionString, DatabaseInfo database)
         {
             this.ConnectionString = connectionString;
-            foreach (BaseObject bo in infoBase.BaseObjects)
+            foreach (BaseObject bo in database.BaseObjects)
             {
                 GetSQLMetadata(bo);
             }

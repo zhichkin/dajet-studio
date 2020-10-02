@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace OneCSharp.Metadata.Model
+namespace DaJet.Metadata
 {
+    /// <summary>
+    /// Metadata object base type, ex. Catalog, Document, InfoRegister etc.
+    /// </summary>
     public sealed class BaseObject
     {
         public string Name { get; set; }

@@ -1,22 +1,19 @@
-﻿using OneCSharp.Metadata.Model;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Xml;
 
-namespace OneCSharp.Metadata.Services
+namespace DaJet.Metadata
 {
     public sealed class XMLMetadataLoader
     {
         private sealed class LoadContext
         {
-            internal LoadContext(InfoBase infoBase)
+            internal LoadContext(DatabaseInfo database)
             {
-                InfoBase = infoBase;
+                Database = database;
             }
-            internal InfoBase InfoBase;
+            internal DatabaseInfo Database;
             internal BaseObject BaseObject;
             internal MetaObject MetaObject;
             internal MetaObject MetaObjectOwner;
@@ -25,9 +22,9 @@ namespace OneCSharp.Metadata.Services
             internal Field Field;
             internal Dictionary<int, MetaObject> TypeCodes = new Dictionary<int, MetaObject>();
         }
-        public void Load(string filePath, InfoBase infoBase)
+        public void Load(string filePath, DatabaseInfo database)
         {
-            LoadContext context = new LoadContext(infoBase);
+            LoadContext context = new LoadContext(database);
 
             using (XmlReader reader = XmlReader.Create(filePath))
             {
@@ -42,7 +39,7 @@ namespace OneCSharp.Metadata.Services
                         if (reader.Name == "Types")
                         {
                             context.TypeCodes.Clear();
-                            context.InfoBase.BaseObjects.Clear();
+                            context.Database.BaseObjects.Clear();
                         }
                         if (reader.Name == "Type")
                         {
@@ -137,9 +134,9 @@ namespace OneCSharp.Metadata.Services
         }
         private void Read_InfoBase_Element(XmlReader reader, LoadContext context)
         {
-            context.InfoBase.Alias = reader.GetAttribute("name");
+            context.Database.Alias = reader.GetAttribute("name");
             //context.InfoBase.Server = reader.GetAttribute("server");
-            context.InfoBase.Name = reader.GetAttribute("database");
+            context.Database.Name = reader.GetAttribute("database");
         }
         private void Close_InfoBase_Element(LoadContext context)
         {
@@ -154,7 +151,7 @@ namespace OneCSharp.Metadata.Services
         {
             string name = reader.GetAttribute("name");
 
-            context.BaseObject = context.InfoBase.BaseObjects
+            context.BaseObject = context.Database.BaseObjects
                 .Where((n) => n.Name == name)
                 .FirstOrDefault();
 
@@ -164,7 +161,7 @@ namespace OneCSharp.Metadata.Services
             {
                 Name = name
             };
-            context.InfoBase.BaseObjects.Add(context.BaseObject);
+            context.Database.BaseObjects.Add(context.BaseObject);
         }
         private void Read_Type_Element(XmlReader reader, LoadContext context)
         {
@@ -175,7 +172,7 @@ namespace OneCSharp.Metadata.Services
             string _namespace = names[0];
             string _entity = names[1];
 
-            context.BaseObject = context.InfoBase.BaseObjects
+            context.BaseObject = context.Database.BaseObjects
                 .Where((n) => n.Name == _namespace)
                 .FirstOrDefault();
             
@@ -185,7 +182,7 @@ namespace OneCSharp.Metadata.Services
                 {
                     Name = _namespace
                 };
-                context.InfoBase.BaseObjects.Add(context.BaseObject);
+                context.Database.BaseObjects.Add(context.BaseObject);
             }
 
             context.MetaObject = new MetaObject()

@@ -53,5 +53,14 @@ namespace DaJet.Studio
             }
             base.OnExit(e);
         }
+        //private static OneCSharpSettings OneCSharpSettings()
+        //{
+        //    OneCSharpSettings settings = new OneCSharpSettings();
+        //    var config = new ConfigurationBuilder()
+        //        .AddJsonFile("appsettings.json", optional: false)
+        //        .Build();
+        //    config.GetSection("OneCSharpSettings").Bind(settings);
+        //    return settings;
+        //}
     }
 }

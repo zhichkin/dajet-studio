@@ -1,22 +1,21 @@
 ﻿using Microsoft.Data.SqlClient;
-using OneCSharp.Metadata.Model;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace OneCSharp.Metadata.Services
+namespace DaJet.Metadata
 {
     public interface IMetadataService
     {
         DatabaseServer CurrentServer { get; }
-        InfoBase CurrentDatabase { get; }
+        DatabaseInfo CurrentDatabase { get; }
         string ConnectionString { get; }
         MetadataServiceSettings Settings { get; }
         void Configure(MetadataServiceSettings settings);
         void UseServer(string serverName);
         void UseDatabase(string databaseName);
-        void AttachDatabase(string serverName, InfoBase infoBase);
+        void AttachDatabase(string serverName, DatabaseInfo database);
 
         string MapSchemaIdentifier(string schemaName);
         string MapTableIdentifier(string databaseName, string tableIdentifier);
@@ -32,7 +31,7 @@ namespace OneCSharp.Metadata.Services
         private SQLMetadataLoader SQLLoader { get; } = new SQLMetadataLoader();
         public MetadataServiceSettings Settings { get; private set; }
         public DatabaseServer CurrentServer { get; private set; }
-        public InfoBase CurrentDatabase { get; private set; }
+        public DatabaseInfo CurrentDatabase { get; private set; }
         public string ConnectionString { get; private set; }
         private string ServerCatalogPath(string serverName)
         {
@@ -54,7 +53,7 @@ namespace OneCSharp.Metadata.Services
 
             int s = 0;
             int i = 0;
-            InfoBase database;
+            DatabaseInfo database;
             DatabaseServer server;
             string serverCatalogPath;
             string metadataFilePath;
@@ -89,9 +88,9 @@ namespace OneCSharp.Metadata.Services
                 }
             }
         }
-        private void InitializeMetadata(InfoBase infobase, string metadataFilePath)
+        private void InitializeMetadata(DatabaseInfo database, string metadataFilePath)
         {
-            XMLLoader.Load(metadataFilePath, infobase);
+            XMLLoader.Load(metadataFilePath, database);
             //SQLLoader.Load(ConnectionString, infobase); // TODO: optimize loading of SQL metadata time !
         }
         public void UseServer(string serverName)
@@ -132,10 +131,10 @@ namespace OneCSharp.Metadata.Services
             string metadataFilePath = MetadataFilePath(CurrentServer.Name, databaseName);
             if (!File.Exists(metadataFilePath)) throw new DirectoryNotFoundException(metadataFilePath);
 
-            InfoBase database = CurrentServer.Databases.Where(db => db.Name == databaseName).FirstOrDefault();
+            DatabaseInfo database = CurrentServer.Databases.Where(db => db.Name == databaseName).FirstOrDefault();
             if (database == null)
             {
-                database = new InfoBase() { Name = databaseName };
+                database = new DatabaseInfo() { Name = databaseName };
                 InitializeMetadata(database, metadataFilePath);
                 CurrentServer.Databases.Add(database);
             }
@@ -148,10 +147,10 @@ namespace OneCSharp.Metadata.Services
 
             CurrentDatabase = database;
         }
-        public void AttachDatabase(string serverName, InfoBase infoBase)
+        public void AttachDatabase(string serverName, DatabaseInfo database)
         {
             // TODO: make UseServer and UseDatabase methods independent of file existence !
-            if (infoBase == null) throw new ArgumentNullException(nameof(infoBase));
+            if (database == null) throw new ArgumentNullException(nameof(database));
             if (string.IsNullOrWhiteSpace(serverName)) throw new ArgumentNullException(nameof(serverName));
 
             DatabaseServer server = Settings.Servers.Where(s => s.Name == serverName).FirstOrDefault();
@@ -161,8 +160,8 @@ namespace OneCSharp.Metadata.Services
                 Settings.Servers.Add(server);
             }
 
-            InfoBase database = server.Databases.Where(db => db.Name == infoBase.Name).FirstOrDefault();
-            if (database != null) throw new InvalidOperationException(nameof(infoBase));
+            DatabaseInfo test = server.Databases.Where(db => db.Name == database.Name).FirstOrDefault();
+            if (test != null) throw new InvalidOperationException(nameof(database));
 
             server.Databases.Add(database);
         }
@@ -250,7 +249,7 @@ namespace OneCSharp.Metadata.Services
         {
             if (!tableIdentifier.Contains('+')) return null; // this is not special format, but schema object (table)
 
-            InfoBase database;
+            DatabaseInfo database;
             if (string.IsNullOrEmpty(databaseName))
             {
                 database = CurrentDatabase;

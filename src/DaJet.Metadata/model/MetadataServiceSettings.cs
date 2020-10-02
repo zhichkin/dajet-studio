@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace OneCSharp.Metadata.Model
+namespace DaJet.Metadata
 {
     public sealed class MetadataServiceSettings
     {
@@ -17,14 +17,17 @@ namespace OneCSharp.Metadata.Model
                 DatabaseServer serverCopy = new DatabaseServer()
                 {
                     Name = server.Name,
-                    Address = server.Address
+                    Address = server.Address,
+                    UserName = server.UserName,
+                    Password = server.Password
                 };
-                foreach (InfoBase database in server.Databases)
+                foreach (DatabaseInfo database in server.Databases)
                 {
-                    serverCopy.Databases.Add(new InfoBase()
+                    serverCopy.Databases.Add(new DatabaseInfo()
                     {
                         Name = database.Name,
-                        Alias = database.Alias
+                        UserName = database.UserName,
+                        Password = database.Password
                     });
                 }
                 copy.Servers.Add(serverCopy);

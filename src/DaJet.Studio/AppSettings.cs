@@ -1,9 +1,10 @@
-﻿namespace DaJet.Studio
+﻿using DaJet.Metadata;
+using System.Collections.Generic;
+
+namespace DaJet.Studio
 {
     public sealed class AppSettings
     {
-        public int IntegerSetting { get; set; }
-        public bool BooleanSetting { get; set; }
-        public string StringSetting { get; set; }
+        public List<DatabaseServer> DatabaseServers { get; set; }
     }
 }

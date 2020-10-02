@@ -1,4 +1,5 @@
 ﻿using DaJet.Messaging;
+using DaJet.Metadata;
 using DaJet.Studio.MVVM;
 using DaJet.UI;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,11 +16,13 @@ namespace DaJet.Studio
         private const string SERVER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/server.png";
         private const string DATA_SERVER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/data-server.png";
         private const string SERVER_WARNING_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/server-warning.png";
+        private const string DATABASE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/database.png";
 
         private readonly BitmapImage ADD_SERVER_ICON = new BitmapImage(new Uri(ADD_SERVER_ICON_PATH));
         private readonly BitmapImage SERVER_ICON = new BitmapImage(new Uri(SERVER_ICON_PATH));
         private readonly BitmapImage DATA_SERVER_ICON = new BitmapImage(new Uri(DATA_SERVER_ICON_PATH));
         private readonly BitmapImage SERVER_WARNING_ICON = new BitmapImage(new Uri(SERVER_WARNING_ICON_PATH));
+        private readonly BitmapImage DATABASE_ICON = new BitmapImage(new Uri(DATABASE_ICON_PATH));
 
         public TreeNodeViewModel RootNode { get; private set; }
         private AppSettings Settings { get; }
@@ -47,8 +50,46 @@ namespace DaJet.Studio
                 MenuItemPayload = RootNode
             });
 
+            CreateDatabaseServersFromSettings();
+
             return RootNode;
         }
+        private void CreateDatabaseServersFromSettings()
+        {
+            if (RootNode == null || Settings.DatabaseServers == null || Settings.DatabaseServers.Count == 0)
+            {
+                return;
+            }
+
+            TreeNodeViewModel serverNode;
+            foreach (DatabaseServer server in Settings.DatabaseServers)
+            {
+                serverNode = CreateServerTreeNode(server.Name, false);
+                serverNode.NodePayload = server;
+
+                TreeNodeViewModel databaseNode;
+                foreach (DatabaseInfo database in server.Databases)
+                {
+                    databaseNode = CreateDatabaseTreeNode(database.Name);
+                    databaseNode.NodePayload = database;
+                    databaseNode.NodeToolTip = database.Alias;
+                    serverNode.TreeNodes.Add(databaseNode);
+                }
+            }
+        }
+        private void InitializeDatabasesMetadata()
+        {
+            foreach (DatabaseServer server in Settings.DatabaseServers)
+            {
+                foreach (DatabaseInfo database in server.Databases)
+                {
+                    // TODO: !!!
+                }
+            }
+        }
+
+
+
         private TreeNodeViewModel CreateServerTreeNode(string serverName, bool warning)
         {
             TreeNodeViewModel node = new TreeNodeViewModel()
@@ -57,7 +98,7 @@ namespace DaJet.Studio
                 NodeIcon = (warning) ? SERVER_WARNING_ICON : SERVER_ICON,
                 NodeText = serverName,
                 NodeToolTip = (warning) ? "connection might be broken" : "connection is ok",
-                NodePayload = this
+                NodePayload = null
             };
 
             // TODO: add local queue menu item
@@ -78,6 +119,21 @@ namespace DaJet.Studio
 
             return node;
         }
+        private TreeNodeViewModel CreateDatabaseTreeNode(string databaseName)
+        {
+            TreeNodeViewModel node = new TreeNodeViewModel()
+            {
+                IsExpanded = false,
+                NodeIcon = DATABASE_ICON,
+                NodeText = databaseName,
+                NodeToolTip = string.Empty,
+                NodePayload = null
+            };
+            return node;
+        }
+
+
+
         private void AddDataServerCommand(object parameter)
         {
             if (!(parameter is TreeNodeViewModel treeNode)) return;

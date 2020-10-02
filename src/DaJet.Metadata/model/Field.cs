@@ -1,4 +1,4 @@
-﻿namespace OneCSharp.Metadata.Model
+﻿namespace DaJet.Metadata
 {
     public enum FieldPurpose
     {

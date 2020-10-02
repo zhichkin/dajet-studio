@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace OneCSharp.Metadata.Model
+namespace DaJet.Metadata
 {
     public enum TypeCodes
     {

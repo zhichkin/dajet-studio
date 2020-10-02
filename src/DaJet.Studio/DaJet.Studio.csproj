@@ -38,6 +38,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DaJet.Messaging\DaJet.Messaging.csproj" />
+    <ProjectReference Include="..\DaJet.Metadata\DaJet.Metadata.csproj" />
   </ItemGroup>
 
   <ItemGroup>
