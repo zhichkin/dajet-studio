@@ -1,8 +1,11 @@
 ﻿using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DaJet.Metadata
 {
@@ -17,11 +20,13 @@ namespace DaJet.Metadata
         void UseDatabase(string databaseName);
         void AttachDatabase(string serverName, DatabaseInfo database);
 
+        IMetadataProvider GetMetadataProvider(DatabaseInfo database);
+
         string MapSchemaIdentifier(string schemaName);
         string MapTableIdentifier(string databaseName, string tableIdentifier);
         MetaObject GetMetaObject(IList<string> tableIdentifiers);
         MetaObject GetMetaObject(string databaseName, string tableIdentifier);
-        Property GetProperty(string databaseName, string tableIdentifier, string columnIdentifier);
+        MetaProperty GetProperty(string databaseName, string tableIdentifier, string columnIdentifier);
     }
     public sealed class MetadataService : IMetadataService
     {
@@ -166,6 +171,9 @@ namespace DaJet.Metadata
             server.Databases.Add(database);
         }
 
+
+
+
         private bool IsSpecialSchema(string schemaName)
         {
             return (schemaName == "Перечисление"
@@ -277,12 +285,12 @@ namespace DaJet.Metadata
 
             return @object;
         }
-        public Property GetProperty(string databaseName, string tableIdentifier, string columnIdentifier)
+        public MetaProperty GetProperty(string databaseName, string tableIdentifier, string columnIdentifier)
         {
             MetaObject @object = GetMetaObject(databaseName, tableIdentifier);
             if (@object == null) return null;
 
-            Property @property = @object.Properties.Where(p => p.Name == columnIdentifier).FirstOrDefault();
+            MetaProperty @property = @object.Properties.Where(p => p.Name == columnIdentifier).FirstOrDefault();
             if (@property == null) return null;
             if (@property.Fields.Count == 0) return null;
 
@@ -312,7 +320,14 @@ namespace DaJet.Metadata
             {
                 return tableIdentifier;
             }
-            return @object.Table;
+            return @object.TableName;
+        }
+
+
+        private IMetadataProvider MetadataProvider { get; set; } = new OneCSharpMetadataProvider();
+        public IMetadataProvider GetMetadataProvider(DatabaseInfo database)
+        {
+            return MetadataProvider;
         }
     }
 }

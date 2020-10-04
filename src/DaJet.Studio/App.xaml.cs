@@ -1,4 +1,5 @@
 ﻿using DaJet.Messaging;
+using DaJet.Metadata;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -36,6 +37,7 @@ namespace DaJet.Studio
             services.AddSingleton<MainWindowViewModel>();
             services.AddSingleton<DataServersNodeController>();
 
+            services.AddSingleton<IMetadataService, MetadataService>();
             services.AddSingleton<IMessagingService, MessagingService>();
         }
         protected override async void OnStartup(StartupEventArgs e)

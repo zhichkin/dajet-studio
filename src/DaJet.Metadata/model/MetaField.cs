@@ -1,6 +1,6 @@
 ﻿namespace DaJet.Metadata
 {
-    public enum FieldPurpose
+    public enum MetaFieldPurpose
     {
         /// <summary>Value of the property (default).</summary>
         Value,
@@ -25,10 +25,10 @@
         /// <summary>Ordinal key value for ordered sets of records.</summary>
         Ordinal
     }
-    public sealed class Field
+    public sealed class MetaField
     {
         public string Name { get; set; }
-        public FieldPurpose Purpose { get; set; }
+        public MetaFieldPurpose Purpose { get; set; }
         public string TypeName { get; set; }
         public int Length { get; set; }
         public int Precision { get; set; }
@@ -36,9 +36,6 @@
         public bool IsNullable { get; set; }
         public int KeyOrdinal { get; set; }
         public bool IsPrimaryKey { get; set; }
-        public override string ToString()
-        {
-            return Name;
-        }
+        public override string ToString() { return Name; }
     }
 }

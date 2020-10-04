@@ -5,6 +5,7 @@ using DaJet.UI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media.Imaging;
 
@@ -51,6 +52,7 @@ namespace DaJet.Studio
             });
 
             CreateDatabaseServersFromSettings();
+            InitializeDatabasesMetadata();
 
             return RootNode;
         }
@@ -81,13 +83,23 @@ namespace DaJet.Studio
         {
             foreach (DatabaseServer server in Settings.DatabaseServers)
             {
+                //_ = Parallel.ForEach(server.Databases, InitializeMetadata);
                 foreach (DatabaseInfo database in server.Databases)
                 {
-                    // TODO: !!!
+                    InitializeMetadata(server, database);
                 }
             }
         }
-
+        private async void InitializeMetadata(DatabaseServer server, DatabaseInfo database)
+        {
+            IMetadataService metadata = Services.GetService<IMetadataService>();
+            // TODO: initialize metadata
+            IMetadataProvider provider = metadata.GetMetadataProvider(database);
+            provider.UseServer(server);
+            provider.UseDatabase(database);
+            provider.InitializeMetadata(database);
+            //await Task.Run(() => provider.InitializeMetadata(database));
+        }
 
 
         private TreeNodeViewModel CreateServerTreeNode(string serverName, bool warning)

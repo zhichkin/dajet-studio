@@ -123,16 +123,18 @@ namespace DaJet.Metadata
         }
         private void ReadSQLMetadata(MetaObject @object)
         {
-            List<FieldSqlInfo> sql_fields = GetSqlFields(@object.Table);
+            if (string.IsNullOrWhiteSpace(@object.TableName)) return;
 
-            ClusteredIndexInfo indexInfo = this.GetClusteredIndexInfo(@object.Table);
+            List<FieldSqlInfo> sql_fields = GetSqlFields(@object.TableName);
+
+            ClusteredIndexInfo indexInfo = this.GetClusteredIndexInfo(@object.TableName);
 
             foreach (FieldSqlInfo info in sql_fields)
             {
-                bool found = false; Field field = null;
-                foreach (Property p in @object.Properties)
+                bool found = false; MetaField field = null;
+                foreach (MetaProperty p in @object.Properties)
                 {
-                    foreach (Field f in p.Fields)
+                    foreach (MetaField f in p.Fields)
                     {
                         if (f.Name == info.COLUMN_NAME)
                         {
@@ -144,15 +146,15 @@ namespace DaJet.Metadata
                 }
                 if (!found)
                 {
-                    Property property = new Property()
+                    MetaProperty property = new MetaProperty()
                     {
                         Name    = info.COLUMN_NAME,
-                        Purpose = PropertyPurpose.System
+                        Purpose = MetaPropertyPurpose.System
                     };
-                    field = new Field()
+                    field = new MetaField()
                     {
                         Name     = info.COLUMN_NAME,
-                        Purpose  = FieldPurpose.Value
+                        Purpose  = MetaFieldPurpose.Value
                     };
                     property.Fields.Add(field);
                     @object.Properties.Add(property);

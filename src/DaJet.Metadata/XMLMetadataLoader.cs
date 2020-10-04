@@ -17,9 +17,9 @@ namespace DaJet.Metadata
             internal BaseObject BaseObject;
             internal MetaObject MetaObject;
             internal MetaObject MetaObjectOwner;
-            internal Property Property;
+            internal MetaProperty Property;
             internal string Table;
-            internal Field Field;
+            internal MetaField Field;
             internal Dictionary<int, MetaObject> TypeCodes = new Dictionary<int, MetaObject>();
         }
         public void Load(string filePath, DatabaseInfo database)
@@ -71,7 +71,7 @@ namespace DaJet.Metadata
                         }
                         else if (reader.Name == "Tables")
                         {
-                            context.MetaObject.Table = string.Empty;
+                            context.MetaObject.TableName = string.Empty;
                         }
                         else if (reader.Name == "Table")
                         {
@@ -242,7 +242,7 @@ namespace DaJet.Metadata
             string typeCodes = reader.GetAttribute("type");
             string purpose = reader.GetAttribute("purpose");
             
-            context.Property = new Property()
+            context.Property = new MetaProperty()
             {
                 Name = name,
                 Ordinal = int.Parse(ordinal)
@@ -254,7 +254,7 @@ namespace DaJet.Metadata
         }
         private void SetPropertyPurpose(LoadContext context, string purpose)
         {
-            context.Property.Purpose = (PropertyPurpose)Enum.Parse(typeof(PropertyPurpose), purpose);
+            context.Property.Purpose = (MetaPropertyPurpose)Enum.Parse(typeof(MetaPropertyPurpose), purpose);
         }
         private void SetPropertyTypes(LoadContext context, string typeCodes)
         {
@@ -311,7 +311,7 @@ namespace DaJet.Metadata
             if (purpose == "Main")
             {
                 context.Table = name;
-                context.MetaObject.Table = context.Table;
+                context.MetaObject.TableName = context.Table;
             }
         }
         private void Read_Field_Element(XmlReader reader, LoadContext context)
@@ -329,25 +329,25 @@ namespace DaJet.Metadata
                 purpose = "Numeric";
             }
 
-            context.Field = new Field()
+            context.Field = new MetaField()
             {
                 Name = name,
-                Purpose = (FieldPurpose)Enum.Parse(typeof(FieldPurpose), purpose)
+                Purpose = (MetaFieldPurpose)Enum.Parse(typeof(MetaFieldPurpose), purpose)
             };
             //context.Table.Fields.Add(context.Field);
 
             //if (context.Table.Purpose != TablePurpose.Main) return;
 
-            Property property = context.MetaObject.Properties
+            MetaProperty property = context.MetaObject.Properties
                 .Where((p) => p.Name == _property)
                 .FirstOrDefault();
 
             if (property == null) // system field, which has no mapping to any one property
             {
-                property = new Property()
+                property = new MetaProperty()
                 {
                     Name = string.IsNullOrEmpty(_property) ? name : _property,
-                    Purpose = PropertyPurpose.System
+                    Purpose = MetaPropertyPurpose.System
                 };
                 // ? надо бы разобраться какой тип данных назначать таким свойствам ...
                 property.PropertyTypes.Add((int)TypeCodes.Binary);
@@ -363,11 +363,11 @@ namespace DaJet.Metadata
 
             if (context.MetaObject == null) return;
 
-            Property property = new Property()
+            MetaProperty property = new MetaProperty()
             {
                 Name = name,
                 Ordinal = int.Parse(order),
-                Purpose = PropertyPurpose.Property
+                Purpose = MetaPropertyPurpose.Property
             };
             property.PropertyTypes.Add(context.MetaObject.TypeCode);
             context.MetaObject.Properties.Add(property);
