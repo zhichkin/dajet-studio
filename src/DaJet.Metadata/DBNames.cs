@@ -6,12 +6,20 @@ namespace DaJet.Metadata
     {
         internal MetaObject MetaObject = new MetaObject();
         internal List<DBName> DBNames = new List<DBName>();
+        public override string ToString()
+        {
+            return string.Format("{0} {{{1}:{2}}}", MetaObject.Token, MetaObject.TypeCode, MetaObject.UUID);
+        }
     }
     internal sealed class DBName
     {
         internal string Token;
         internal int TypeCode;
         internal bool IsMainTable;
+        public override string ToString()
+        {
+            return string.Format("{0}({1})", Token, TypeCode);
+        }
     }
     internal static class DBToken
     {
@@ -55,6 +63,7 @@ namespace DaJet.Metadata
 
         internal const string VT = "VT";
         internal const string Enum = "Enum";
+        internal const string Chrc = "Chrc";
         internal const string Const = "Const";
         internal const string InfoRg = "InfoRg";
         internal const string AccumRg = "AccumRg";

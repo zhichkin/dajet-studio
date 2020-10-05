@@ -94,13 +94,13 @@ namespace DaJet.Metadata
             {
                 foreach (var item in dbnames)
                 {
-                    ReadConfig(item.Key, database);
+                    ReadConfig(item.Key, item.Value.MetaObject, database);
                 }
                 MakeSecondPass(database);
                 ReadSQLMetadata(database);
             }
         }
-        public void ReadConfig(string fileName, DatabaseInfo database)
+        public void ReadConfig(string fileName, MetaObject metaObject, DatabaseInfo database)
         {
             if (new Guid(fileName) == Guid.Empty) return;
 
@@ -109,7 +109,7 @@ namespace DaJet.Metadata
 
             DeflateStream stream = new DeflateStream(binaryData.Stream, CompressionMode.Decompress);
             
-            ParseMetadataObject(stream, fileName, database);
+            ParseMetadataObject(stream, fileName, metaObject, database);
             
             //MemoryStream memory = new MemoryStream();
             //stream.CopyTo(memory);
@@ -207,41 +207,40 @@ namespace DaJet.Metadata
             string[] items = line.Split(',');
             if (items.Length < 3) return;
 
-            string fileName = items[0].Replace("{", string.Empty);
-
-            if (new Guid(fileName) == Guid.Empty) return;
+            string uuid = items[0].Substring(1); // .Replace("{", string.Empty);
+            if (new Guid(uuid) == Guid.Empty) return; // system meta object - global settings etc.
 
             DBName dbname = new DBName()
             {
-                Token = items[1].Replace("\"", string.Empty),
-                TypeCode = int.Parse(items[2].Replace("}", string.Empty))
+                Token = items[1].Trim('\"'), // .Replace("\"", string.Empty),
+                TypeCode = int.Parse(items[2].TrimEnd('}')) // .Replace("}", string.Empty))
             };
             dbname.IsMainTable = IsMainTable(dbname.Token);
 
-            if (dbnames.TryGetValue(fileName, out DBNameEntry entry))
-            {
-                entry.DBNames.Add(dbname);
-            }
-            else
+            if (!dbnames.TryGetValue(uuid, out DBNameEntry entry))
             {
                 entry = new DBNameEntry();
-                entry.DBNames.Add(dbname);
-                dbnames.Add(fileName, entry);
+                dbnames.Add(uuid, entry);
+            }
+            entry.DBNames.Add(dbname);
+
+            if (dbname.IsMainTable)
+            {
+                entry.MetaObject.UUID = new Guid(uuid);
+                entry.MetaObject.Token = dbname.Token;
+                entry.MetaObject.TypeCode = dbname.TypeCode;
+                entry.MetaObject.TableName = CreateTableName(entry.MetaObject, dbname);
             }
         }
         private bool IsMainTable(string token)
         {
-            switch (token)
-            {
-                case DBToken.VT: return true;
-                case DBToken.Enum: return true;
-                case DBToken.Const: return true;
-                case DBToken.InfoRg: return true;
-                case DBToken.AccumRg: return true;
-                case DBToken.Document: return true;
-                case DBToken.Reference: return true;
-            }
-            return false;
+            return token == DBToken.Enum
+                || token == DBToken.Chrc
+                || token == DBToken.Const
+                || token == DBToken.InfoRg
+                || token == DBToken.AccumRg
+                || token == DBToken.Document
+                || token == DBToken.Reference;
         }
 
         #endregion
@@ -259,7 +258,7 @@ namespace DaJet.Metadata
         {
             SqlBytes binaryData = null;
 
-            { // limited scope for variables declared in it - using statement does like that - used here to get control over catch block
+            { // limited scope for variables declared in it
                 SqlConnection connection = new SqlConnection(ConnectionString);
                 SqlCommand command = connection.CreateCommand();
                 SqlDataReader reader = null;
@@ -293,50 +292,36 @@ namespace DaJet.Metadata
 
             return binaryData;
         }
-        private void ParseMetadataObject(Stream stream, string fileName, DatabaseInfo database)
+        private void ParseMetadataObject(Stream stream, string fileName, MetaObject metaObject, DatabaseInfo database)
         {
+            if (metaObject.Token == null) return;
+            if (metaObject.Token == DBToken.Const) return;
+
             using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
             {
                 string line = reader.ReadLine();
-                if (line != null)
-                {
-                    line = reader.ReadLine();
-                }
-
-                MetaObject dbo;
-                if (DBNames.TryGetValue(fileName, out DBNameEntry entry))
-                {
-                    dbo = entry.MetaObject;
-                    DBName dbname = entry.DBNames.Where(i => i.Token == DBToken.Enum).FirstOrDefault();
-                    if (dbname != null)
-                    {
-                        dbo.Token = DBToken.Enum;
-                    }
-                }
-                else
-                {
-                    dbo = new MetaObject();
-                }
-                try
-                {
-                    ParseInternalIdentifier(line, dbo);
-                }
-                catch (Exception ex)
-                {
-                    return;
-                }
-
-                _ = reader.ReadLine();
-                _ = reader.ReadLine();
+                
                 line = reader.ReadLine();
-                if (line != null)
+                //ParseInternalIdentifier(line, metaObject);
+
+                _ = reader.ReadLine();
+                _ = reader.ReadLine();
+
+                line = reader.ReadLine();
+                ParseMetaObjectName(line, metaObject);
+
+                line = reader.ReadLine();
+                ParseMetaObjectAlias(line, metaObject);
+
+                SetMetaObjecNamespace(metaObject, database);
+
+                if (metaObject.Token == DBToken.Reference)
                 {
-                    ParseDbObjectNames(line, fileName, dbo);
-                    SetDbObjecNamespace(dbo, database);
+                    ParseReferenceOwner(reader, metaObject); // свойство справочника "Владелец"
                 }
-                if (dbo.Token == DBToken.Reference)
+                else if (metaObject.Token == DBToken.InfoRg || metaObject.Token == DBToken.AccumRg)
                 {
-                    ParseReferenceOwner(reader, dbo);
+                    // TODO: ParseRegisterRecorder(reader, metaObject); // свойство регистра "Регистратор"
                 }
 
                 int count = 0;
@@ -354,7 +339,7 @@ namespace DaJet.Metadata
 
                     if (_SpecialParsers.ContainsKey(UUID))
                     {
-                        _SpecialParsers[UUID](reader, line, dbo);
+                        _SpecialParsers[UUID](reader, line, metaObject);
                     }
                 }
             }
@@ -365,38 +350,30 @@ namespace DaJet.Metadata
             string uuid = (metaObject.Token == DBToken.Enum ? items[1] : items[3]);
             UUIDs.Add(uuid, metaObject);
         }
-        private void ParseDbObjectNames(string line, string fileName, MetaObject dbo)
+        private void ParseMetaObjectName(string line, MetaObject metaObject)
         {
             string[] lines = line.Split(',');
-            string FileName = lines[2].Replace("}", string.Empty);
-            if (fileName != FileName)
-            {
-                // TODO: error ?
-            }
-            dbo.Name = lines[3].Replace("\"", string.Empty);
-            if (DBNames.TryGetValue(fileName, out DBNameEntry entry))
-            {
-                DBName dbname = entry.DBNames.Where(i => i.IsMainTable).FirstOrDefault();
-                if (dbname != null)
-                {
-                    dbo.Token = dbname.Token;
-                    dbo.TypeCode = dbname.TypeCode;
-                    dbo.TableName = CreateTableName(dbo, dbname);
-                }
-            }
+            string uuid = lines[2].Replace("}", string.Empty);
+            //if (metaObject.UUID != uuid) { /* TODO: error ? */}
+            metaObject.Name = lines[3].Replace("\"", string.Empty);
         }
-        private string CreateTableName(MetaObject dbo, DBName dbname)
+        private void ParseMetaObjectAlias(string line, MetaObject metaObject)
+        {
+            string[] lines = line.Split(',');
+            string alias = lines[2].Replace("}", string.Empty);
+            metaObject.Alias = alias.Replace("\"", string.Empty);
+        }
+        private string CreateTableName(MetaObject metaObject, DBName dbname)
         {
             if (dbname.Token == DBToken.VT)
             {
-                if (dbo.Owner == null)
+                if (metaObject.Owner == null)
                 {
                     return string.Empty;
-                    // TODO: error ?
                 }
                 else
                 {
-                    return $"{dbo.Owner.TableName}_{dbname.Token}{dbname.TypeCode}";
+                    return $"{metaObject.Owner.TableName}_{dbname.Token}{dbname.TypeCode}";
                 }
             }
             else
@@ -404,7 +381,7 @@ namespace DaJet.Metadata
                 return $"_{dbname.Token}{dbname.TypeCode}";
             }
         }
-        private void SetDbObjecNamespace(MetaObject dbo, DatabaseInfo database)
+        private void SetMetaObjecNamespace(MetaObject dbo, DatabaseInfo database)
         {
             if (dbo.Parent != null) return;
 
@@ -436,7 +413,7 @@ namespace DaJet.Metadata
             int count = 0;
             string[] lines;
 
-            _ = reader.ReadLine(); // строка описания - "Синоним" в терминах 1С
+            //_ = reader.ReadLine(); // строка описания - "Синоним" в терминах 1С
             _ = reader.ReadLine();
             string line = reader.ReadLine();
             if (line != null)
