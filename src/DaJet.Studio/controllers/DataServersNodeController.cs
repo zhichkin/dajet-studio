@@ -5,8 +5,10 @@ using DaJet.UI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Documents;
 using System.Windows.Media.Imaging;
 
 namespace DaJet.Studio
@@ -53,6 +55,7 @@ namespace DaJet.Studio
 
             CreateDatabaseServersFromSettings();
             InitializeDatabasesMetadata();
+            CreateMetadataTreeNodes();
 
             return RootNode;
         }
@@ -93,13 +96,13 @@ namespace DaJet.Studio
         private async void InitializeMetadata(DatabaseServer server, DatabaseInfo database)
         {
             IMetadataService metadata = Services.GetService<IMetadataService>();
-            // TODO: initialize metadata
             IMetadataProvider provider = metadata.GetMetadataProvider(database);
             provider.UseServer(server);
             provider.UseDatabase(database);
             provider.InitializeMetadata(database);
             //await Task.Run(() => provider.InitializeMetadata(database));
         }
+
 
 
         private TreeNodeViewModel CreateServerTreeNode(string serverName, bool warning)
@@ -142,6 +145,93 @@ namespace DaJet.Studio
                 NodePayload = null
             };
             return node;
+        }
+        private void CreateMetadataTreeNodes()
+        {
+            foreach (TreeNodeViewModel serverNode in RootNode.TreeNodes)
+            {
+                foreach (TreeNodeViewModel databaseNode in serverNode.TreeNodes)
+                {
+                    InitializeDatabaseTreeNodes(databaseNode);
+                }
+            }
+        }
+        private void InitializeDatabaseTreeNodes(TreeNodeViewModel databaseNode)
+        {
+            if (!(databaseNode.NodePayload is DatabaseInfo database)) return;
+
+            foreach (BaseObject baseObject in database.BaseObjects)
+            {
+                TreeNodeViewModel node = new TreeNodeViewModel()
+                {
+                    IsExpanded = false,
+                    NodeIcon = null,
+                    NodeText = baseObject.Name,
+                    NodeToolTip = baseObject.Name,
+                    NodePayload = baseObject
+                };
+                databaseNode.TreeNodes.Add(node);
+
+                InitializeMetaObjectsTreeNodes(node);
+            }
+        }
+        private void InitializeMetaObjectsTreeNodes(TreeNodeViewModel parentNode)
+        {
+            List<MetaObject> metaObjects;
+            if (parentNode.NodePayload is BaseObject baseObject)
+            {
+                metaObjects = baseObject.MetaObjects;
+            }
+            else if (parentNode.NodePayload is MetaObject metaObject)
+            {
+                metaObjects = metaObject.MetaObjects;
+            }
+            else
+            {
+                return;
+            }
+
+            foreach (MetaObject metaObject in metaObjects)
+            {
+                TreeNodeViewModel node = new TreeNodeViewModel()
+                {
+                    IsExpanded = false,
+                    NodeIcon = null,
+                    NodeText = metaObject.Name,
+                    NodeToolTip = metaObject.Alias,
+                    NodePayload = metaObject
+                };
+                parentNode.TreeNodes.Add(node);
+
+                InitializeMetaPropertiesTreeNodes(node);
+                InitializeMetaObjectsTreeNodes(node);
+            }
+        }
+        private void InitializeMetaPropertiesTreeNodes(TreeNodeViewModel metaObjectNode)
+        {
+            if (!(metaObjectNode.NodePayload is MetaObject metaObject)) return;
+
+            foreach (MetaProperty property in metaObject.Properties)
+            {
+                TreeNodeViewModel node = new TreeNodeViewModel()
+                {
+                    IsExpanded = false,
+                    NodeIcon = null,
+                    NodeText = property.Name,
+                    NodeToolTip = GetPropertyToolTip(property),
+                    NodePayload = property
+                };
+                metaObjectNode.TreeNodes.Add(node);
+            }
+        }
+        private string GetPropertyToolTip(MetaProperty property)
+        {
+            string toolTip = string.Empty;
+            foreach (MetaField field in property.Fields)
+            {
+                toolTip += (string.IsNullOrEmpty(toolTip) ? string.Empty : Environment.NewLine) + field.Name;
+            }
+            return toolTip;
         }
 
 
