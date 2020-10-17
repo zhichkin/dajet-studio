@@ -6,26 +6,58 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
+using System.Linq;
 using System.Windows;
-using System.Windows.Documents;
 using System.Windows.Media.Imaging;
 
 namespace DaJet.Studio
 {
     public sealed class DataServersNodeController : ITreeNodeController
     {
+        private const string SCRIPTS_NODE_NAME = "Scripts";
+
+        #region " Icons "
         private const string ADD_SERVER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/add-server.png";
         private const string SERVER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/server.png";
         private const string DATA_SERVER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/data-server.png";
         private const string SERVER_WARNING_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/server-warning.png";
         private const string DATABASE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/database.png";
+        private const string NAMESPACE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/УстановитьИнтервал.png";
+        private const string CATALOG_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/Справочник.png";
+        private const string DOCUMENT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/Документ.png";
+        private const string NESTED_TABLE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/ВложеннаяТаблица.png";
+        private const string PROPERTY_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/Реквизит.png";
+        private const string MEASURE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/Ресурс.png";
+        private const string DIMENSION_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/Измерение.png";
+        private const string ENUM_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/Перечисление.png";
+        private const string CONST_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/Константа.png";
+        private const string INFO_REGISTER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/РегистрСведений.png";
+        private const string ACCUM_REGISTER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/РегистрНакопления.png";
+        private const string CHARACTERISTICS_REGISTER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/ПланВидовХарактеристик.png";
+        private const string SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/database-script.png";
+        private const string NEW_SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/new-script.png";
 
         private readonly BitmapImage ADD_SERVER_ICON = new BitmapImage(new Uri(ADD_SERVER_ICON_PATH));
         private readonly BitmapImage SERVER_ICON = new BitmapImage(new Uri(SERVER_ICON_PATH));
         private readonly BitmapImage DATA_SERVER_ICON = new BitmapImage(new Uri(DATA_SERVER_ICON_PATH));
         private readonly BitmapImage SERVER_WARNING_ICON = new BitmapImage(new Uri(SERVER_WARNING_ICON_PATH));
         private readonly BitmapImage DATABASE_ICON = new BitmapImage(new Uri(DATABASE_ICON_PATH));
+        private readonly BitmapImage NAMESPACE_ICON = new BitmapImage(new Uri(NAMESPACE_ICON_PATH));
+        private readonly BitmapImage CATALOG_ICON = new BitmapImage(new Uri(CATALOG_ICON_PATH));
+        private readonly BitmapImage DOCUMENT_ICON = new BitmapImage(new Uri(DOCUMENT_ICON_PATH));
+        private readonly BitmapImage NESTED_TABLE_ICON = new BitmapImage(new Uri(NESTED_TABLE_ICON_PATH));
+        private readonly BitmapImage PROPERTY_ICON = new BitmapImage(new Uri(PROPERTY_ICON_PATH));
+        private readonly BitmapImage MEASURE_ICON = new BitmapImage(new Uri(MEASURE_ICON_PATH));
+        private readonly BitmapImage DIMENSION_ICON = new BitmapImage(new Uri(DIMENSION_ICON_PATH));
+        private readonly BitmapImage ENUM_ICON = new BitmapImage(new Uri(ENUM_ICON_PATH));
+        private readonly BitmapImage CONST_ICON = new BitmapImage(new Uri(CONST_ICON_PATH));
+        private readonly BitmapImage INFO_REGISTER_ICON = new BitmapImage(new Uri(INFO_REGISTER_ICON_PATH));
+        private readonly BitmapImage ACCUM_REGISTER_ICON = new BitmapImage(new Uri(ACCUM_REGISTER_ICON_PATH));
+        private readonly BitmapImage CHARACTERISTICS_REGISTER_ICON = new BitmapImage(new Uri(CHARACTERISTICS_REGISTER_ICON_PATH));
+        private readonly BitmapImage SCRIPT_ICON = new BitmapImage(new Uri(SCRIPT_ICON_PATH));
+        private readonly BitmapImage NEW_SCRIPT_ICON = new BitmapImage(new Uri(NEW_SCRIPT_ICON_PATH));
+
+        #endregion
 
         public TreeNodeViewModel RootNode { get; private set; }
         private AppSettings Settings { get; }
@@ -103,7 +135,24 @@ namespace DaJet.Studio
             //await Task.Run(() => provider.InitializeMetadata(database));
         }
 
-
+        private BitmapImage GetMetaObjectIcon(BaseObject baseObject)
+        {
+            if (baseObject == null) { return null; }
+            else if (baseObject.Name == "Reference") { return CATALOG_ICON; }
+            else if (baseObject.Name == "Document") { return DOCUMENT_ICON; }
+            else if (baseObject.Name == "InfoRg") { return INFO_REGISTER_ICON; }
+            else if (baseObject.Name == "Chrc") { return CHARACTERISTICS_REGISTER_ICON; }
+            else if (baseObject.Name == "Enum") { return ENUM_ICON; }
+            else { return null; }
+        }
+        private BitmapImage GetMetaPropertyIcon(MetaProperty property)
+        {
+            if (property == null) { return null; }
+            else if (property.Purpose == MetaPropertyPurpose.Property) { return PROPERTY_ICON; }
+            else if (property.Purpose == MetaPropertyPurpose.Dimension) { return DIMENSION_ICON; }
+            else if (property.Purpose == MetaPropertyPurpose.Measure) { return MEASURE_ICON; }
+            else { return PROPERTY_ICON; }
+        }
 
         private TreeNodeViewModel CreateServerTreeNode(string serverName, bool warning)
         {
@@ -115,21 +164,6 @@ namespace DaJet.Studio
                 NodeToolTip = (warning) ? "connection might be broken" : "connection is ok",
                 NodePayload = null
             };
-
-            // TODO: add local queue menu item
-            // TODO: add remote queue menu item
-            // TODO: add separator menu item : IsSeparator = true
-            // TODO: remove server menu item
-            // TODO: check connection menu item
-
-            //node.ContextMenuItems.Add(new MenuItemViewModel()
-            //{
-            //    MenuItemHeader = "Add server",
-            //    MenuItemIcon = ADD_SERVER_ICON,
-            //    MenuItemCommand = new RelayCommand(AddDataServerCommand),
-            //    MenuItemPayload = node
-            //});
-
             RootNode.TreeNodes.Add(node);
 
             return node;
@@ -144,6 +178,33 @@ namespace DaJet.Studio
                 NodeToolTip = string.Empty,
                 NodePayload = null
             };
+            node.TreeNodes.Add(CreateScriptsTreeNode());
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Add new script",
+                MenuItemIcon = NEW_SCRIPT_ICON,
+                MenuItemCommand = new RelayCommand(AddScriptNodeCommand),
+                MenuItemPayload = node
+            });
+            return node;
+        }
+        private TreeNodeViewModel CreateScriptsTreeNode()
+        {
+            TreeNodeViewModel node = new TreeNodeViewModel()
+            {
+                IsExpanded = false,
+                NodeIcon = SCRIPT_ICON,
+                NodeText = "Scripts",
+                NodeToolTip = "SQL scripts",
+                NodePayload = null
+            };
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Add new script",
+                MenuItemIcon = NEW_SCRIPT_ICON,
+                MenuItemCommand = new RelayCommand(AddScriptNodeCommand),
+                MenuItemPayload = node
+            });
             return node;
         }
         private void CreateMetadataTreeNodes()
@@ -156,6 +217,7 @@ namespace DaJet.Studio
                 }
             }
         }
+        
         private void InitializeDatabaseTreeNodes(TreeNodeViewModel databaseNode)
         {
             if (!(databaseNode.NodePayload is DatabaseInfo database)) return;
@@ -165,7 +227,7 @@ namespace DaJet.Studio
                 TreeNodeViewModel node = new TreeNodeViewModel()
                 {
                     IsExpanded = false,
-                    NodeIcon = null,
+                    NodeIcon = GetMetaObjectIcon(baseObject),
                     NodeText = baseObject.Name,
                     NodeToolTip = baseObject.Name,
                     NodePayload = baseObject
@@ -196,9 +258,11 @@ namespace DaJet.Studio
                 TreeNodeViewModel node = new TreeNodeViewModel()
                 {
                     IsExpanded = false,
-                    NodeIcon = null,
+                    NodeIcon = (metaObject.Owner == null)
+                                ? GetMetaObjectIcon(metaObject.Parent)
+                                : NESTED_TABLE_ICON,
                     NodeText = metaObject.Name,
-                    NodeToolTip = metaObject.Alias,
+                    NodeToolTip = string.IsNullOrWhiteSpace(metaObject.Alias) ? metaObject.TableName : metaObject.Alias,
                     NodePayload = metaObject
                 };
                 parentNode.TreeNodes.Add(node);
@@ -216,7 +280,7 @@ namespace DaJet.Studio
                 TreeNodeViewModel node = new TreeNodeViewModel()
                 {
                     IsExpanded = false,
-                    NodeIcon = null,
+                    NodeIcon = GetMetaPropertyIcon(property),
                     NodeText = property.Name,
                     NodeToolTip = GetPropertyToolTip(property),
                     NodePayload = property
@@ -229,7 +293,8 @@ namespace DaJet.Studio
             string toolTip = string.Empty;
             foreach (MetaField field in property.Fields)
             {
-                toolTip += (string.IsNullOrEmpty(toolTip) ? string.Empty : Environment.NewLine) + field.Name;
+                toolTip += (string.IsNullOrEmpty(toolTip) ? string.Empty : Environment.NewLine)
+                    + SqlUtility.CreateTableFieldScript(field).Replace("[", string.Empty).Replace("]", string.Empty);
             }
             return toolTip;
         }
@@ -272,6 +337,26 @@ namespace DaJet.Studio
 
             // TODO: save server to settings
 
+        }
+
+
+        private void AddScriptNodeCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+
+            // TODO: ask user for script name
+
+            ITreeNodeController controller = Services.GetService<ScriptingController>();
+            if (controller == null) return;
+
+            if (treeNode.NodeText != SCRIPTS_NODE_NAME)
+            {
+                treeNode = treeNode.TreeNodes.Where(n => n.NodeText == SCRIPTS_NODE_NAME).FirstOrDefault();
+            }
+            if (treeNode != null)
+            {
+                treeNode.TreeNodes.Add(controller.CreateTreeNode());
+            }
         }
     }
 }

@@ -134,14 +134,20 @@ namespace DaJet.Metadata
                 bool found = false; MetaField field = null;
                 foreach (MetaProperty p in @object.Properties)
                 {
-                    foreach (MetaField f in p.Fields)
+                    if (string.IsNullOrEmpty(p.DbName))
                     {
-                        if (f.Name == info.COLUMN_NAME)
+                        break;
+                    }
+                    if (info.COLUMN_NAME.TrimStart('_').StartsWith(p.DbName))
+                    {
+                        field = new MetaField()
                         {
-                            field = f;
-                            found = true;
-                            break;
-                        }
+                            Name = info.COLUMN_NAME,
+                            Purpose = MetaFieldPurpose.Value
+                        };
+                        p.Fields.Add(field);
+                        found = true;
+                        break;
                     }
                 }
                 if (!found)

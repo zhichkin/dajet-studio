@@ -1,5 +1,6 @@
 ﻿using DaJet.Messaging;
 using DaJet.Metadata;
+using DaJet.Studio.MVVM;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -33,9 +34,12 @@ namespace DaJet.Studio
         {
             services.AddOptions();
             services.Configure<AppSettings>(configuration.GetSection(nameof(AppSettings)));
-            
+
+            services.AddTransient<TabViewModel>();
             services.AddSingleton<MainWindowViewModel>();
             services.AddSingleton<DataServersNodeController>();
+            services.AddSingleton<ScriptingController>();
+            services.AddTransient<ScriptEditorViewModel>();
 
             services.AddSingleton<IMetadataService, MetadataService>();
             services.AddSingleton<IMessagingService, MessagingService>();

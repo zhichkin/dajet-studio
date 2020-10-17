@@ -3,15 +3,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.ObjectModel;
-using System.Windows.Media.Imaging;
+using System.Windows.Controls;
 
 namespace DaJet.Studio
 {
     public sealed class MainWindowViewModel : ViewModelBase
     {
-        private const string CATALOG_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/catalog.png";
-        private readonly BitmapImage CATALOG_ICON = new BitmapImage(new Uri(CATALOG_ICON_PATH));
-
         private AppSettings Settings { get; }
         private IServiceProvider Services { get; }
         public MainWindowViewModel(IServiceProvider serviceProvider, IOptions<AppSettings> options)
@@ -20,6 +17,12 @@ namespace DaJet.Studio
             Services = serviceProvider;
             InitializeViewModel();
         }
+        private TabViewModel _selectedTab;
+        public TabViewModel SelectedTab
+        {
+            get { return _selectedTab; }
+            set { _selectedTab = value; OnPropertyChanged(nameof(SelectedTab)); }
+        }
         private string _StatusBarRegion = string.Empty;
         public string StatusBarRegion
         {
@@ -27,21 +30,43 @@ namespace DaJet.Studio
             set { _StatusBarRegion = value; OnPropertyChanged(); }
         }
         public TreeNodeViewModel MainTreeRegion { get; } = new TreeNodeViewModel();
+        public ObservableCollection<TabViewModel> Tabs { get; } = new ObservableCollection<TabViewModel>();
         public ObservableCollection<MenuItemViewModel> MainMenuRegion { get; } = new ObservableCollection<MenuItemViewModel>();
         private void InitializeViewModel()
         {
-            //MainMenuRegion.Add(new MenuItemViewModel()
-            //{
-            //    MenuItemIcon = CATALOG_ICON,
-            //    MenuItemHeader = "About",
-            //    MenuItemCommand = new RelayCommand(ConnectDataServerCommand),
-            //    MenuItemPayload = this
-            //});
-
             ITreeNodeController controller = Services.GetService<DataServersNodeController>();
             if (controller != null)
             {
                 MainTreeRegion.TreeNodes.Add(controller.CreateTreeNode());
+            }
+        }
+        
+        public object SelectedTabViewModel
+        {
+            get
+            {
+                if (SelectedTab == null) return null;
+                if (!(SelectedTab.Content is UserControl content)) return null;
+                return content.DataContext;
+            }
+        }
+        public void AddNewTab(string header, object content)
+        {
+            TabViewModel tab = Services.GetService<TabViewModel>();
+            tab.Header = header;
+            tab.Content = content;
+            Tabs.Add(tab);
+            SelectedTab = tab;
+        }
+        public void RemoveTab(TabViewModel tab)
+        {
+            if (tab != null)
+            {
+                Tabs.Remove(tab);
+                if (Tabs.Count > 0)
+                {
+                    SelectedTab = Tabs[0];
+                }
             }
         }
     }

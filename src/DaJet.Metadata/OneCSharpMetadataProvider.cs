@@ -25,19 +25,19 @@ namespace DaJet.Metadata
 
         public OneCSharpMetadataProvider()
         {
-            _SpecialParsers.Add("cf4abea7-37b2-11d4-940f-008048da11f9", ParseMetaProperties); // Catalogs properties collection
+            _SpecialParsers.Add("cf4abea7-37b2-11d4-940f-008048da11f9", ParseMetaObjectProperties); // Catalogs properties collection
             _SpecialParsers.Add("932159f9-95b2-4e76-a8dd-8849fe5c5ded", ParseNestedObjects); // Catalogs nested objects collection
 
-            _SpecialParsers.Add("45e46cbc-3e24-4165-8b7b-cc98a6f80211", ParseMetaProperties); // Documents properties collection
+            _SpecialParsers.Add("45e46cbc-3e24-4165-8b7b-cc98a6f80211", ParseMetaObjectProperties); // Documents properties collection
             _SpecialParsers.Add("21c53e09-8950-4b5e-a6a0-1054f1bbc274", ParseNestedObjects); // Documents nested objects collection
 
-            _SpecialParsers.Add("13134203-f60b-11d5-a3c7-0050bae0a776", ParseMetaProperties); // Коллекция измерений регистра сведений
-            _SpecialParsers.Add("13134202-f60b-11d5-a3c7-0050bae0a776", ParseMetaProperties); // Коллекция ресурсов регистра сведений
-            _SpecialParsers.Add("a2207540-1400-11d6-a3c7-0050bae0a776", ParseMetaProperties); // Коллекция реквизитов регистра сведений
+            _SpecialParsers.Add("13134203-f60b-11d5-a3c7-0050bae0a776", ParseMetaObjectDimensions); // Коллекция измерений регистра сведений
+            _SpecialParsers.Add("13134202-f60b-11d5-a3c7-0050bae0a776", ParseMetaObjectMeasures); // Коллекция ресурсов регистра сведений
+            _SpecialParsers.Add("a2207540-1400-11d6-a3c7-0050bae0a776", ParseMetaObjectProperties); // Коллекция реквизитов регистра сведений
 
-            _SpecialParsers.Add("b64d9a43-1642-11d6-a3c7-0050bae0a776", ParseMetaProperties); // Коллекция измерений регистра накопления
-            _SpecialParsers.Add("b64d9a41-1642-11d6-a3c7-0050bae0a776", ParseMetaProperties); // Коллекция ресурсов регистра накопления
-            _SpecialParsers.Add("b64d9a42-1642-11d6-a3c7-0050bae0a776", ParseMetaProperties); // Коллекция реквизитов регистра накопления
+            _SpecialParsers.Add("b64d9a43-1642-11d6-a3c7-0050bae0a776", ParseMetaObjectDimensions); // Коллекция измерений регистра накопления
+            _SpecialParsers.Add("b64d9a41-1642-11d6-a3c7-0050bae0a776", ParseMetaObjectMeasures); // Коллекция ресурсов регистра накопления
+            _SpecialParsers.Add("b64d9a42-1642-11d6-a3c7-0050bae0a776", ParseMetaObjectProperties); // Коллекция реквизитов регистра накопления
         }
 
         public string ConnectionString { get; private set; }
@@ -460,7 +460,19 @@ namespace DaJet.Metadata
                 dbo.Properties.Add(property);
             }
         }
-        private void ParseMetaProperties(StreamReader reader, string line, MetaObject dbo)
+        private void ParseMetaObjectProperties(StreamReader reader, string line, MetaObject metaObject)
+        {
+            ParseMetaProperties(reader, line, metaObject, MetaPropertyPurpose.Property);
+        }
+        private void ParseMetaObjectDimensions(StreamReader reader, string line, MetaObject metaObject)
+        {
+            ParseMetaProperties(reader, line, metaObject, MetaPropertyPurpose.Dimension);
+        }
+        private void ParseMetaObjectMeasures(StreamReader reader, string line, MetaObject metaObject)
+        {
+            ParseMetaProperties(reader, line, metaObject, MetaPropertyPurpose.Measure);
+        }
+        private void ParseMetaProperties(StreamReader reader, string line, MetaObject dbo, MetaPropertyPurpose purpose)
         {
             string[] lines = line.Split(',');
             int count = int.Parse(lines[1].Replace("}", string.Empty));
@@ -473,13 +485,13 @@ namespace DaJet.Metadata
                     match = rxDbName.Match(nextLine);
                     if (match.Success)
                     {
-                        ParseMetaProperty(reader, nextLine, dbo);
+                        ParseMetaProperty(reader, nextLine, dbo, purpose);
                         break;
                     }
                 }
             }
         }
-        private void ParseMetaProperty(StreamReader reader, string line, MetaObject dbo)
+        private void ParseMetaProperty(StreamReader reader, string line, MetaObject dbo, MetaPropertyPurpose purpose)
         {
             string[] lines = line.Split(',');
             string fileName = lines[2].Replace("}", string.Empty);
@@ -488,7 +500,8 @@ namespace DaJet.Metadata
             MetaProperty property = new MetaProperty
             {
                 Parent = dbo,
-                Name = objectName
+                Name = objectName,
+                Purpose = purpose
             };
             dbo.Properties.Add(property);
 
@@ -628,7 +641,7 @@ namespace DaJet.Metadata
 
             if (DBNames.TryGetValue(fileName, out DBNameEntry entry))
             {
-                DBName dbname = entry.DBNames.Where(i => i.IsMainTable).FirstOrDefault();
+                DBName dbname = entry.DBNames.Where(i => i.Token == DBToken.VT).FirstOrDefault();
                 if (dbname != null)
                 {
                     nested.Token = dbname.Token;
@@ -636,9 +649,9 @@ namespace DaJet.Metadata
                     nested.TableName = CreateTableName(nested, dbname);
                 }
             }
-            ParseNestedDbProperties(reader, nested);
+            ParseNestedMetaProperties(reader, nested);
         }
-        private void ParseNestedDbProperties(StreamReader reader, MetaObject dbo)
+        private void ParseNestedMetaProperties(StreamReader reader, MetaObject dbo)
         {
             string line;
             Match match;
@@ -647,7 +660,7 @@ namespace DaJet.Metadata
                 match = rxNestedProperties.Match(line);
                 if (match.Success)
                 {
-                    ParseMetaProperties(reader, line, dbo);
+                    ParseMetaProperties(reader, line, dbo, MetaPropertyPurpose.Property);
                     break;
                 }
             }
