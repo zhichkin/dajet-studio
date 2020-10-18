@@ -27,9 +27,11 @@ namespace DaJet.Studio
             {
                 IsExpanded = true,
                 NodeIcon = SCRIPT_ICON,
-                NodeText = "New script",
+                NodeText = ScriptEditorViewModel.NAME_PROPERTY_DEFAULT_VALUE,
+                IsEditable = true,
                 NodeToolTip = "SQL script",
-                NodePayload = this
+                NodeTextPropertyBinding = "Name",
+                NodePayload = Services.GetService<ScriptEditorViewModel>()
             };
             node.ContextMenuItems.Add(new MenuItemViewModel()
             {
@@ -43,11 +45,11 @@ namespace DaJet.Studio
         private void EditScriptCommand(object node)
         {
             if (!(node is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is ScriptEditorViewModel scriptEditor)) return;
 
-            TabViewModel tab = Services.GetService<TabViewModel>();
             MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
-            ScriptEditorView editor = new ScriptEditorView() { DataContext = tab };
-            mainWindow.AddNewTab(treeNode.NodeText, editor);
+            ScriptEditorView editorView = new ScriptEditorView() { DataContext = scriptEditor };
+            mainWindow.AddNewTab(scriptEditor.Name, editorView);
         }
     }
 }

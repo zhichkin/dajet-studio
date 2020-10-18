@@ -5,7 +5,21 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:DaJet.Studio"
              mc:Ignorable="d" d:DesignHeight="450" d:DesignWidth="800">
+    
     <Grid>
-            
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal">
+            <Button Content="Translate" Command="{Binding TranslateCommand}" Margin="0,0,5,0"/>
+            <Button Content="Execute" Command="{Binding ExecuteCommand}"/>
+        </StackPanel>
+
+        <TextBox Grid.Row="1" Text="{Binding ScriptCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 FontFamily="Courier New" FontSize="14" Margin="0,5,0,0"
+                 TextWrapping="Wrap" AcceptsTab="True" AcceptsReturn="True"/>
     </Grid>
+    
 </UserControl>

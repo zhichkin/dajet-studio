@@ -1,6 +1,5 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using OneCSharp.Metadata.Model;
-using OneCSharp.Metadata.Services;
+﻿using DaJet.Metadata;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -8,7 +7,7 @@ using System.Linq;
 using System.Reflection;
 using ScriptDom = Microsoft.SqlServer.TransactSql.ScriptDom;
 
-namespace OneCSharp.Scripting.Services
+namespace DaJet.Scripting
 {
     public sealed class ColumnReferenceExpressionVisitor : ISyntaxTreeVisitor
     {
@@ -58,7 +57,7 @@ namespace OneCSharp.Scripting.Services
                 identifier = columnReference.MultiPartIdentifier.Identifiers[1];
             }
 
-            Property property = GetProperty(identifiers, statement);
+            MetaProperty property = GetProperty(identifiers, statement);
             if (property == null) return result;
             if (property.Fields.Count == 0) return result;
 
@@ -84,7 +83,7 @@ namespace OneCSharp.Scripting.Services
         {
             return (fieldName == "uuid" || fieldName == "type" || fieldName == "TYPE");
         }
-        private Property GetProperty(IList<string> identifiers, StatementNode statement)
+        private MetaProperty GetProperty(IList<string> identifiers, StatementNode statement)
         {
             if (identifiers.Count == 1)
             {
@@ -106,10 +105,10 @@ namespace OneCSharp.Scripting.Services
                 return GetPropertyWithTableAlias(identifiers, statement);
             }
         }
-        private Property GetPropertyWithTableAlias(IList<string> identifiers, StatementNode statement)
+        private MetaProperty GetPropertyWithTableAlias(IList<string> identifiers, StatementNode statement)
         {
             TableNode table = null;
-            Property property = null;
+            MetaProperty property = null;
             string alias = identifiers[0];
             string propertyName = identifiers[1];
 
@@ -130,10 +129,10 @@ namespace OneCSharp.Scripting.Services
             }
             return property;
         }
-        private Property GetPropertyWithoutTableAlias(IList<string> identifiers, StatementNode statement)
+        private MetaProperty GetPropertyWithoutTableAlias(IList<string> identifiers, StatementNode statement)
         {
             TableNode table = null;
-            Property property = null;
+            MetaProperty property = null;
             string propertyName = identifiers[0];
 
             foreach (ISyntaxNode tableNode in statement.Tables.Values)
@@ -160,7 +159,7 @@ namespace OneCSharp.Scripting.Services
             }
             return property;
         }
-        private void VisitValueTypeColumn(Identifier identifier, Property property)
+        private void VisitValueTypeColumn(Identifier identifier, MetaProperty property)
         {
             if (property.Fields.Count == 1)
             {
@@ -171,9 +170,9 @@ namespace OneCSharp.Scripting.Services
                 // TODO: error !? compound type properties is not supported for multivalued columns !
             }
         }
-        private void VisitReferenceTypeColumn(ColumnReferenceExpression node, TSqlFragment parent, string sourceProperty, IList<Identifier> identifiers, Identifier identifier, Property property, string fieldName)
+        private void VisitReferenceTypeColumn(ColumnReferenceExpression node, TSqlFragment parent, string sourceProperty, IList<Identifier> identifiers, Identifier identifier, MetaProperty property, string fieldName)
         {
-            Field field = null;
+            MetaField field = null;
             BinaryLiteral binaryLiteral = null;
             
             if (fieldName == "uuid")
@@ -184,7 +183,7 @@ namespace OneCSharp.Scripting.Services
                 }
                 else
                 {
-                    field = property.Fields.Where(f => f.Purpose == FieldPurpose.Object).FirstOrDefault();
+                    field = property.Fields.Where(f => f.Purpose == MetaFieldPurpose.Object).FirstOrDefault();
                 }
             }
             else if (fieldName == "type")
@@ -196,7 +195,7 @@ namespace OneCSharp.Scripting.Services
                 }
                 else
                 {
-                    field = property.Fields.Where(f => f.Purpose == FieldPurpose.TypeCode).FirstOrDefault();
+                    field = property.Fields.Where(f => f.Purpose == MetaFieldPurpose.TypeCode).FirstOrDefault();
                 }
             }
             else if (fieldName == "TYPE")
@@ -207,7 +206,7 @@ namespace OneCSharp.Scripting.Services
                 }
                 else
                 {
-                    field = property.Fields.Where(f => f.Purpose == FieldPurpose.Discriminator).FirstOrDefault();
+                    field = property.Fields.Where(f => f.Purpose == MetaFieldPurpose.Discriminator).FirstOrDefault();
                 }
             }
             // TODO: throw new MissingMemberException !? if nonexistent field referenced
@@ -238,7 +237,7 @@ namespace OneCSharp.Scripting.Services
                 property.SetValue(parent, expression);
             }
         }
-        private void VisitReferenceTypeColumn(ColumnReferenceExpression node, TSqlFragment parent, string sourceProperty, Identifier identifier, Property property)
+        private void VisitReferenceTypeColumn(ColumnReferenceExpression node, TSqlFragment parent, string sourceProperty, Identifier identifier, MetaProperty property)
         {
             if (property.Fields.Count == 1) // Т.Ссылка (не составной тип)
             {
@@ -268,8 +267,8 @@ namespace OneCSharp.Scripting.Services
             }
             else // Т.Владелец (составной тип)
             {
-                Field typeCode = property.Fields.Where(f => f.Purpose == FieldPurpose.TypeCode).FirstOrDefault();
-                Field reference = property.Fields.Where(f => f.Purpose == FieldPurpose.Object).FirstOrDefault();
+                MetaField typeCode = property.Fields.Where(f => f.Purpose == MetaFieldPurpose.TypeCode).FirstOrDefault();
+                MetaField reference = property.Fields.Where(f => f.Purpose == MetaFieldPurpose.Object).FirstOrDefault();
                 identifier.Value = reference.Name;
 
                 MultiPartIdentifier mpi = new MultiPartIdentifier();

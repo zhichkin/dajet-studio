@@ -4,8 +4,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace DaJet.Metadata
 {
@@ -98,20 +96,20 @@ namespace DaJet.Metadata
             XMLLoader.Load(metadataFilePath, database);
             //SQLLoader.Load(ConnectionString, infobase); // TODO: optimize loading of SQL metadata time !
         }
-        public void UseServer(string serverName)
+        public void UseServer(string serverAddress)
         {
-            if (string.IsNullOrWhiteSpace(serverName)) throw new ArgumentNullException(nameof(serverName));
-            if (Settings == null) throw new InvalidOperationException(ERROR_SERVICE_IS_NOT_CONFIGURED);
+            if (string.IsNullOrWhiteSpace(serverAddress)) throw new ArgumentNullException(nameof(serverAddress));
+            //if (Settings == null) throw new InvalidOperationException(ERROR_SERVICE_IS_NOT_CONFIGURED);
 
-            string catalogPath = ServerCatalogPath(serverName);
-            if (!Directory.Exists(catalogPath)) throw new DirectoryNotFoundException(catalogPath);
+            //string catalogPath = ServerCatalogPath(serverName);
+            //if (!Directory.Exists(catalogPath)) throw new DirectoryNotFoundException(catalogPath);
 
-            DatabaseServer server = Settings.Servers.Where(s => s.Name == serverName).FirstOrDefault();
-            if (server == null)
-            {
-                server = new DatabaseServer() { Name = serverName };
-                Settings.Servers.Add(server);
-            }
+            //DatabaseServer server = Settings.Servers.Where(s => s.Name == serverName).FirstOrDefault();
+            //if (server == null)
+            //{
+            //    server = new DatabaseServer() { Name = serverName };
+            //    Settings.Servers.Add(server);
+            //}
             
             SqlConnectionStringBuilder csb;
             if (string.IsNullOrWhiteSpace(ConnectionString))
@@ -122,25 +120,29 @@ namespace DaJet.Metadata
             {
                 csb = new SqlConnectionStringBuilder(ConnectionString);
             }
-            csb.DataSource = string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address;
+            csb.DataSource = serverAddress; /*string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address;*/
             ConnectionString = csb.ToString();
 
-            CurrentServer = server;
+            CurrentServer = new DatabaseServer()
+            {
+                Name = serverAddress,
+                Address = serverAddress
+            };
         }
         public void UseDatabase(string databaseName)
         {
             if (string.IsNullOrWhiteSpace(databaseName)) throw new ArgumentNullException(nameof(databaseName));
-            if (Settings == null) throw new InvalidOperationException(ERROR_SERVICE_IS_NOT_CONFIGURED);
+            //if (Settings == null) throw new InvalidOperationException(ERROR_SERVICE_IS_NOT_CONFIGURED);
             if (CurrentServer == null) throw new InvalidOperationException(ERROR_SERVER_IS_NOT_DEFINED);
 
-            string metadataFilePath = MetadataFilePath(CurrentServer.Name, databaseName);
-            if (!File.Exists(metadataFilePath)) throw new DirectoryNotFoundException(metadataFilePath);
+            //string metadataFilePath = MetadataFilePath(CurrentServer.Name, databaseName);
+            //if (!File.Exists(metadataFilePath)) throw new DirectoryNotFoundException(metadataFilePath);
 
             DatabaseInfo database = CurrentServer.Databases.Where(db => db.Name == databaseName).FirstOrDefault();
             if (database == null)
             {
                 database = new DatabaseInfo() { Name = databaseName };
-                InitializeMetadata(database, metadataFilePath);
+                //InitializeMetadata(database, metadataFilePath);
                 CurrentServer.Databases.Add(database);
             }
             
@@ -152,23 +154,27 @@ namespace DaJet.Metadata
 
             CurrentDatabase = database;
         }
-        public void AttachDatabase(string serverName, DatabaseInfo database)
+        public void AttachDatabase(string serverAddress, DatabaseInfo database)
         {
-            // TODO: make UseServer and UseDatabase methods independent of file existence !
             if (database == null) throw new ArgumentNullException(nameof(database));
-            if (string.IsNullOrWhiteSpace(serverName)) throw new ArgumentNullException(nameof(serverName));
+            if (string.IsNullOrWhiteSpace(serverAddress)) throw new ArgumentNullException(nameof(serverAddress));
 
-            DatabaseServer server = Settings.Servers.Where(s => s.Name == serverName).FirstOrDefault();
+            if (Settings == null) Settings = new MetadataServiceSettings();
+
+            DatabaseServer server = Settings.Servers.Where(s => s.Name == serverAddress).FirstOrDefault();
             if (server == null)
             {
-                server = new DatabaseServer() { Name = serverName };
+                server = new DatabaseServer() { Name = serverAddress, Address = serverAddress };
                 Settings.Servers.Add(server);
             }
+            CurrentServer = server;
 
             DatabaseInfo test = server.Databases.Where(db => db.Name == database.Name).FirstOrDefault();
-            if (test != null) throw new InvalidOperationException(nameof(database));
-
-            server.Databases.Add(database);
+            if (test == null)
+            {
+                server.Databases.Add(database);
+            }
+            CurrentDatabase = database;
         }
 
 
@@ -271,7 +277,14 @@ namespace DaJet.Metadata
             string tableName = tableIdentifier.TrimStart('[').TrimEnd(']');
             string[] identifiers = tableName.Split('+');
 
-            BaseObject bo = database.BaseObjects.Where(bo => bo.Name == identifiers[0]).FirstOrDefault();
+            // TODO: сделать нормальный поиск базового объекта
+            string baseObjectName = identifiers[0];
+            if (baseObjectName == "Справочник") baseObjectName = "Reference";
+            else if (baseObjectName == "Документ") baseObjectName = "Document";
+            else if (baseObjectName == "РегистрСведений") baseObjectName = "InfoRg";
+            else if (baseObjectName == "РегистрНакопления") baseObjectName = "AccumRg";
+
+            BaseObject bo = database.BaseObjects.Where(bo => bo.Name == baseObjectName).FirstOrDefault();
             if (bo == null) return null;
 
             MetaObject @object = bo.MetaObjects.Where(mo => mo.Name == identifiers[1]).FirstOrDefault();

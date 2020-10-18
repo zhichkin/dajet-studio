@@ -1,5 +1,6 @@
 ﻿using DaJet.Messaging;
 using DaJet.Metadata;
+using DaJet.Scripting;
 using DaJet.Studio.MVVM;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,6 +43,8 @@ namespace DaJet.Studio
             services.AddTransient<ScriptEditorViewModel>();
 
             services.AddSingleton<IMetadataService, MetadataService>();
+            services.AddSingleton<IQueryExecutor, QueryExecutor>();
+            services.AddSingleton<IScriptingService, ScriptingService>();
             services.AddSingleton<IMessagingService, MessagingService>();
         }
         protected override async void OnStartup(StartupEventArgs e)

@@ -1,13 +1,12 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using OneCSharp.Metadata.Model;
-using OneCSharp.Metadata.Services;
+﻿using DaJet.Metadata;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
-namespace OneCSharp.Scripting.Services
+namespace DaJet.Scripting
 {
     internal interface ISyntaxTreeVisitor
     {

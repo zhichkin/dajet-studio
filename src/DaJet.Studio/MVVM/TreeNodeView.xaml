@@ -12,6 +12,7 @@
               BorderThickness="0" BorderBrush="Transparent">
 
         <TreeView.Resources>
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
             <Style TargetType="{x:Type TreeViewItem}">
                 <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
                 <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
@@ -21,6 +22,9 @@
         <behaviors:Interaction.Triggers>
             <behaviors:EventTrigger EventName="SelectedItemChanged" SourceObject="{Binding ElementName=CONTROL_ROOT}">
                 <behaviors:InvokeCommandAction Command="{Binding SelectedItemChanged}" PassEventArgsToCommand="True"/>
+            </behaviors:EventTrigger>
+            <behaviors:EventTrigger EventName="KeyDown">
+                <behaviors:InvokeCommandAction Command="{Binding TreeViewKeyDown}" PassEventArgsToCommand="True"/>
             </behaviors:EventTrigger>
         </behaviors:Interaction.Triggers>
 
@@ -36,16 +40,34 @@
 
                     <Image Source="{Binding NodeIcon}" Height="16" Width="16" VerticalAlignment="Center"/>
 
-                    <TextBlock Text="{Binding NodeText}" ToolTip="{Binding NodeToolTip}" Margin="3,0,3,0" VerticalAlignment="Center">
+                    <TextBlock x:Name="nodeNameTextBlock"
+                               Visibility="{Binding IsViewModeEnabled, Converter={StaticResource BooleanToVisibilityConverter}}"
+                               Margin="3,0,3,0" VerticalAlignment="Center"
+                               Text="{Binding NodeText}" ToolTip="{Binding NodeToolTip}">
                         <behaviors:Interaction.Triggers>
                             <behaviors:EventTrigger EventName="PreviewMouseRightButtonDown">
                                 <behaviors:ChangePropertyAction PropertyName="IsSelected" Value="True" TargetObject="{Binding}"/>
                             </behaviors:EventTrigger>
+                            <behaviors:EventTrigger EventName="MouseLeftButtonDown">
+                                <behaviors:InvokeCommandAction Command="{Binding EnableEditingCommand}" PassEventArgsToCommand="True"/>
+                            </behaviors:EventTrigger>
                         </behaviors:Interaction.Triggers>
                     </TextBlock>
 
-                </StackPanel>
+                    <TextBox x:Name="nodeNameTextBox"
+                             Text="{Binding NodeText, UpdateSourceTrigger=LostFocus, Mode=TwoWay}"
+                             IsVisibleChanged="NodeNameTextBox_IsVisibleChanged"
+                             Visibility="{Binding IsEditModeEnabled, Converter={StaticResource BooleanToVisibilityConverter}}"
+                             MinWidth="{Binding ElementName=nodeNameTextBlock, Path=ActualWidth}">
+                        <behaviors:Interaction.Triggers>
+                            <behaviors:EventTrigger EventName="LostFocus">
+                                <behaviors:InvokeCommandAction Command="{Binding TextBoxLostFocus}" PassEventArgsToCommand="True"/>
+                            </behaviors:EventTrigger>
+                        </behaviors:Interaction.Triggers>
+                    </TextBox>
 
+                </StackPanel>
+                
             </HierarchicalDataTemplate>
             
         </TreeView.ItemTemplate>

@@ -25,6 +25,18 @@ namespace DaJet.Metadata
         public List<int> PropertyTypes { get; set; } = new List<int>();
         public List<TypeInfo> Types { get; set; } = new List<TypeInfo>();
         public List<MetaField> Fields { get; set; } = new List<MetaField>();
+        public bool IsReferenceType
+        {
+            get
+            {
+                if (PropertyTypes.Count == 0) return false;
+                foreach (int typeCode in PropertyTypes)
+                {
+                    if (typeCode > 0) return true;
+                }
+                return false;
+            }
+        }
         public override string ToString() { return Name; }
     }
     public sealed class TypeInfo

@@ -1,9 +1,9 @@
 ﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using OneCSharp.Metadata.Services;
+using DaJet.Metadata;
 using System;
 using System.Collections.Generic;
 
-namespace OneCSharp.Scripting.Services
+namespace DaJet.Scripting
 {
     internal sealed class BooleanBinaryExpressionVisitor : ISyntaxTreeVisitor
     {

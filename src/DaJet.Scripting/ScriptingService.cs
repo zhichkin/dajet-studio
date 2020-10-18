@@ -1,10 +1,10 @@
 ﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using OneCSharp.Metadata.Services;
+using DaJet.Metadata;
 using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace OneCSharp.Scripting.Services
+namespace DaJet.Scripting
 {
     public interface IScriptingService
     {
@@ -37,7 +37,7 @@ namespace OneCSharp.Scripting.Services
                 return script;
             }
 
-            ScriptNode result = new ScriptNode() { InfoBase = MetadataService.CurrentDatabase };
+            ScriptNode result = new ScriptNode() { Database = MetadataService.CurrentDatabase };
             SyntaxTreeVisitor visitor = new SyntaxTreeVisitor(MetadataService);
             visitor.Visit(fragment, result);
 

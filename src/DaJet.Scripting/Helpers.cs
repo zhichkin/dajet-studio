@@ -1,7 +1,7 @@
 ﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System.Text;
 
-namespace OneCSharp.Scripting.Services
+namespace DaJet.Scripting
 {
     public static class TSqlDomHelpers
     {

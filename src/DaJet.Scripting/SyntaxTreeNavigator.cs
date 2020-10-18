@@ -1,8 +1,8 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using OneCSharp.Metadata.Model;
+﻿using DaJet.Metadata;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System.Collections.Generic;
 
-namespace OneCSharp.Scripting.Services
+namespace DaJet.Scripting
 {
     public interface ISyntaxNode
     {
@@ -20,7 +20,7 @@ namespace OneCSharp.Scripting.Services
     }
     internal sealed class ScriptNode : SyntaxNode
     {
-        public InfoBase InfoBase { get; set; } // initial catalog = default database name
+        public DatabaseInfo Database { get; set; } // initial catalog = default database name
         public List<ISyntaxNode> Statements { get; } = new List<ISyntaxNode>();
     }
     internal sealed class StatementNode : SyntaxNode // SELECT => QuerySpecification | InsertSpecification | UpdateSpecification | DeleteSpecification
@@ -42,11 +42,11 @@ namespace OneCSharp.Scripting.Services
     }
     internal sealed class FunctionNode : SyntaxNode // Т.Ссылка.type() => FunctionCall
     {
-        public Property MetaProperty { get; set; }
+        public MetaProperty MetaProperty { get; set; }
     }
     internal sealed class CastNode : SyntaxNode // CAST(Т.Ссылка AS [УТ.Документ.ПоступлениеТоваровУслуг]) => CastCall + UserDataTypeReference
     {
-        public Property MetaProperty { get; set; } // source cast value
+        public MetaProperty MetaProperty { get; set; } // source cast value
         public MetaObject MetaObject { get; set; } // target cast type
     }
 }

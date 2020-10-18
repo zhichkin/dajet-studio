@@ -344,8 +344,6 @@ namespace DaJet.Studio
         {
             if (!(node is TreeNodeViewModel treeNode)) return;
 
-            // TODO: ask user for script name
-
             ITreeNodeController controller = Services.GetService<ScriptingController>();
             if (controller == null) return;
 
@@ -355,7 +353,10 @@ namespace DaJet.Studio
             }
             if (treeNode != null)
             {
-                treeNode.TreeNodes.Add(controller.CreateTreeNode());
+                TreeNodeViewModel child = controller.CreateTreeNode();
+                treeNode.IsExpanded = true;
+                treeNode.TreeNodes.Add(child);
+                child.IsSelected = true;
             }
         }
     }
