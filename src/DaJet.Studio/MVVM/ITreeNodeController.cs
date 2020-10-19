@@ -3,5 +3,6 @@
     public interface ITreeNodeController
     {
         TreeNodeViewModel CreateTreeNode();
+        TreeNodeViewModel CreateTreeNode(TreeNodeViewModel parent);
     }
 }

@@ -1,4 +1,5 @@
-﻿using DaJet.Studio.MVVM;
+﻿using DaJet.Metadata;
+using DaJet.Studio.MVVM;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System;
@@ -34,7 +35,7 @@ namespace DaJet.Studio
         public ObservableCollection<MenuItemViewModel> MainMenuRegion { get; } = new ObservableCollection<MenuItemViewModel>();
         private void InitializeViewModel()
         {
-            ITreeNodeController controller = Services.GetService<DataServersNodeController>();
+            ITreeNodeController controller = Services.GetService<MetadataController>();
             if (controller != null)
             {
                 MainTreeRegion.TreeNodes.Add(controller.CreateTreeNode());
@@ -67,6 +68,19 @@ namespace DaJet.Studio
                 {
                     SelectedTab = Tabs[0];
                 }
+            }
+        }
+
+
+
+        public void GetServerAndDatabase(ObservableCollection<TreeNodeViewModel> treeNodes, object payload, object[] result)
+        {
+            foreach (var treeNode in treeNodes)
+            {
+                if (treeNode.NodePayload == payload) { break; }
+                if (treeNode.NodePayload is DatabaseServer server) { result[0] = server; }
+                if (treeNode.NodePayload is DatabaseInfo database) { result[1] = database; }
+                GetServerAndDatabase(treeNode.TreeNodes, payload, result);
             }
         }
     }

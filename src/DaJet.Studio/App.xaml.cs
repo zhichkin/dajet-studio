@@ -4,9 +4,11 @@ using DaJet.Scripting;
 using DaJet.Studio.MVVM;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using System;
 using System.IO;
+using System.Reflection;
 using System.Windows;
 
 namespace DaJet.Studio
@@ -36,9 +38,11 @@ namespace DaJet.Studio
             services.AddOptions();
             services.Configure<AppSettings>(configuration.GetSection(nameof(AppSettings)));
 
+            SetupFileProvider(services);
+
             services.AddTransient<TabViewModel>();
             services.AddSingleton<MainWindowViewModel>();
-            services.AddSingleton<DataServersNodeController>();
+            services.AddSingleton<MetadataController>();
             services.AddSingleton<ScriptingController>();
             services.AddTransient<ScriptEditorViewModel>();
 
@@ -61,6 +65,19 @@ namespace DaJet.Studio
                 await _host.StopAsync(TimeSpan.FromSeconds(5));
             }
             base.OnExit(e);
+        }
+        private void SetupFileProvider(IServiceCollection services)
+        {
+            Assembly asm = Assembly.GetExecutingAssembly();
+            string _appCatalogPath = Path.GetDirectoryName(asm.Location);
+            
+            string _scriptsCatalogPath = Path.Combine(_appCatalogPath, "scripts");
+            if (!Directory.Exists(_scriptsCatalogPath))
+            {
+                _ = Directory.CreateDirectory(_scriptsCatalogPath);
+            }
+
+            services.AddSingleton<IFileProvider>(new PhysicalFileProvider(_appCatalogPath));
         }
         //private static OneCSharpSettings OneCSharpSettings()
         //{

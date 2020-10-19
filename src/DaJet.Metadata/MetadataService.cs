@@ -175,6 +175,15 @@ namespace DaJet.Metadata
                 server.Databases.Add(database);
             }
             CurrentDatabase = database;
+
+            SqlConnectionStringBuilder csb = new SqlConnectionStringBuilder(ConnectionString)
+            {
+                DataSource = string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address,
+                InitialCatalog = database.Name,
+                IntegratedSecurity = true,
+                PersistSecurityInfo = false
+            };
+            ConnectionString = csb.ToString();
         }
 
 

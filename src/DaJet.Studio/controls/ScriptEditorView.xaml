@@ -4,7 +4,13 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:DaJet.Studio"
+             xmlns:behaviors="http://schemas.microsoft.com/xaml/behaviors"
              mc:Ignorable="d" d:DesignHeight="450" d:DesignWidth="800">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <BitmapImage x:Key="Icon_SaveFile" UriSource="pack://application:,,,/DaJet.Studio;component/images/save-file.png"/>
+    </UserControl.Resources>
     
     <Grid>
         <Grid.RowDefinitions>
@@ -14,12 +20,22 @@
 
         <StackPanel Grid.Row="0" Orientation="Horizontal">
             <Button Content="Translate" Command="{Binding TranslateCommand}" Margin="0,0,5,0"/>
-            <Button Content="Execute" Command="{Binding ExecuteCommand}"/>
+            <Button Content="Execute" Click="SaveButton_Click" Command="{Binding ExecuteCommand}"/>
+            <Button Click="SaveButton_Click" Command="{Binding SaveCommand}" Margin="5,0,0,0" ToolTip="Save script to file"
+                    Visibility="{Binding IsScriptChanged, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Image Source="{StaticResource Icon_SaveFile}" Height="16" Width="16" VerticalAlignment="Center"/>
+            </Button>
         </StackPanel>
 
-        <TextBox Grid.Row="1" Text="{Binding ScriptCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+        <TextBox x:Name="ScriptCodeTextBox" Grid.Row="1" Text="{Binding ScriptCode, Mode=TwoWay, UpdateSourceTrigger=Explicit}"
                  FontFamily="Courier New" FontSize="14" Margin="0,5,0,0"
-                 TextWrapping="Wrap" AcceptsTab="True" AcceptsReturn="True"/>
+                 TextWrapping="Wrap" AcceptsTab="True" AcceptsReturn="True">
+            <behaviors:Interaction.Triggers>
+                <behaviors:EventTrigger EventName="TextChanged">
+                    <behaviors:ChangePropertyAction PropertyName="IsScriptChanged" Value="True" TargetObject="{Binding}"/>
+                </behaviors:EventTrigger>
+            </behaviors:Interaction.Triggers>
+        </TextBox>
     </Grid>
     
 </UserControl>

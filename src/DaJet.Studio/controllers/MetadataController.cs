@@ -12,11 +12,10 @@ using System.Windows.Media.Imaging;
 
 namespace DaJet.Studio
 {
-    public sealed class DataServersNodeController : ITreeNodeController
+    public sealed class MetadataController : ITreeNodeController
     {
-        private const string SCRIPTS_NODE_NAME = "Scripts";
-
         #region " Icons "
+
         private const string ADD_SERVER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/add-server.png";
         private const string SERVER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/server.png";
         private const string DATA_SERVER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/data-server.png";
@@ -34,9 +33,7 @@ namespace DaJet.Studio
         private const string INFO_REGISTER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/РегистрСведений.png";
         private const string ACCUM_REGISTER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/РегистрНакопления.png";
         private const string CHARACTERISTICS_REGISTER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/ПланВидовХарактеристик.png";
-        private const string SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/database-script.png";
-        private const string NEW_SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/new-script.png";
-
+        
         private readonly BitmapImage ADD_SERVER_ICON = new BitmapImage(new Uri(ADD_SERVER_ICON_PATH));
         private readonly BitmapImage SERVER_ICON = new BitmapImage(new Uri(SERVER_ICON_PATH));
         private readonly BitmapImage DATA_SERVER_ICON = new BitmapImage(new Uri(DATA_SERVER_ICON_PATH));
@@ -54,26 +51,25 @@ namespace DaJet.Studio
         private readonly BitmapImage INFO_REGISTER_ICON = new BitmapImage(new Uri(INFO_REGISTER_ICON_PATH));
         private readonly BitmapImage ACCUM_REGISTER_ICON = new BitmapImage(new Uri(ACCUM_REGISTER_ICON_PATH));
         private readonly BitmapImage CHARACTERISTICS_REGISTER_ICON = new BitmapImage(new Uri(CHARACTERISTICS_REGISTER_ICON_PATH));
-        private readonly BitmapImage SCRIPT_ICON = new BitmapImage(new Uri(SCRIPT_ICON_PATH));
-        private readonly BitmapImage NEW_SCRIPT_ICON = new BitmapImage(new Uri(NEW_SCRIPT_ICON_PATH));
-
+        
         #endregion
 
         public TreeNodeViewModel RootNode { get; private set; }
         private AppSettings Settings { get; }
         private IServiceProvider Services { get; }
-        public DataServersNodeController(IServiceProvider serviceProvider, IOptions<AppSettings> options)
+        public MetadataController(IServiceProvider serviceProvider, IOptions<AppSettings> options)
         {
             Settings = options.Value;
             Services = serviceProvider;
         }
+        public TreeNodeViewModel CreateTreeNode(TreeNodeViewModel parent) { throw new NotImplementedException(); }
         public TreeNodeViewModel CreateTreeNode()
         {
             RootNode = new TreeNodeViewModel()
             {
                 IsExpanded = true,
                 NodeIcon = DATA_SERVER_ICON,
-                NodeText = "Data servers",
+                NodeText = "Metadata",
                 NodeToolTip = "SQL Server instances",
                 NodePayload = this
             };
@@ -107,9 +103,7 @@ namespace DaJet.Studio
                 TreeNodeViewModel databaseNode;
                 foreach (DatabaseInfo database in server.Databases)
                 {
-                    databaseNode = CreateDatabaseTreeNode(database.Name);
-                    databaseNode.NodePayload = database;
-                    databaseNode.NodeToolTip = database.Alias;
+                    databaseNode = CreateDatabaseTreeNode(serverNode, database);
                     serverNode.TreeNodes.Add(databaseNode);
                 }
             }
@@ -168,44 +162,28 @@ namespace DaJet.Studio
 
             return node;
         }
-        private TreeNodeViewModel CreateDatabaseTreeNode(string databaseName)
+        private TreeNodeViewModel CreateDatabaseTreeNode(TreeNodeViewModel serverNode, DatabaseInfo database)
         {
-            TreeNodeViewModel node = new TreeNodeViewModel()
+            TreeNodeViewModel databaseNode = new TreeNodeViewModel()
             {
+                Parent = serverNode,
                 IsExpanded = false,
                 NodeIcon = DATABASE_ICON,
-                NodeText = databaseName,
-                NodeToolTip = string.Empty,
-                NodePayload = null
+                NodeText = database.Name,
+                NodeToolTip = database.Alias,
+                NodePayload = database
             };
-            node.TreeNodes.Add(CreateScriptsTreeNode());
-            node.ContextMenuItems.Add(new MenuItemViewModel()
-            {
-                MenuItemHeader = "Add new script",
-                MenuItemIcon = NEW_SCRIPT_ICON,
-                MenuItemCommand = new RelayCommand(AddScriptNodeCommand),
-                MenuItemPayload = node
-            });
-            return node;
+
+            TreeNodeViewModel scripts = CreateScriptsTreeNode(databaseNode);
+            if (scripts != null) { databaseNode.TreeNodes.Add(scripts); }
+            
+            return databaseNode;
         }
-        private TreeNodeViewModel CreateScriptsTreeNode()
+        private TreeNodeViewModel CreateScriptsTreeNode(TreeNodeViewModel databaseNode)
         {
-            TreeNodeViewModel node = new TreeNodeViewModel()
-            {
-                IsExpanded = false,
-                NodeIcon = SCRIPT_ICON,
-                NodeText = "Scripts",
-                NodeToolTip = "SQL scripts",
-                NodePayload = null
-            };
-            node.ContextMenuItems.Add(new MenuItemViewModel()
-            {
-                MenuItemHeader = "Add new script",
-                MenuItemIcon = NEW_SCRIPT_ICON,
-                MenuItemCommand = new RelayCommand(AddScriptNodeCommand),
-                MenuItemPayload = node
-            });
-            return node;
+            ITreeNodeController controller = Services.GetService<ScriptingController>();
+            if (controller == null) return null;
+            return controller.CreateTreeNode(databaseNode);
         }
         private void CreateMetadataTreeNodes()
         {
@@ -337,27 +315,6 @@ namespace DaJet.Studio
 
             // TODO: save server to settings
 
-        }
-
-
-        private void AddScriptNodeCommand(object node)
-        {
-            if (!(node is TreeNodeViewModel treeNode)) return;
-
-            ITreeNodeController controller = Services.GetService<ScriptingController>();
-            if (controller == null) return;
-
-            if (treeNode.NodeText != SCRIPTS_NODE_NAME)
-            {
-                treeNode = treeNode.TreeNodes.Where(n => n.NodeText == SCRIPTS_NODE_NAME).FirstOrDefault();
-            }
-            if (treeNode != null)
-            {
-                TreeNodeViewModel child = controller.CreateTreeNode();
-                treeNode.IsExpanded = true;
-                treeNode.TreeNodes.Add(child);
-                child.IsSelected = true;
-            }
         }
     }
 }

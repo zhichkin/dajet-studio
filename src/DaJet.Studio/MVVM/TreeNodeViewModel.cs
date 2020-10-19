@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.ObjectModel;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Input;
@@ -22,6 +23,7 @@ namespace DaJet.Studio.MVVM
             TextBoxLostFocus = new RelayCommand(TextBoxLostFocusHandler);
             EnableEditingCommand = new RelayCommand(EnableEditingCommandHandler);
         }
+        public TreeNodeViewModel Parent { get; set; }
         public string NodeText
         {
             get { return _nodeText; }
@@ -194,6 +196,22 @@ namespace DaJet.Studio.MVVM
             {
                 ConfirmEditing();
             }
+        }
+
+
+
+        public TPayload GetAncestorPayload<TPayload>()
+        {
+            TreeNodeViewModel ancestor = this.Parent;
+            while (ancestor != null)
+            {
+                if (ancestor.NodePayload is TPayload payload)
+                {
+                    return payload;
+                }
+                ancestor = ancestor.Parent;
+            }
+            return default;
         }
     }
 }
