@@ -2,9 +2,9 @@
 
 namespace DaJet.UI
 {
-    public partial class SelectServerDialogView : UserControl
+    public partial class ConnectSQLServerDialogView : UserControl
     {
-        public SelectServerDialogView(SelectServerDialogViewModel viewModel)
+        public ConnectSQLServerDialogView(ConnectSQLServerDialogViewModel viewModel)
         {
             InitializeComponent();
             DataContext = viewModel;

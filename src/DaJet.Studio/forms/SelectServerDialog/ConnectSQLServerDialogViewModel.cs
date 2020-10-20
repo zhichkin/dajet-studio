@@ -1,0 +1,56 @@
+﻿using DaJet.Metadata;
+using DaJet.Studio.MVVM;
+using System;
+using System.Windows.Input;
+
+namespace DaJet.UI
+{
+    public sealed class ConnectSQLServerDialogViewModel : ViewModelBase
+    {
+        private DatabaseServer serverToEdit;
+        private DatabaseServer MyServer { get; } = new DatabaseServer();
+        public ConnectSQLServerDialogViewModel()
+        {
+            ConfirmCommand = new RelayCommand(Confirm);
+            CancelCommand = new RelayCommand(Cancel);
+        }
+        public ConnectSQLServerDialogViewModel(DatabaseServer server) : this()
+        {
+            serverToEdit = server;
+            serverToEdit.CopyTo(MyServer);
+        }
+        public ICommand ConfirmCommand { get; private set; }
+        public ICommand CancelCommand { get; private set; }
+        public Action OnCancel { get; set; }
+        public Action<DatabaseServer> OnConfirm { get; set; }
+        public string ServerName
+        {
+            get { return MyServer.Name; }
+            set { MyServer.Name = value; OnPropertyChanged(); }
+        }
+        public string ServerAddress
+        {
+            get { return MyServer.Address; }
+            set { MyServer.Address = value; OnPropertyChanged(); }
+        }
+        public string UserName
+        {
+            get { return MyServer.UserName; }
+            set { MyServer.UserName = value; OnPropertyChanged(); }
+        }
+        public string Password
+        {
+            get { return MyServer.Password; }
+            set { MyServer.Password = value; OnPropertyChanged(); }
+        }
+        private void Confirm(object parameter)
+        {
+            MyServer.CopyTo(serverToEdit);
+            OnConfirm?.Invoke(serverToEdit);
+        }
+        private void Cancel(object parameter)
+        {
+            OnCancel?.Invoke();
+        }
+    }
+}

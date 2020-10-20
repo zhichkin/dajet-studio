@@ -70,23 +70,19 @@ namespace DaJet.Studio
         {
             Assembly asm = Assembly.GetExecutingAssembly();
             string _appCatalogPath = Path.GetDirectoryName(asm.Location);
-            
-            string _scriptsCatalogPath = Path.Combine(_appCatalogPath, "scripts");
-            if (!Directory.Exists(_scriptsCatalogPath))
+
+            string[] requiredCatalogs = new string[] { "scripts", "metadata" };
+
+            foreach (string catalog in requiredCatalogs)
             {
-                _ = Directory.CreateDirectory(_scriptsCatalogPath);
+                string _catalogPath = Path.Combine(_appCatalogPath, catalog);
+                if (!Directory.Exists(_catalogPath))
+                {
+                    _ = Directory.CreateDirectory(_catalogPath);
+                }
             }
 
             services.AddSingleton<IFileProvider>(new PhysicalFileProvider(_appCatalogPath));
         }
-        //private static OneCSharpSettings OneCSharpSettings()
-        //{
-        //    OneCSharpSettings settings = new OneCSharpSettings();
-        //    var config = new ConfigurationBuilder()
-        //        .AddJsonFile("appsettings.json", optional: false)
-        //        .Build();
-        //    config.GetSection("OneCSharpSettings").Bind(settings);
-        //    return settings;
-        //}
     }
 }

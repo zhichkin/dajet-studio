@@ -47,6 +47,12 @@ namespace DaJet.Studio.MVVM
         public string NodeTextPropertyBinding { get; set; }
         private void NodeTextPropertyChanged()
         {
+            if (!IsEditable)
+            {
+                OnPropertyChanged(nameof(NodeText));
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(NodeTextPropertyBinding)) return;
             if (NodePayload == null) return;
 

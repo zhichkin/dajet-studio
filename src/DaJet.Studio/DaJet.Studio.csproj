@@ -18,12 +18,14 @@
   <ItemGroup>
     <None Remove="DaJet.ico" />
     <None Remove="images\add-catalog.png" />
+    <None Remove="images\add-database.png" />
     <None Remove="images\add-server.png" />
     <None Remove="images\catalog.png" />
     <None Remove="images\close.png" />
     <None Remove="images\connect-database.png" />
     <None Remove="images\data-server.png" />
     <None Remove="images\database-script.png" />
+    <None Remove="images\database-settings.png" />
     <None Remove="images\database.png" />
     <None Remove="images\DataServer.png" />
     <None Remove="images\delete-catalog.png" />
@@ -31,6 +33,7 @@
     <None Remove="images\nested-table.png" />
     <None Remove="images\new-script.png" />
     <None Remove="images\save-file.png" />
+    <None Remove="images\server-settings.png" />
     <None Remove="images\server-warning.png" />
     <None Remove="images\server.png" />
     <None Remove="images\table.png" />
@@ -73,18 +76,21 @@
   <ItemGroup>
     <Resource Include="DaJet.ico" />
     <Resource Include="images\add-catalog.png" />
+    <Resource Include="images\add-database.png" />
     <Resource Include="images\add-server.png" />
     <Resource Include="images\catalog.png" />
     <Resource Include="images\close.png" />
     <Resource Include="images\connect-database.png" />
     <Resource Include="images\data-server.png" />
     <Resource Include="images\database-script.png" />
+    <Resource Include="images\database-settings.png" />
     <Resource Include="images\database.png" />
     <Resource Include="images\delete-catalog.png" />
     <Resource Include="images\edit-script.png" />
     <Resource Include="images\nested-table.png" />
     <Resource Include="images\new-script.png" />
     <Resource Include="images\save-file.png" />
+    <Resource Include="images\server-settings.png" />
     <Resource Include="images\server-warning.png" />
     <Resource Include="images\server.png" />
     <Resource Include="images\table.png" />
