@@ -7,7 +7,6 @@ namespace DaJet.UI
 {
     public sealed class ConnectSQLServerDialogViewModel : ViewModelBase
     {
-        private DatabaseServer serverToEdit;
         private DatabaseServer MyServer { get; } = new DatabaseServer();
         public ConnectSQLServerDialogViewModel()
         {
@@ -16,8 +15,7 @@ namespace DaJet.UI
         }
         public ConnectSQLServerDialogViewModel(DatabaseServer server) : this()
         {
-            serverToEdit = server;
-            serverToEdit.CopyTo(MyServer);
+            MyServer = server;
         }
         public ICommand ConfirmCommand { get; private set; }
         public ICommand CancelCommand { get; private set; }
@@ -45,8 +43,7 @@ namespace DaJet.UI
         }
         private void Confirm(object parameter)
         {
-            MyServer.CopyTo(serverToEdit);
-            OnConfirm?.Invoke(serverToEdit);
+            OnConfirm?.Invoke(MyServer);
         }
         private void Cancel(object parameter)
         {

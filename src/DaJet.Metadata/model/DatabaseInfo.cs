@@ -1,10 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace DaJet.Metadata
 {
     public sealed class DatabaseInfo
     {
+        public Guid Identity { get; set; } = Guid.NewGuid();
         public string Name { get; set; }
         public string Alias { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;

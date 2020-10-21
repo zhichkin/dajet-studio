@@ -85,13 +85,13 @@ namespace DaJet.Studio
             DatabaseInfo database = rootNode.Parent.NodePayload as DatabaseInfo;
             DatabaseServer server = rootNode.Parent.Parent.NodePayload as DatabaseServer;
 
-            IFileInfo serverCatalog = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{server.Name}");
+            IFileInfo serverCatalog = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{server.Identity.ToString().ToLower()}");
             if (!serverCatalog.Exists) { Directory.CreateDirectory(serverCatalog.PhysicalPath); }
 
-            IFileInfo databaseCatalog = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{server.Name}/{database.Name}");
+            IFileInfo databaseCatalog = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{server.Identity.ToString().ToLower()}/{database.Identity.ToString().ToLower()}");
             if (!databaseCatalog.Exists) { Directory.CreateDirectory(databaseCatalog.PhysicalPath); }
 
-            IDirectoryContents rootCatalog = FileProvider.GetDirectoryContents($"{ROOT_CATALOG_NAME}/{server.Name}/{database.Name}");
+            IDirectoryContents rootCatalog = FileProvider.GetDirectoryContents($"{ROOT_CATALOG_NAME}/{server.Identity.ToString().ToLower()}/{database.Identity.ToString().ToLower()}");
             foreach (IFileInfo fileInfo in rootCatalog)
             {
                 if (fileInfo.IsDirectory) continue;
@@ -133,7 +133,7 @@ namespace DaJet.Studio
 
             if (string.IsNullOrWhiteSpace(scriptEditor.ScriptCode))
             {
-                IFileInfo file = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{server.Name}/{database.Name}/{scriptEditor.Name}");
+                IFileInfo file = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{server.Identity.ToString().ToLower()}/{database.Identity.ToString().ToLower()}/{scriptEditor.Name}");
                 if (file != null && file.Exists)
                 {
                     using (StreamReader reader = new StreamReader(file.PhysicalPath, Encoding.UTF8))

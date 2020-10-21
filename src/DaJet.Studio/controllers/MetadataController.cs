@@ -65,6 +65,7 @@ namespace DaJet.Studio
 
         #endregion
 
+        private const string SCRIPTS_CATALOG_NAME = "scripts";
         private const string METADATA_CATALOG_NAME = "metadata";
         private const string METADATA_SETTINGS_FILE_NAME = "metadata-settings.json";
 
@@ -368,6 +369,28 @@ namespace DaJet.Studio
             }
             return false;
         }
+        private bool DatabaseServerNameExists(DatabaseServer server)
+        {
+            foreach (DatabaseServer existing in MetadataSettings.Servers)
+            {
+                if (existing.Name == server.Name)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        private bool DatabaseServerAddressExists(DatabaseServer server)
+        {
+            foreach (DatabaseServer existing in MetadataSettings.Servers)
+            {
+                if (existing.Address == server.Address)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
         private void AddDataServerCommand(object parameter)
         {
             if (!(parameter is TreeNodeViewModel treeNode)) return;
@@ -418,23 +441,56 @@ namespace DaJet.Studio
         {
             if (!(parameter is TreeNodeViewModel treeNode)) return;
             if (!(treeNode.NodePayload is DatabaseServer server)) return;
-            
-            ConnectSQLServerDialogWindow dialog = new ConnectSQLServerDialogWindow(server);
+
+            // make copy of server settings to rollback changes if needed
+            DatabaseServer serverCopy = server.Copy();
+
+            // edit server settings
+            ConnectSQLServerDialogWindow dialog = new ConnectSQLServerDialogWindow(serverCopy);
             _ = dialog.ShowDialog();
             if (dialog.Result == null) return;
 
+            string serverCopyName = string.IsNullOrWhiteSpace(serverCopy.Address)
+                                ? serverCopy.Name
+                                : $"{serverCopy.Name} ({serverCopy.Address})";
+            
+            // remember old server name (catalog name)
+            string serverName = server.Name;
+
+            // check if new server name allready exists
+            if (serverCopy.Name != server.Name)
+            {
+                if (DatabaseServerNameExists(serverCopy))
+                {
+                    MessageBox.Show("SQL сервер " + serverCopyName + " уже сущестует.",
+                        "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+            }
+            // check if new server address allready exists
+            if (serverCopy.Address != server.Address)
+            {
+                if (DatabaseServerAddressExists(serverCopy))
+                {
+                    MessageBox.Show("SQL сервер " + serverCopyName + " уже сущестует.",
+                        "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+            }
+
+            // persist server settings changes
+            serverCopy.CopyTo(server);
             SaveMetadataServiceSettings();
 
-            treeNode.NodeText = string.IsNullOrWhiteSpace(server.Address)
-                                ? server.Name
-                                : $"{server.Name} ({server.Address})";
+            // show server name and address changes in UI
+            treeNode.NodeText = serverCopyName;
         }
         private void AddDatabaseCommand(object parameter)
         {
             if (!(parameter is TreeNodeViewModel treeNode)) return;
             if (!(treeNode.NodePayload is DatabaseServer server)) return;
 
-            // TODO: open new database form
+            // TODO: open new database form - select from databases list
             MessageBox.Show("New database form...");
         }
         private void EditDatabaseCommand(object parameter)

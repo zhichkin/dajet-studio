@@ -1,10 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Reflection;
 
 namespace DaJet.Metadata
 {
     public sealed class DatabaseServer
     {
+        public Guid Identity { get; set; } = Guid.NewGuid();
         public string Name { get; set; }
         public string Address { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
@@ -15,6 +17,12 @@ namespace DaJet.Metadata
             return string.IsNullOrWhiteSpace(Address)
                 ? Name
                 : string.Format("{0} ({1})", Name, Address);
+        }
+        public DatabaseServer Copy()
+        {
+            DatabaseServer server = new DatabaseServer();
+            this.CopyTo(server);
+            return server;
         }
         public void CopyTo(DatabaseServer server)
         {

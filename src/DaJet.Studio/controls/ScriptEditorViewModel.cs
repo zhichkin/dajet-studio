@@ -47,7 +47,7 @@ namespace DaJet.Studio
             if (mainWindow == null) return;
 
             object[] result = new object[] { null, null };
-            mainWindow.GetServerAndDatabase(mainWindow.MainTreeRegion.TreeNodes, this, result);
+            bool found = mainWindow.GetServerAndDatabase(mainWindow.MainTreeRegion.TreeNodes, this, result);
 
             MyServer = result[0] as DatabaseServer;
             MyDatabase = result[1] as DatabaseInfo;
@@ -77,7 +77,7 @@ namespace DaJet.Studio
             ConfigureServerAndDatabase();
 
             IMetadataService metadata = Services.GetService<IMetadataService>();
-            metadata.AttachDatabase(MyServer.Name, MyDatabase);
+            metadata.AttachDatabase(string.IsNullOrWhiteSpace(MyServer.Address) ? MyServer.Name : MyServer.Address, MyDatabase);
 
             IScriptingService scripting = Services.GetService<IScriptingService>();
             string sql = scripting.PrepareScript(ScriptCode, out IList<ParseError> errors);
@@ -115,7 +115,7 @@ namespace DaJet.Studio
             MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
 
             IMetadataService metadata = Services.GetService<IMetadataService>();
-            metadata.AttachDatabase(MyServer.Name, MyDatabase);
+            metadata.AttachDatabase(string.IsNullOrWhiteSpace(MyServer.Address) ? MyServer.Name : MyServer.Address, MyDatabase);
 
             IScriptingService scripting = Services.GetService<IScriptingService>();
             string sql = scripting.PrepareScript(ScriptCode, out IList<ParseError> errors);
@@ -183,13 +183,17 @@ namespace DaJet.Studio
         {
             ConfigureServerAndDatabase();
 
-            IFileInfo serverCatalog = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{MyServer.Name}");
+            // TODO
+            //DatabaseInfo database = treeNode.GetAncestorPayload<DatabaseInfo>();
+            //DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+
+            IFileInfo serverCatalog = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{MyServer.Identity.ToString().ToLower()}");
             if (!serverCatalog.Exists) { Directory.CreateDirectory(serverCatalog.PhysicalPath); }
             
-            IFileInfo databaseCatalog = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{MyServer.Name}/{MyDatabase.Name}");
+            IFileInfo databaseCatalog = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{MyServer.Identity.ToString().ToLower()}/{MyDatabase.Identity.ToString().ToLower()}");
             if (!databaseCatalog.Exists) { Directory.CreateDirectory(databaseCatalog.PhysicalPath); }
             
-            IFileInfo file = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{MyServer.Name}/{MyDatabase.Name}/{Name}");
+            IFileInfo file = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{MyServer.Identity.ToString().ToLower()}/{MyDatabase.Identity.ToString().ToLower()}/{Name}");
             
             using (StreamWriter writer = new StreamWriter(file.PhysicalPath))
             {
