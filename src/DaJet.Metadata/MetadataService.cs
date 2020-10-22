@@ -18,6 +18,7 @@ namespace DaJet.Metadata
         void UseDatabase(string databaseName);
         void AttachDatabase(string serverName, DatabaseInfo database);
 
+        List<DatabaseInfo> GetDatabases(DatabaseServer server);
         IMetadataProvider GetMetadataProvider(DatabaseInfo database);
 
         string MapSchemaIdentifier(string schemaName);
@@ -346,6 +347,50 @@ namespace DaJet.Metadata
         }
 
 
+        public List<DatabaseInfo> GetDatabases(DatabaseServer server)
+        {
+            UseServer(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address);
+
+            List<DatabaseInfo> list = new List<DatabaseInfo>();
+
+            {
+                SqlConnection connection = new SqlConnection(ConnectionString);
+                SqlCommand command = connection.CreateCommand();
+                SqlDataReader reader = null;
+                command.CommandType = CommandType.Text;
+                command.CommandText = "SELECT [name] FROM [sys].[databases] WHERE [owner_sid] > 0x01 ORDER BY [name] ASC;";
+                try
+                {
+                    connection.Open();
+                    reader = command.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        DatabaseInfo database = new DatabaseInfo()
+                        {
+                            Identity = Guid.NewGuid(),
+                            Name = reader.GetString(0)
+                        };
+                        list.Add(database);
+                    }
+                }
+                catch (Exception error)
+                {
+                    throw error;
+                }
+                finally
+                {
+                    if (reader != null)
+                    {
+                        if (reader.HasRows) command.Cancel();
+                        reader.Dispose();
+                    }
+                    if (command != null) command.Dispose();
+                    if (connection != null) connection.Dispose();
+                }
+            }
+
+            return list;
+        }
         private IMetadataProvider MetadataProvider { get; set; } = new OneCSharpMetadataProvider();
         public IMetadataProvider GetMetadataProvider(DatabaseInfo database)
         {

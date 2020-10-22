@@ -184,6 +184,7 @@ namespace DaJet.Studio
             else if (baseObject.Name == "Reference") { return CATALOG_ICON; }
             else if (baseObject.Name == "Document") { return DOCUMENT_ICON; }
             else if (baseObject.Name == "InfoRg") { return INFO_REGISTER_ICON; }
+            else if (baseObject.Name == "AccumRg") { return ACCUM_REGISTER_ICON; }
             else if (baseObject.Name == "Chrc") { return CHARACTERISTICS_REGISTER_ICON; }
             else if (baseObject.Name == "Enum") { return ENUM_ICON; }
             else { return null; }
@@ -485,13 +486,54 @@ namespace DaJet.Studio
             // show server name and address changes in UI
             treeNode.NodeText = serverCopyName;
         }
+
+
+
+        private bool DatabaseNameExists(DatabaseServer server, DatabaseInfo database)
+        {
+            foreach (DatabaseInfo existing in server.Databases)
+            {
+                if (existing.Name == database.Name)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
         private void AddDatabaseCommand(object parameter)
         {
             if (!(parameter is TreeNodeViewModel treeNode)) return;
             if (!(treeNode.NodePayload is DatabaseServer server)) return;
 
-            // TODO: open new database form - select from databases list
-            MessageBox.Show("New database form...");
+            IMetadataService metadata = Services.GetService<IMetadataService>();
+            List<DatabaseInfo> databases = metadata.GetDatabases(server);
+            if (databases.Count == 0)
+            {
+                MessageBox.Show("Список выбора баз данных пуст.",
+                    "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            SelectDatabaseWindow dialog = new SelectDatabaseWindow(databases);
+            _ = dialog.ShowDialog();
+            if (dialog.Result == null) return;
+
+            if (DatabaseNameExists(server, dialog.Result))
+            {
+                MessageBox.Show("База данных " + dialog.Result.Name + " уже добавлена.",
+                    "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // TODO: open database settings form to edit alias, user name and password
+
+            server.Databases.Add(dialog.Result);
+            SaveMetadataServiceSettings();
+
+            TreeNodeViewModel databaseNode = CreateDatabaseTreeNode(treeNode, dialog.Result);
+            treeNode.TreeNodes.Add(databaseNode);
+            treeNode.IsExpanded = true;
+            databaseNode.IsSelected = true;
         }
         private void EditDatabaseCommand(object parameter)
         {
