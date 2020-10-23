@@ -27,6 +27,7 @@ namespace DaJet.Studio
         private const string DATA_SERVER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/data-server.png";
         private const string SERVER_WARNING_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/server-warning.png";
         private const string DATABASE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/database.png";
+        private const string DELETE_DATABASE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/delete-database.png";
         private const string ADD_DATABASE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/add-database.png";
         private const string DATABASE_SETTINGS_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/database-settings.png";
         private const string NAMESPACE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/УстановитьИнтервал.png";
@@ -48,6 +49,7 @@ namespace DaJet.Studio
         private readonly BitmapImage DATA_SERVER_ICON = new BitmapImage(new Uri(DATA_SERVER_ICON_PATH));
         private readonly BitmapImage SERVER_WARNING_ICON = new BitmapImage(new Uri(SERVER_WARNING_ICON_PATH));
         private readonly BitmapImage DATABASE_ICON = new BitmapImage(new Uri(DATABASE_ICON_PATH));
+        private readonly BitmapImage DELETE_DATABASE_ICON = new BitmapImage(new Uri(DELETE_DATABASE_ICON_PATH));
         private readonly BitmapImage ADD_DATABASE_ICON = new BitmapImage(new Uri(ADD_DATABASE_ICON_PATH));
         private readonly BitmapImage DATABASE_SETTINGS_ICON = new BitmapImage(new Uri(DATABASE_SETTINGS_ICON_PATH));
         private readonly BitmapImage NAMESPACE_ICON = new BitmapImage(new Uri(NAMESPACE_ICON_PATH));
@@ -65,6 +67,7 @@ namespace DaJet.Studio
 
         #endregion
 
+        private const string SCRIPTS_NODE_NAME = "Scripts";
         private const string SCRIPTS_CATALOG_NAME = "scripts";
         private const string METADATA_CATALOG_NAME = "metadata";
         private const string METADATA_SETTINGS_FILE_NAME = "metadata-settings.json";
@@ -246,6 +249,13 @@ namespace DaJet.Studio
                 MenuItemCommand = new RelayCommand(EditDatabaseCommand),
                 MenuItemPayload = databaseNode
             });
+            databaseNode.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Delete database",
+                MenuItemIcon = DELETE_DATABASE_ICON,
+                MenuItemCommand = new RelayCommand(DeleteDatabaseCommand),
+                MenuItemPayload = databaseNode
+            });
 
             TreeNodeViewModel scripts = CreateScriptsTreeNode(databaseNode);
             if (scripts != null) { databaseNode.TreeNodes.Add(scripts); }
@@ -402,7 +412,7 @@ namespace DaJet.Studio
             _ = dialog.ShowDialog();
             if (dialog.Result == null) return;
 
-            // check if server name or address is allready exists
+            // check if server name or address is already exists
             if (DatabaseServerExists(dialog.Result))
             {
                 MessageBox.Show("SQL сервер " + dialog.Result.Name + " уже добавлен.",
@@ -455,10 +465,7 @@ namespace DaJet.Studio
                                 ? serverCopy.Name
                                 : $"{serverCopy.Name} ({serverCopy.Address})";
             
-            // remember old server name (catalog name)
-            string serverName = server.Name;
-
-            // check if new server name allready exists
+            // check if new server name already exists
             if (serverCopy.Name != server.Name)
             {
                 if (DatabaseServerNameExists(serverCopy))
@@ -468,7 +475,7 @@ namespace DaJet.Studio
                     return;
                 }
             }
-            // check if new server address allready exists
+            // check if new server address already exists
             if (serverCopy.Address != server.Address)
             {
                 if (DatabaseServerAddressExists(serverCopy))
@@ -525,27 +532,100 @@ namespace DaJet.Studio
                 return;
             }
 
-            // TODO: open database settings form to edit alias, user name and password
+            DatabaseFormWindow form = new DatabaseFormWindow(dialog.Result);
+            _ = form.ShowDialog();
+
+            if (DatabaseNameExists(server, dialog.Result))
+            {
+                MessageBox.Show("База данных " + dialog.Result.Name + " уже добавлена.",
+                    "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
 
             server.Databases.Add(dialog.Result);
             SaveMetadataServiceSettings();
+
+            InitializeMetadata(server, dialog.Result);
 
             TreeNodeViewModel databaseNode = CreateDatabaseTreeNode(treeNode, dialog.Result);
             treeNode.TreeNodes.Add(databaseNode);
             treeNode.IsExpanded = true;
             databaseNode.IsSelected = true;
+
+            InitializeDatabaseTreeNodes(databaseNode);
         }
         private void EditDatabaseCommand(object parameter)
         {
             if (!(parameter is TreeNodeViewModel treeNode)) return;
             if (!(treeNode.NodePayload is DatabaseInfo database)) return;
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+            if (server == null) return;
 
-            // TODO: open database edit form
-            MessageBox.Show("Database edit form...");
+            // make copy of database settings to rollback changes if needed
+            DatabaseInfo databaseCopy = database.Copy();
 
-            //SaveMetadataServiceSettings();
+            // edit server settings
+            DatabaseFormWindow dialog = new DatabaseFormWindow(databaseCopy);
+            _ = dialog.ShowDialog();
+            if (dialog.Result == null) return;
 
-            //treeNode.NodeText = database.Name;
+            string databaseCopyName = databaseCopy.Name;
+            string databaseCopyAlias = databaseCopy.Alias;
+            bool databaseNameChanged = (databaseCopy.Name != database.Name);
+
+            // check if new database name already exists
+            if (databaseNameChanged)
+            {
+                if (DatabaseNameExists(server, databaseCopy))
+                {
+                    MessageBox.Show("База данных " + databaseCopyName + " уже сущестует.",
+                        "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+            }
+
+            // persist database settings changes
+            databaseCopy.CopyTo(database);
+            SaveMetadataServiceSettings();
+
+            if (databaseNameChanged)
+            {
+                for (int i = treeNode.TreeNodes.Count - 1; i > 0; i--)
+                {
+                    if (treeNode.TreeNodes[i].NodeText != SCRIPTS_NODE_NAME)
+                    {
+                        treeNode.TreeNodes.RemoveAt(i);
+                    }
+                }
+                database.BaseObjects.Clear();
+
+                InitializeMetadata(server, database);
+                InitializeDatabaseTreeNodes(treeNode);
+                treeNode.IsSelected = true;
+            }
+            // show new database name and alias in UI
+            treeNode.NodeText = databaseCopyName;
+            treeNode.NodeToolTip = databaseCopyAlias;
+        }
+        private void DeleteDatabaseCommand(object parameter)
+        {
+            if (!(parameter is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is DatabaseInfo database)) return;
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+            if (server == null) return;
+
+            MessageBoxResult result = MessageBox.Show("Delete database \"" + database.Name + "\" ?",
+                "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (result != MessageBoxResult.OK) return;
+
+            IFileInfo scriptsCatalog = FileProvider.GetFileInfo($"{SCRIPTS_CATALOG_NAME}/{server.Identity.ToString().ToLower()}/{database.Identity.ToString().ToLower()}");
+            if (scriptsCatalog.Exists)
+            {
+                Directory.Delete(scriptsCatalog.PhysicalPath);
+            }
+            server.Databases.Remove(database);
+            treeNode.Parent.TreeNodes.Remove(treeNode);
+            SaveMetadataServiceSettings();
         }
     }
 }

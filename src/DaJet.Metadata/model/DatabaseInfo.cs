@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Text.Json.Serialization;
 
 namespace DaJet.Metadata
@@ -13,5 +14,20 @@ namespace DaJet.Metadata
         public string Password { get; set; } = string.Empty;
         [JsonIgnore] public List<BaseObject> BaseObjects { get; set; } = new List<BaseObject>();
         public override string ToString() { return Name; }
+        public DatabaseInfo Copy()
+        {
+            DatabaseInfo copy = new DatabaseInfo();
+            this.CopyTo(copy);
+            return copy;
+        }
+        public void CopyTo(DatabaseInfo database)
+        {
+            foreach (PropertyInfo property in typeof(DatabaseInfo).GetProperties())
+            {
+                if (property.IsList()) continue;
+                if (!property.CanWrite) continue;
+                property.SetValue(database, property.GetValue(this));
+            }
+        }
     }
 }

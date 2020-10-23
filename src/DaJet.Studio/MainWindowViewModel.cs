@@ -70,7 +70,22 @@ namespace DaJet.Studio
                 }
             }
         }
-
+        public void RefreshTabHeader(object dataContext, string header)
+        {
+            for (int i = 0; i < Tabs.Count; i++)
+            {
+                UserControl content = Tabs[i].Content as UserControl;
+                if (content == null)
+                {
+                    continue;
+                }
+                if (content.DataContext == dataContext)
+                {
+                    Tabs[i].Header = header;
+                    break;
+                }
+            }
+        }
 
 
         public bool GetServerAndDatabase(ObservableCollection<TreeNodeViewModel> treeNodes, object payload, object[] result)

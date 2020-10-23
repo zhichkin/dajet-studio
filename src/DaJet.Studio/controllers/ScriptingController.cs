@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using System;
 using System.IO;
 using System.Text;
+using System.Windows;
 using System.Windows.Media.Imaging;
 
 namespace DaJet.Studio
@@ -19,10 +20,12 @@ namespace DaJet.Studio
         private const string SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/database-script.png";
         private const string NEW_SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/new-script.png";
         private const string EDIT_SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/edit-script.png";
+        private const string DELETE_SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/delete-script.png";
 
         private readonly BitmapImage SCRIPT_ICON = new BitmapImage(new Uri(SCRIPT_ICON_PATH));
         private readonly BitmapImage NEW_SCRIPT_ICON = new BitmapImage(new Uri(NEW_SCRIPT_ICON_PATH));
         private readonly BitmapImage EDIT_SCRIPT_ICON = new BitmapImage(new Uri(EDIT_SCRIPT_ICON_PATH));
+        private readonly BitmapImage DELETE_SCRIPT_ICON = new BitmapImage(new Uri(DELETE_SCRIPT_ICON_PATH));
 
         private AppSettings Settings { get; }
         private IServiceProvider Services { get; }
@@ -65,7 +68,7 @@ namespace DaJet.Studio
                 Parent = parentNode,
                 IsExpanded = true,
                 NodeIcon = SCRIPT_ICON,
-                NodeText = SCRIPT_DEFAULT_NAME,
+                //NodeText = null, // indicates first time initialization
                 IsEditable = true,
                 NodeToolTip = "SQL script",
                 NodeTextPropertyBinding = "Name",
@@ -78,6 +81,16 @@ namespace DaJet.Studio
                 MenuItemCommand = new RelayCommand(EditScriptCommand),
                 MenuItemPayload = node
             });
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Delete script",
+                MenuItemIcon = DELETE_SCRIPT_ICON,
+                MenuItemCommand = new RelayCommand(DeleteScriptCommand),
+                MenuItemPayload = node
+            });
+
+            node.NodeTextPropertyChanged += NodeTextPropertyChangedHandler;
+
             return node;
         }
         private void CreateScriptNodesFromFileSystem(TreeNodeViewModel rootNode)
@@ -110,11 +123,24 @@ namespace DaJet.Studio
             if (!(node is TreeNodeViewModel treeNode)) return;
             if (treeNode.NodeText != ROOT_NODE_NAME) return;
 
+            foreach (TreeNodeViewModel scriptNode in treeNode.TreeNodes)
+            {
+                if (scriptNode.NodeText == SCRIPT_DEFAULT_NAME)
+                {
+                    _ = MessageBox.Show("New script already exists! Rename it first.",
+                        "DaJet", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                    treeNode.IsExpanded = true;
+                    scriptNode.IsSelected = true;
+                    return;
+                }
+            }
+
             ScriptEditorViewModel scriptEditor = Services.GetService<ScriptEditorViewModel>();
             scriptEditor.Name = SCRIPT_DEFAULT_NAME;
             scriptEditor.IsScriptChanged = true;
 
             TreeNodeViewModel child = CreateScriptTreeNode(treeNode, scriptEditor);
+            child.NodeText = SCRIPT_DEFAULT_NAME;
             treeNode.IsExpanded = true;
             treeNode.TreeNodes.Add(child);
             child.IsSelected = true;
@@ -146,6 +172,111 @@ namespace DaJet.Studio
             MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
             ScriptEditorView editorView = new ScriptEditorView() { DataContext = scriptEditor };
             mainWindow.AddNewTab(scriptEditor.Name, editorView);
+        }
+        private void DeleteScriptCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is ScriptEditorViewModel scriptEditor)) return;
+
+            MessageBoxResult result = MessageBox.Show("Delete script \"" + scriptEditor.Name + "\" ?",
+                "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (result != MessageBoxResult.OK) return;
+
+            DatabaseInfo database = treeNode.GetAncestorPayload<DatabaseInfo>();
+            if (database == null)
+            {
+                _ = MessageBox.Show("Parent database is not found!", "DaJet", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                return;
+            }
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+            if (server == null)
+            {
+                _ = MessageBox.Show("Parent server is not found!", "DaJet", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                return;
+            }
+
+            IFileInfo file = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{server.Identity.ToString().ToLower()}/{database.Identity.ToString().ToLower()}/{scriptEditor.Name}");
+            if (file.Exists)
+            {
+                File.Delete(file.PhysicalPath);
+            }
+
+            treeNode.NodeTextPropertyChanged -= NodeTextPropertyChangedHandler;
+            treeNode.Parent.TreeNodes.Remove(treeNode);
+
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            for (int i = 0; i < mainWindow.Tabs.Count; i++)
+            {
+                TabViewModel tab = mainWindow.Tabs[i];
+                if (tab.Content is ScriptEditorView view)
+                {
+                    if (view.DataContext is ScriptEditorViewModel editor)
+                    {
+                        if (editor == scriptEditor)
+                        {
+                            mainWindow.RemoveTab(tab);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        private void NodeTextPropertyChangedHandler(TreeNodeViewModel node, NodeTextPropertyChangedEventArgs args)
+        {
+            if (!(node.NodePayload is ScriptEditorViewModel scriptEditor)) return;
+
+            DatabaseInfo database = node.GetAncestorPayload<DatabaseInfo>();
+            if (database == null)
+            {
+                _ = MessageBox.Show("Parent database is not found!", "DaJet", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                return;
+            }
+            DatabaseServer server = node.GetAncestorPayload<DatabaseServer>();
+            if (server == null)
+            {
+                _ = MessageBox.Show("Parent server is not found!", "DaJet", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                return;
+            }
+
+            IFileInfo currentFile = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{server.Identity.ToString().ToLower()}/{database.Identity.ToString().ToLower()}/{args.OldValue}");
+            IFileInfo newFile = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{server.Identity.ToString().ToLower()}/{database.Identity.ToString().ToLower()}/{args.NewValue}");
+            if (!currentFile.Exists)
+            {
+                if (args.OldValue == SCRIPT_DEFAULT_NAME)
+                {
+                    try
+                    {
+                        scriptEditor.SaveCommand.Execute(null);
+                    }
+                    catch (Exception ex)
+                    {
+                        args.Cancel = true;
+                        _ = MessageBox.Show(ex.Message, "DaJet", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+                }
+                else
+                {
+                    _ = MessageBox.Show($"File \"{args.OldValue}\" is not found!", "DaJet", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                    args.Cancel = true;
+                    return;
+                }
+            }
+
+            try
+            {
+                File.Move(currentFile.PhysicalPath, newFile.PhysicalPath);
+
+                scriptEditor.Name = args.NewValue;
+
+                MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+                mainWindow.RefreshTabHeader(scriptEditor, scriptEditor.Name);
+            }
+            catch (Exception ex)
+            {
+                args.Cancel = true;
+                _ = MessageBox.Show(ex.Message, "DaJet", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }

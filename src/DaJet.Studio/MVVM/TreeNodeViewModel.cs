@@ -1,12 +1,23 @@
-﻿using System;
-using System.Collections.ObjectModel;
-using System.Reflection;
+﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 
 namespace DaJet.Studio.MVVM
 {
+    public sealed class NodeTextPropertyChangedEventArgs : CancelEventArgs
+    {
+        public NodeTextPropertyChangedEventArgs(string oldValue, string newValue)
+        {
+            Cancel = false;
+            OldValue = oldValue;
+            NewValue = newValue;
+        }
+        public string OldValue { get; }
+        public string NewValue { get; }
+    }
+    public delegate void NodeTextPropertyChangedEventHandler(TreeNodeViewModel sender, NodeTextPropertyChangedEventArgs args);
     public sealed class TreeNodeViewModel : ViewModelBase
     {
         private string _nodeText;
@@ -27,8 +38,17 @@ namespace DaJet.Studio.MVVM
         public string NodeText
         {
             get { return _nodeText; }
-            set { _nodeText = value; NodeTextPropertyChanged(); }
+            set
+            {
+                // store old value
+                string oldValue = _nodeText;
+                // set new value
+                _nodeText = value;
+                // notify property changed
+                OnNodeTextPropertyChanged(oldValue);
+            }
         }
+        public event NodeTextPropertyChangedEventHandler NodeTextPropertyChanged;
         public string NodeToolTip
         {
             get { return _nodeToolTip; }
@@ -45,31 +65,40 @@ namespace DaJet.Studio.MVVM
             set { _nodePayload = value; OnPropertyChanged(); }
         }
         public string NodeTextPropertyBinding { get; set; }
-        private void NodeTextPropertyChanged()
+        private void OnNodeTextPropertyChanged(string oldValue)
         {
+            if (oldValue == null)
+            {
+                // this is first initialization
+                return;
+            }
             if (!IsEditable)
             {
+                // notify WPF standard binding mechanism
                 OnPropertyChanged(nameof(NodeText));
                 return;
             }
-
-            if (string.IsNullOrWhiteSpace(NodeTextPropertyBinding)) return;
-            if (NodePayload == null) return;
-
-            PropertyInfo property = NodePayload.GetType().GetProperty(NodeTextPropertyBinding);
-            if (property == null) return;
-            if (!property.CanRead) return;
-            if (!property.CanWrite) return;
-            if (property.PropertyType != typeof(string)) return;
-
             if (EditMode == NodeTextEditMode.Canceled)
             {
-                _nodeText = (string)property.GetValue(NodePayload);
+                // restore old value
+                _nodeText = oldValue;
             }
             else
             {
-                property.SetValue(NodePayload, _nodeText);
+                // check if property value has been changed
+                if (oldValue != _nodeText)
+                {
+                    // notify custom ui controller
+                    NodeTextPropertyChangedEventArgs args = new NodeTextPropertyChangedEventArgs(oldValue, _nodeText);
+                    NodeTextPropertyChanged?.Invoke(this, args);
+                    if (args.Cancel)
+                    {
+                        // restore old value
+                        _nodeText = oldValue;
+                    }
+                }
             }
+            // notify WPF standard binding mechanism
             OnPropertyChanged(nameof(NodeText));
         }
         public bool IsExpanded
