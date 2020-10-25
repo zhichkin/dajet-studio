@@ -13,6 +13,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DaJet.Metadata", "DaJet.Met
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DaJet.Scripting", "DaJet.Scripting\DaJet.Scripting.csproj", "{4AF1D659-5870-4BE6-AAF8-12994D885D9D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DaJet.Http", "DaJet.Http\DaJet.Http.csproj", "{F1DE5080-C738-4CED-92FB-50F61286547D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{4AF1D659-5870-4BE6-AAF8-12994D885D9D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4AF1D659-5870-4BE6-AAF8-12994D885D9D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4AF1D659-5870-4BE6-AAF8-12994D885D9D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F1DE5080-C738-4CED-92FB-50F61286547D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F1DE5080-C738-4CED-92FB-50F61286547D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F1DE5080-C738-4CED-92FB-50F61286547D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F1DE5080-C738-4CED-92FB-50F61286547D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DaJet.Metadata\DaJet.Metadata.csproj" />
+    <ProjectReference Include="..\DaJet.Scripting\DaJet.Scripting.csproj" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Reference Include="Microsoft.SqlServer.TransactSql.ScriptDom">
+      <HintPath>..\..\lib\Microsoft.SqlServer.TransactSql.ScriptDom.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>

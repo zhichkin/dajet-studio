@@ -37,21 +37,8 @@ namespace DaJet.Studio
             ExecuteCommand = new RelayCommand(ExecuteCommandHandler);
             TranslateCommand = new RelayCommand(TranslateCommandHandler);
         }
-        private DatabaseServer MyServer { get; set; }
-        private DatabaseInfo MyDatabase { get; set; }
-        private void ConfigureServerAndDatabase()
-        {
-            if (MyServer != null) return;
-
-            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
-            if (mainWindow == null) return;
-
-            object[] result = new object[] { null, null };
-            bool found = mainWindow.GetServerAndDatabase(mainWindow.MainTreeRegion.TreeNodes, this, result);
-
-            MyServer = result[0] as DatabaseServer;
-            MyDatabase = result[1] as DatabaseInfo;
-        }
+        public DatabaseServer MyServer { get; set; }
+        public DatabaseInfo MyDatabase { get; set; }
         private string _name = string.Empty;
         public string Name
         {
@@ -74,8 +61,6 @@ namespace DaJet.Studio
         public ICommand TranslateCommand { get; private set; }
         private void TranslateCommandHandler(object parameter)
         {
-            ConfigureServerAndDatabase();
-
             IMetadataService metadata = Services.GetService<IMetadataService>();
             metadata.AttachDatabase(string.IsNullOrWhiteSpace(MyServer.Address) ? MyServer.Name : MyServer.Address, MyDatabase);
 
@@ -110,8 +95,6 @@ namespace DaJet.Studio
         public ICommand ExecuteCommand { get; private set; }
         private void ExecuteCommandHandler(object parameter)
         {
-            ConfigureServerAndDatabase();
-
             MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
 
             IMetadataService metadata = Services.GetService<IMetadataService>();
@@ -181,12 +164,6 @@ namespace DaJet.Studio
         public ICommand SaveCommand { get; private set; }
         private void SaveCommandHandler(object parameter)
         {
-            ConfigureServerAndDatabase();
-
-            // TODO
-            //DatabaseInfo database = treeNode.GetAncestorPayload<DatabaseInfo>();
-            //DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
-
             IFileInfo serverCatalog = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{MyServer.Identity.ToString().ToLower()}");
             if (!serverCatalog.Exists) { Directory.CreateDirectory(serverCatalog.PhysicalPath); }
             

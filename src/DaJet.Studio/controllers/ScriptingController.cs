@@ -13,6 +13,8 @@ namespace DaJet.Studio
 {
     public sealed class ScriptingController : ITreeNodeController
     {
+        #region "Icons and constants"
+
         private const string ROOT_NODE_NAME = "Scripts";
         private const string ROOT_CATALOG_NAME = "scripts";
         private const string SCRIPT_DEFAULT_NAME = "new_script.qry";
@@ -26,6 +28,8 @@ namespace DaJet.Studio
         private readonly BitmapImage NEW_SCRIPT_ICON = new BitmapImage(new Uri(NEW_SCRIPT_ICON_PATH));
         private readonly BitmapImage EDIT_SCRIPT_ICON = new BitmapImage(new Uri(EDIT_SCRIPT_ICON_PATH));
         private readonly BitmapImage DELETE_SCRIPT_ICON = new BitmapImage(new Uri(DELETE_SCRIPT_ICON_PATH));
+
+        #endregion
 
         private AppSettings Settings { get; }
         private IServiceProvider Services { get; }
@@ -63,6 +67,9 @@ namespace DaJet.Studio
         }
         private TreeNodeViewModel CreateScriptTreeNode(TreeNodeViewModel parentNode, ScriptEditorViewModel scriptEditor)
         {
+            scriptEditor.MyServer = parentNode.GetAncestorPayload<DatabaseServer>();
+            scriptEditor.MyDatabase = parentNode.GetAncestorPayload<DatabaseInfo>();
+
             TreeNodeViewModel node = new TreeNodeViewModel()
             {
                 Parent = parentNode,
@@ -95,8 +102,8 @@ namespace DaJet.Studio
         }
         private void CreateScriptNodesFromFileSystem(TreeNodeViewModel rootNode)
         {
-            DatabaseInfo database = rootNode.Parent.NodePayload as DatabaseInfo;
-            DatabaseServer server = rootNode.Parent.Parent.NodePayload as DatabaseServer;
+            DatabaseInfo database = rootNode.GetAncestorPayload<DatabaseInfo>();
+            DatabaseServer server = rootNode.GetAncestorPayload<DatabaseServer>();
 
             IFileInfo serverCatalog = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{server.Identity.ToString().ToLower()}");
             if (!serverCatalog.Exists) { Directory.CreateDirectory(serverCatalog.PhysicalPath); }
