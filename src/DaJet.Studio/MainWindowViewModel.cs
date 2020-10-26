@@ -40,6 +40,11 @@ namespace DaJet.Studio
             {
                 MainTreeRegion.TreeNodes.Add(controller.CreateTreeNode());
             }
+            controller = Services.GetService<HttpServicesController>();
+            if (controller != null)
+            {
+                MainTreeRegion.TreeNodes.Add(controller.CreateTreeNode());
+            }
         }
         
         public object SelectedTabViewModel

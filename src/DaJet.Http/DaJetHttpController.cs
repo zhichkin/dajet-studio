@@ -39,7 +39,7 @@ namespace DaJet.Http
 
             using (var reader = new StreamReader(context.Request.Body))
             {
-                string body = reader.ReadToEnd();
+                string body = reader.ReadToEndAsync().Result;
 
                 if (!string.IsNullOrWhiteSpace(body))
                 {

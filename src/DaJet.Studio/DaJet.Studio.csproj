@@ -20,6 +20,7 @@
     <None Remove="images\add-catalog.png" />
     <None Remove="images\add-database.png" />
     <None Remove="images\add-server.png" />
+    <None Remove="images\add-web-service.png" />
     <None Remove="images\catalog.png" />
     <None Remove="images\close.png" />
     <None Remove="images\connect-database.png" />
@@ -58,8 +59,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="3.1.5" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="3.1.5" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="3.1.9" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="3.1.9" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="3.1.9" />
     <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.19" />
   </ItemGroup>
 
@@ -80,6 +82,7 @@
     <Resource Include="images\add-catalog.png" />
     <Resource Include="images\add-database.png" />
     <Resource Include="images\add-server.png" />
+    <Resource Include="images\add-web-service.png" />
     <Resource Include="images\catalog.png" />
     <Resource Include="images\close.png" />
     <Resource Include="images\connect-database.png" />

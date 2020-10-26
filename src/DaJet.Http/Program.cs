@@ -19,13 +19,17 @@ namespace DaJet.Http
 
         public static void Main(string[] args)
         {
+            IFileProvider fileProvider = ConfigureFileProvider();
+            MetadataServiceSettings settings = InitializeMetadataSettings(fileProvider);
+
             IHost host = CreateHostBuilder(args).Build();
-            ConfigureMetadataService(host);
+            ConfigureMetadataService(host, settings);
             host.Run();
         }
         public static IHostBuilder CreateHostBuilder(string[] args)
         {
-            return Host.CreateDefaultBuilder(args)
+            return Host
+                .CreateDefaultBuilder(args)
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder
@@ -33,18 +37,7 @@ namespace DaJet.Http
                     .UseStartup<Startup>();
                 });
         }
-        //var host = new WebHostBuilder()
-        //        .UseKestrel()
-        //        .UseUrls(url)
-        //        .UseStartup<Startup>()
-        //        .ConfigureLogging(logging =>
-        //        {
-        //            logging.ClearProviders();
-        //            logging.AddConsole();
-        //        })
-        //        .Build();
-        //host.Run();
-        private static void ConfigureMetadataService(IHost host)
+        private static void ConfigureMetadataService(IHost host, MetadataServiceSettings settings)
         {
             using (var serviceScope = host.Services.CreateScope())
             {
@@ -54,8 +47,7 @@ namespace DaJet.Http
                 try
                 {
                     IMetadataService metadata = services.GetRequiredService<IMetadataService>();
-                    IFileProvider fileProvider = ConfigureFileProvider();
-                    MetadataServiceSettings settings = InitializeMetadataSettings(fileProvider);
+                    logger.LogInformation("Metadata initializing...");
                     InitializeMetadataService(settings, metadata);
                     logger.LogInformation("Metadata is initialized.");
                 }

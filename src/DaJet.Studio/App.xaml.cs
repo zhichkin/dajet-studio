@@ -45,11 +45,17 @@ namespace DaJet.Studio
             services.AddSingleton<MetadataController>();
             services.AddSingleton<ScriptingController>();
             services.AddTransient<ScriptEditorViewModel>();
+            services.AddSingleton<HttpServicesController>();
 
             services.AddSingleton<IMetadataService, MetadataService>();
             services.AddSingleton<IQueryExecutor, QueryExecutor>();
             services.AddSingleton<IScriptingService, ScriptingService>();
             services.AddSingleton<IMessagingService, MessagingService>();
+
+            services.AddHttpClient("test-server", client =>
+            {
+                client.BaseAddress = new Uri("http://localhost:5000");
+            });
         }
         protected override async void OnStartup(StartupEventArgs e)
         {
