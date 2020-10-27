@@ -5,6 +5,8 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using System;
 using System.IO;
+using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Windows;
 using System.Windows.Media.Imaging;
@@ -23,11 +25,13 @@ namespace DaJet.Studio
         private const string NEW_SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/new-script.png";
         private const string EDIT_SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/edit-script.png";
         private const string DELETE_SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/delete-script.png";
+        private const string UPLOAD_SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/upload-script.png";
 
         private readonly BitmapImage SCRIPT_ICON = new BitmapImage(new Uri(SCRIPT_ICON_PATH));
         private readonly BitmapImage NEW_SCRIPT_ICON = new BitmapImage(new Uri(NEW_SCRIPT_ICON_PATH));
         private readonly BitmapImage EDIT_SCRIPT_ICON = new BitmapImage(new Uri(EDIT_SCRIPT_ICON_PATH));
         private readonly BitmapImage DELETE_SCRIPT_ICON = new BitmapImage(new Uri(DELETE_SCRIPT_ICON_PATH));
+        private readonly BitmapImage UPLOAD_SCRIPT_ICON = new BitmapImage(new Uri(UPLOAD_SCRIPT_ICON_PATH));
 
         #endregion
 
@@ -93,6 +97,13 @@ namespace DaJet.Studio
                 MenuItemHeader = "Delete script",
                 MenuItemIcon = DELETE_SCRIPT_ICON,
                 MenuItemCommand = new RelayCommand(DeleteScriptCommand),
+                MenuItemPayload = node
+            });
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Deploy script",
+                MenuItemIcon = UPLOAD_SCRIPT_ICON,
+                MenuItemCommand = new RelayCommand(DeployScriptCommand),
                 MenuItemPayload = node
             });
 
@@ -283,6 +294,74 @@ namespace DaJet.Studio
             {
                 args.Cancel = true;
                 _ = MessageBox.Show(ex.Message, "DaJet", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+
+        private void DeployScriptCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is ScriptEditorViewModel scriptEditor)) return;
+
+            MessageBoxResult result = MessageBox.Show("Deploy script \"" + scriptEditor.Name + "\" ?",
+                "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (result != MessageBoxResult.OK) return;
+
+            DatabaseInfo database = treeNode.GetAncestorPayload<DatabaseInfo>();
+            if (database == null)
+            {
+                _ = MessageBox.Show("Parent database is not found!", "DaJet", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                return;
+            }
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+            if (server == null)
+            {
+                _ = MessageBox.Show("Parent server is not found!", "DaJet", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                return;
+            }
+
+            IFileInfo file = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{server.Identity.ToString().ToLower()}/{database.Identity.ToString().ToLower()}/{scriptEditor.Name}");
+            if (!file.Exists)
+            {
+                _ = MessageBox.Show("Script file is not found!", "DaJet", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                return;
+            }
+
+            // TODO: select web server to deploy script to
+
+            IHttpClientFactory http = Services.GetService<IHttpClientFactory>();
+            var client = http.CreateClient("test-server");
+            if (client.BaseAddress == null) { client.BaseAddress = new Uri("http://localhost:5000"); }
+
+            string url = $"{server.Identity.ToString().ToLower()}/{database.Identity.ToString().ToLower()}/{scriptEditor.Name}";
+
+            byte[] bytes = File.ReadAllBytes(file.PhysicalPath);
+            string content = Convert.ToBase64String(bytes);
+            string requestJson = $"{{ \"script\" : \"{content}\" }}";
+            StringContent body = new StringContent(requestJson, Encoding.UTF8, "application/json");
+
+            try
+            {
+                var response = client.PutAsync(url, body).Result;
+
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    HttpServicesController controller = Services.GetService<HttpServicesController>();
+                    if (controller != null)
+                    {
+                        // TODO: add tree node to the "Http services" node
+                        controller.CreateScriptNode(controller.WebSettings.WebServers[0], server, database, scriptEditor.Name);
+                    }
+                    _ = MessageBox.Show("Script has been deployed successfully.", scriptEditor.Name, MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    _ = MessageBox.Show(((int)response.StatusCode).ToString() + " (" + response.StatusCode.ToString() + "): " + response.ReasonPhrase, scriptEditor.Name);
+                }
+            }
+            catch (Exception ex)
+            {
+                _ = MessageBox.Show(ex.Message, scriptEditor.Name);
             }
         }
     }

@@ -24,6 +24,8 @@
     <None Remove="images\catalog.png" />
     <None Remove="images\close.png" />
     <None Remove="images\connect-database.png" />
+    <None Remove="images\connection-offline.png" />
+    <None Remove="images\connection-warning.png" />
     <None Remove="images\data-server.png" />
     <None Remove="images\database-script.png" />
     <None Remove="images\database-settings.png" />
@@ -33,6 +35,7 @@
     <None Remove="images\delete-database.png" />
     <None Remove="images\delete-script.png" />
     <None Remove="images\edit-script.png" />
+    <None Remove="images\http-connection.png" />
     <None Remove="images\nested-table.png" />
     <None Remove="images\new-script.png" />
     <None Remove="images\save-file.png" />
@@ -40,6 +43,8 @@
     <None Remove="images\server-warning.png" />
     <None Remove="images\server.png" />
     <None Remove="images\table.png" />
+    <None Remove="images\update-script.png" />
+    <None Remove="images\upload-script.png" />
     <None Remove="images\web-server.png" />
     <None Remove="images\ВложеннаяТаблица.png" />
     <None Remove="images\Документ.png" />
@@ -86,6 +91,8 @@
     <Resource Include="images\catalog.png" />
     <Resource Include="images\close.png" />
     <Resource Include="images\connect-database.png" />
+    <Resource Include="images\connection-offline.png" />
+    <Resource Include="images\connection-warning.png" />
     <Resource Include="images\data-server.png" />
     <Resource Include="images\database-script.png" />
     <Resource Include="images\database-settings.png" />
@@ -94,6 +101,7 @@
     <Resource Include="images\delete-database.png" />
     <Resource Include="images\delete-script.png" />
     <Resource Include="images\edit-script.png" />
+    <Resource Include="images\http-connection.png" />
     <Resource Include="images\nested-table.png" />
     <Resource Include="images\new-script.png" />
     <Resource Include="images\save-file.png" />
@@ -101,6 +109,8 @@
     <Resource Include="images\server-warning.png" />
     <Resource Include="images\server.png" />
     <Resource Include="images\table.png" />
+    <Resource Include="images\update-script.png" />
+    <Resource Include="images\upload-script.png" />
     <Resource Include="images\web-server.png" />
     <Resource Include="images\ВложеннаяТаблица.png" />
     <Resource Include="images\Документ.png" />
