@@ -39,7 +39,7 @@ namespace DaJet.Metadata
         internal const string IDRRef = "IDRRef";
         internal const string Version = "Version";
         internal const string Marked = "Marked";
-        internal const string DateTime = "DateTime";
+        internal const string DateTime = "Date_Time";
         internal const string NumberPrefix = "NumberPrefix";
         internal const string Number = "Number";
         internal const string Posted = "Posted";
@@ -53,6 +53,7 @@ namespace DaJet.Metadata
         internal const string KeyField = "KeyField";
         internal const string LineNo = "LineNo";
         internal const string EnumOrder = "EnumOrder";
+        internal const string Type = "Type"; // ТипЗначения (ПланВидовХарактеристик)
 
         internal const string Period = "Period";
         internal const string Recorder = "Recorder";

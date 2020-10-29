@@ -9,20 +9,20 @@ namespace DaJet.Metadata
         private sealed class FieldSqlInfo
         {
             public FieldSqlInfo() { }
-            public int    ORDINAL_POSITION;
+            public int ORDINAL_POSITION;
             public string COLUMN_NAME;
             public string DATA_TYPE;
-            public int    CHARACTER_MAXIMUM_LENGTH;
-            public byte   NUMERIC_PRECISION;
-            public int    NUMERIC_SCALE;
-            public bool   IS_NULLABLE;
+            public int CHARACTER_MAXIMUM_LENGTH;
+            public byte NUMERIC_PRECISION;
+            public int NUMERIC_SCALE;
+            public bool IS_NULLABLE;
         }
         private sealed class ClusteredIndexInfo
         {
             public ClusteredIndexInfo() { }
             public string NAME;
-            public bool   IS_UNIQUE;
-            public bool   IS_PRIMARY_KEY;
+            public bool IS_UNIQUE;
+            public bool IS_PRIMARY_KEY;
             public List<ClusteredIndexColumnInfo> COLUMNS = new List<ClusteredIndexColumnInfo>();
             public bool HasNullableColumns
             {
@@ -52,9 +52,9 @@ namespace DaJet.Metadata
         private sealed class ClusteredIndexColumnInfo
         {
             public ClusteredIndexColumnInfo() { }
-            public byte   KEY_ORDINAL;
+            public byte KEY_ORDINAL;
             public string NAME;
-            public bool   IS_NULLABLE;
+            public bool IS_NULLABLE;
         }
         private string ConnectionString { get; set; }
         public void Load(string connectionString, DatabaseInfo database)
@@ -106,13 +106,13 @@ namespace DaJet.Metadata
                         {
                             FieldSqlInfo item = new FieldSqlInfo()
                             {
-                                ORDINAL_POSITION         = reader.GetInt32(0),
-                                COLUMN_NAME              = reader.GetString(1),
-                                DATA_TYPE                = reader.GetString(2),
+                                ORDINAL_POSITION = reader.GetInt32(0),
+                                COLUMN_NAME = reader.GetString(1),
+                                DATA_TYPE = reader.GetString(2),
                                 CHARACTER_MAXIMUM_LENGTH = reader.GetInt32(3),
-                                NUMERIC_PRECISION        = reader.GetByte(4),
-                                NUMERIC_SCALE            = reader.GetInt32(5),
-                                IS_NULLABLE              = reader.GetBoolean(6)
+                                NUMERIC_PRECISION = reader.GetByte(4),
+                                NUMERIC_SCALE = reader.GetInt32(5),
+                                IS_NULLABLE = reader.GetBoolean(6)
                             };
                             list.Add(item);
                         }
@@ -134,16 +134,14 @@ namespace DaJet.Metadata
                 bool found = false; MetaField field = null;
                 foreach (MetaProperty p in @object.Properties)
                 {
-                    if (string.IsNullOrEmpty(p.DbName))
-                    {
-                        break;
-                    }
+                    if (string.IsNullOrEmpty(p.DbName)) { continue; }
+
                     if (info.COLUMN_NAME.TrimStart('_').StartsWith(p.DbName))
                     {
                         field = new MetaField()
                         {
                             Name = info.COLUMN_NAME,
-                            Purpose = MetaFieldPurpose.Value
+                            Purpose = SqlUtility.ParseFieldPurpose(info.COLUMN_NAME)
                         };
                         p.Fields.Add(field);
                         found = true;
@@ -154,21 +152,24 @@ namespace DaJet.Metadata
                 {
                     MetaProperty property = new MetaProperty()
                     {
-                        Name    = info.COLUMN_NAME,
+                        Parent = @object,
+                        Name = info.COLUMN_NAME,
                         Purpose = MetaPropertyPurpose.System
                     };
+                    MatchFieldToProperty(info, property);
+
                     field = new MetaField()
                     {
-                        Name     = info.COLUMN_NAME,
-                        Purpose  = MetaFieldPurpose.Value
+                        Name = info.COLUMN_NAME,
+                        Purpose = SqlUtility.ParseFieldPurpose(info.COLUMN_NAME)
                     };
                     property.Fields.Add(field);
                     @object.Properties.Add(property);
                 }
-                field.TypeName   = info.DATA_TYPE;
-                field.Length     = info.CHARACTER_MAXIMUM_LENGTH;
-                field.Precision  = info.NUMERIC_PRECISION;
-                field.Scale      = info.NUMERIC_SCALE;
+                field.TypeName = info.DATA_TYPE;
+                field.Length = info.CHARACTER_MAXIMUM_LENGTH;
+                field.Precision = info.NUMERIC_PRECISION;
+                field.Scale = info.NUMERIC_SCALE;
                 field.IsNullable = info.IS_NULLABLE;
 
                 if (indexInfo != null)
@@ -177,7 +178,7 @@ namespace DaJet.Metadata
                     if (columnInfo != null)
                     {
                         field.IsPrimaryKey = true;
-                        field.KeyOrdinal   = columnInfo.KEY_ORDINAL;
+                        field.KeyOrdinal = columnInfo.KEY_ORDINAL;
                     }
                 }
             }
@@ -216,14 +217,14 @@ namespace DaJet.Metadata
                     {
                         info = new ClusteredIndexInfo()
                         {
-                            NAME           = reader.GetString(0),
-                            IS_UNIQUE      = reader.GetBoolean(1),
+                            NAME = reader.GetString(0),
+                            IS_UNIQUE = reader.GetBoolean(1),
                             IS_PRIMARY_KEY = reader.GetBoolean(2)
                         };
                         info.COLUMNS.Add(new ClusteredIndexColumnInfo()
                         {
                             KEY_ORDINAL = reader.GetByte(3),
-                            NAME        = reader.GetString(4),
+                            NAME = reader.GetString(4),
                             IS_NULLABLE = reader.GetBoolean(5)
                         });
                         while (reader.Read())
@@ -231,7 +232,7 @@ namespace DaJet.Metadata
                             info.COLUMNS.Add(new ClusteredIndexColumnInfo()
                             {
                                 KEY_ORDINAL = reader.GetByte(3),
-                                NAME        = reader.GetString(4),
+                                NAME = reader.GetString(4),
                                 IS_NULLABLE = reader.GetBoolean(5)
                             });
                         }
@@ -239,23 +240,121 @@ namespace DaJet.Metadata
                 }
             }
             return info;
-        }   
+        }
+
+        private void MatchFieldToProperty(FieldSqlInfo field, MetaProperty property)
+        {
+            string columnName = field.COLUMN_NAME.TrimStart('_');
+            if (columnName.StartsWith(DBToken.IDRRef))
+            {
+                property.Name = "Ссылка";
+                property.DbName = DBToken.IDRRef;
+            }
+            else if (columnName.StartsWith(DBToken.Version))
+            {
+                property.Name = "ВерсияДанных";
+                property.DbName = DBToken.Version;
+            }
+            else if (columnName.StartsWith(DBToken.Marked))
+            {
+                property.Name = "ПометкаУдаления";
+                property.DbName = DBToken.Marked;
+            }
+            else if (columnName.StartsWith(DBToken.PredefinedID))
+            {
+                property.Name = "ИмяПредопределённыхДанных";
+                property.DbName = DBToken.PredefinedID;
+            }
+            else if (columnName.StartsWith(DBToken.Code))
+            {
+                property.Name = "Код";
+                property.DbName = DBToken.Code;
+            }
+            else if (columnName.StartsWith(DBToken.Description))
+            {
+                property.Name = "Наименование";
+                property.DbName = DBToken.Description;
+            }
+            else if (columnName.StartsWith(DBToken.Folder))
+            {
+                property.Name = "ЭтоГруппа";
+                property.DbName = DBToken.Folder;
+            }
+            else if (columnName.StartsWith(DBToken.ParentIDRRef))
+            {
+                property.Name = "Родитель";
+                property.DbName = DBToken.ParentIDRRef;
+            }
+            else if (columnName.StartsWith(DBToken.OwnerID))
+            {
+                property.Name = "Владелец";
+                property.DbName = DBToken.OwnerID;
+            }
+            else if (columnName.StartsWith(DBToken.DateTime))
+            {
+                property.Name = "Дата";
+                property.DbName = DBToken.DateTime;
+            }
+            else if (columnName == DBToken.Number)
+            {
+                property.Name = "Номер";
+                property.DbName = DBToken.Number;
+            }
+            else if (columnName.StartsWith(DBToken.Posted))
+            {
+                property.Name = "Проведён";
+                property.DbName = DBToken.Posted;
+            }
+            else if (columnName == DBToken.NumberPrefix)
+            {
+                property.Name = "МоментВремени";
+                property.DbName = DBToken.NumberPrefix;
+            }
+            else if (columnName.StartsWith(DBToken.Period))
+            {
+                property.Name = "Период";
+                property.DbName = DBToken.Period;
+            }
+            else if (columnName.StartsWith(DBToken.Recorder))
+            {
+                property.Name = "Регистратор";
+                property.DbName = DBToken.Recorder;
+            }
+            else if (columnName.StartsWith(DBToken.Active))
+            {
+                property.Name = "Активность";
+                property.DbName = DBToken.Active;
+            }
+            else if (columnName.StartsWith(DBToken.LineNo))
+            {
+                property.Name = "НомерСтроки";
+                property.DbName = DBToken.LineNo;
+            }
+            else if (columnName.StartsWith(DBToken.RecordKind))
+            {
+                property.Name = "ВидДвижения";
+                property.DbName = DBToken.RecordKind;
+            }
+            else if (columnName.StartsWith(DBToken.KeyField))
+            {
+                property.Name = "КлючСтроки";
+                property.DbName = DBToken.KeyField;
+            }
+            else if (columnName.EndsWith(DBToken.IDRRef)) // табличные части
+            {
+                property.Name = "Ссылка";
+                property.DbName = DBToken.IDRRef;
+            }
+            else if (columnName == DBToken.EnumOrder)
+            {
+                property.Name = "Порядок";
+                property.DbName = DBToken.EnumOrder;
+            }
+            else if (columnName == DBToken.Type) // ПланВидовХарактеристик
+            {
+                property.Name = "ТипЗначения"; // ОписаниеТипов - TypeConstraint
+                property.DbName = DBToken.Type;
+            }
+        }
     }
 }
-//SqlConnectionStringBuilder helper = new SqlConnectionStringBuilder()
-//{
-//    DataSource = response.Server,
-//    InitialCatalog = response.Database,
-//    IntegratedSecurity = string.IsNullOrWhiteSpace(response.UserName)
-//};
-//if (!helper.IntegratedSecurity)
-//{
-//  helper.UserID = response.UserName;
-//  helper.Password = response.Password;
-//  helper.PersistSecurityInfo = false;
-//}
-//infoBase.Server = helper.DataSource;
-//infoBase.Database = helper.InitialCatalog;
-//infoBase.UserName = helper.UserID;
-//infoBase.Password = helper.Password;
-//(new SQLMetadataAdapter()).Load(helper.ToString(), infoBase);

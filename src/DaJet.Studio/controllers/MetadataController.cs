@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -42,6 +43,8 @@ namespace DaJet.Studio
         private const string INFO_REGISTER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/РегистрСведений.png";
         private const string ACCUM_REGISTER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/РегистрНакопления.png";
         private const string CHARACTERISTICS_REGISTER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/ПланВидовХарактеристик.png";
+        private const string METADATA_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/metadata.png";
+        private const string SAVE_FILE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/save-file.png";
 
         private readonly BitmapImage ADD_SERVER_ICON = new BitmapImage(new Uri(ADD_SERVER_ICON_PATH));
         private readonly BitmapImage SERVER_SETTINGS_ICON = new BitmapImage(new Uri(SERVER_SETTINGS_ICON_PATH));
@@ -64,6 +67,8 @@ namespace DaJet.Studio
         private readonly BitmapImage INFO_REGISTER_ICON = new BitmapImage(new Uri(INFO_REGISTER_ICON_PATH));
         private readonly BitmapImage ACCUM_REGISTER_ICON = new BitmapImage(new Uri(ACCUM_REGISTER_ICON_PATH));
         private readonly BitmapImage CHARACTERISTICS_REGISTER_ICON = new BitmapImage(new Uri(CHARACTERISTICS_REGISTER_ICON_PATH));
+        private readonly BitmapImage METADATA_ICON = new BitmapImage(new Uri(METADATA_ICON_PATH));
+        private readonly BitmapImage SAVE_FILE_ICON = new BitmapImage(new Uri(SAVE_FILE_ICON_PATH));
 
         #endregion
 
@@ -122,7 +127,7 @@ namespace DaJet.Studio
             {
                 IsExpanded = true,
                 NodeIcon = DATA_SERVER_ICON,
-                NodeText = "Metadata",
+                NodeText = "SQL servers",
                 NodeToolTip = "SQL Server instances",
                 NodePayload = this
             };
@@ -251,6 +256,20 @@ namespace DaJet.Studio
             });
             databaseNode.ContextMenuItems.Add(new MenuItemViewModel()
             {
+                MenuItemHeader = "Read DBNames",
+                MenuItemIcon = METADATA_ICON,
+                MenuItemCommand = new RelayCommand(ReadDBNamesCommand),
+                MenuItemPayload = databaseNode
+            });
+            databaseNode.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Save DBNames",
+                MenuItemIcon = SAVE_FILE_ICON,
+                MenuItemCommand = new RelayCommand(SaveDBNamesCommand),
+                MenuItemPayload = databaseNode
+            });
+            databaseNode.ContextMenuItems.Add(new MenuItemViewModel()
+            {
                 MenuItemHeader = "Delete database",
                 MenuItemIcon = DELETE_DATABASE_ICON,
                 MenuItemCommand = new RelayCommand(DeleteDatabaseCommand),
@@ -287,6 +306,7 @@ namespace DaJet.Studio
             {
                 TreeNodeViewModel node = new TreeNodeViewModel()
                 {
+                    Parent = databaseNode,
                     IsExpanded = false,
                     NodeIcon = GetMetaObjectIcon(baseObject),
                     NodeText = baseObject.Name,
@@ -318,6 +338,7 @@ namespace DaJet.Studio
             {
                 TreeNodeViewModel node = new TreeNodeViewModel()
                 {
+                    Parent = parentNode,
                     IsExpanded = false,
                     NodeIcon = (metaObject.Owner == null)
                                 ? GetMetaObjectIcon(metaObject.Parent)
@@ -326,6 +347,16 @@ namespace DaJet.Studio
                     NodeToolTip = string.IsNullOrWhiteSpace(metaObject.Alias) ? metaObject.TableName : metaObject.Alias,
                     NodePayload = metaObject
                 };
+                if (metaObject.Owner == null) // is not nested object - main table
+                {
+                    node.ContextMenuItems.Add(new MenuItemViewModel()
+                    {
+                        MenuItemHeader = "Read config file",
+                        MenuItemIcon = METADATA_ICON,
+                        MenuItemCommand = new RelayCommand(ReadConfigFileCommand),
+                        MenuItemPayload = node
+                    });
+                }
                 parentNode.TreeNodes.Add(node);
 
                 InitializeMetaPropertiesTreeNodes(node);
@@ -340,6 +371,7 @@ namespace DaJet.Studio
             {
                 TreeNodeViewModel node = new TreeNodeViewModel()
                 {
+                    Parent = metaObjectNode,
                     IsExpanded = false,
                     NodeIcon = GetMetaPropertyIcon(property),
                     NodeText = property.Name,
@@ -626,6 +658,96 @@ namespace DaJet.Studio
             server.Databases.Remove(database);
             treeNode.Parent.TreeNodes.Remove(treeNode);
             SaveMetadataServiceSettings();
+        }
+
+
+
+        private void ReadDBNamesCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is DatabaseInfo database)) return;
+
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+            if (server == null)
+            {
+                _ = MessageBox.Show("SQL Server is not found.", "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+                return;
+            }
+
+            IMetadataService metadata = Services.GetService<IMetadataService>();
+            IMetadataProvider provider = metadata.GetMetadataProvider(database);
+            provider.UseServer(server);
+            provider.UseDatabase(database);
+            string fileContent = provider.ReadDBNames();
+
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            ScriptEditorViewModel scriptEditor = Services.GetService<ScriptEditorViewModel>();
+            scriptEditor.Name = $"DBNames ({database.Name})";
+            scriptEditor.ScriptCode = fileContent;
+            ScriptEditorView editorView = new ScriptEditorView() { DataContext = scriptEditor };
+            mainWindow.AddNewTab(scriptEditor.Name, editorView);
+        }
+        private void SaveDBNamesCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is DatabaseInfo database)) return;
+
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+            if (server == null)
+            {
+                _ = MessageBox.Show("SQL Server is not found.", "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+                return;
+            }
+
+            SaveFileDialog dialog = new SaveFileDialog()
+            {
+                Filter = "txt files (*.txt)|*.txt"
+            };
+            if (!dialog.ShowDialog().Value) return;
+
+            IMetadataService metadata = Services.GetService<IMetadataService>();
+            IMetadataProvider provider = metadata.GetMetadataProvider(database);
+            provider.UseServer(server);
+            provider.UseDatabase(database);
+            string fileContent = provider.ReadDBNames();
+
+            using (StreamWriter writer = new StreamWriter(dialog.FileName, false, Encoding.UTF8))
+            {
+                writer.Write(fileContent);
+            }
+
+            _ = MessageBox.Show("Saving DBNames is Ok.", "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        private void ReadConfigFileCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is MetaObject metaObject)) return;
+
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+            if (server == null)
+            {
+                _ = MessageBox.Show("SQL Server is not found.", "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+                return;
+            }
+            DatabaseInfo database = treeNode.GetAncestorPayload<DatabaseInfo>();
+            if (database == null)
+            {
+                _ = MessageBox.Show("Database is not found.", "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+                return;
+            }
+
+            IMetadataService metadata = Services.GetService<IMetadataService>();
+            IMetadataProvider provider = metadata.GetMetadataProvider(database);
+            provider.UseServer(server);
+            provider.UseDatabase(database);
+            string configFile = provider.ReadConfigFile(metaObject.UUID.ToString());
+
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            ScriptEditorViewModel scriptEditor = Services.GetService<ScriptEditorViewModel>();
+            scriptEditor.Name = $"{metaObject.Name} (metadata)";
+            scriptEditor.ScriptCode = configFile;
+            ScriptEditorView editorView = new ScriptEditorView() { DataContext = scriptEditor };
+            mainWindow.AddNewTab(scriptEditor.Name, editorView);
         }
     }
 }

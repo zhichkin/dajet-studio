@@ -99,13 +99,14 @@ namespace DaJet.Studio
                 MenuItemCommand = new RelayCommand(DeleteScriptCommand),
                 MenuItemPayload = node
             });
-            node.ContextMenuItems.Add(new MenuItemViewModel()
-            {
-                MenuItemHeader = "Deploy script",
-                MenuItemIcon = UPLOAD_SCRIPT_ICON,
-                MenuItemCommand = new RelayCommand(DeployScriptCommand),
-                MenuItemPayload = node
-            });
+            // TODO: отложено до реализации основного функционала
+            //node.ContextMenuItems.Add(new MenuItemViewModel()
+            //{
+            //    MenuItemHeader = "Deploy script",
+            //    MenuItemIcon = UPLOAD_SCRIPT_ICON,
+            //    MenuItemCommand = new RelayCommand(DeployScriptCommand),
+            //    MenuItemPayload = node
+            //});
 
             node.NodeTextPropertyChanged += NodeTextPropertyChangedHandler;
 

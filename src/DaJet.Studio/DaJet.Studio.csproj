@@ -36,6 +36,7 @@
     <None Remove="images\delete-script.png" />
     <None Remove="images\edit-script.png" />
     <None Remove="images\http-connection.png" />
+    <None Remove="images\metadata.png" />
     <None Remove="images\nested-table.png" />
     <None Remove="images\new-script.png" />
     <None Remove="images\save-file.png" />
@@ -102,6 +103,7 @@
     <Resource Include="images\delete-script.png" />
     <Resource Include="images\edit-script.png" />
     <Resource Include="images\http-connection.png" />
+    <Resource Include="images\metadata.png" />
     <Resource Include="images\nested-table.png" />
     <Resource Include="images\new-script.png" />
     <Resource Include="images\save-file.png" />

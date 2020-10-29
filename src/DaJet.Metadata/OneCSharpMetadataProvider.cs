@@ -16,6 +16,9 @@ namespace DaJet.Metadata
         void UseServer(DatabaseServer server);
         void UseDatabase(DatabaseInfo database);
         void InitializeMetadata(DatabaseInfo database);
+
+        string ReadDBNames();
+        string ReadConfigFile(string fileName);
     }
     internal delegate void SpecialParser(StreamReader reader, string line, MetaObject metaObject);
     public sealed class OneCSharpMetadataProvider: IMetadataProvider
@@ -96,7 +99,7 @@ namespace DaJet.Metadata
                 {
                     ReadConfig(item.Key, item.Value.MetaObject, database);
                 }
-                MakeSecondPass(database);
+                //MakeSecondPass(database); // resolves reference types constraints for properties
                 ReadSQLMetadata(database);
             }
         }
@@ -117,6 +120,43 @@ namespace DaJet.Metadata
             //WriteBinaryDataToFile(memory, $"{fileName}.txt");
             //memory.Seek(0, SeekOrigin.Begin);
             //ParseMetadataObject(memory, fileName, database);
+        }
+
+        public string ReadDBNames()
+        {
+            string content = string.Empty;
+
+            SqlBytes binaryData = GetDBNamesFromDatabase();
+            if (binaryData == null)
+            {
+                return content;
+            }
+
+            using (DeflateStream stream = new DeflateStream(binaryData.Stream, CompressionMode.Decompress))
+            using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+            {
+                content = reader.ReadToEnd();
+            }
+
+            return content;
+        }
+        public string ReadConfigFile(string fileName)
+        {
+            string content = string.Empty;
+
+            SqlBytes binaryData = ReadConfigFromDatabase(fileName);
+            if (binaryData == null)
+            {
+                return content;
+            }
+
+            using (DeflateStream stream = new DeflateStream(binaryData.Stream, CompressionMode.Decompress))
+            using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+            {
+                content = reader.ReadToEnd();
+            }
+
+            return content;
         }
 
         private void WriteBinaryDataToFile(Stream binaryData, string fileName)
@@ -247,6 +287,11 @@ namespace DaJet.Metadata
 
         #region " Read Config "
 
+        // Структура ссылки на объект метаданных
+        // {"#",157fa490-4ce9-11d4-9415-008048da11f9, - идентификатор класса объекта метаданных
+        // {1,fd8fe814-97e6-42d3-a042-b1e429cfb067}   - внутренний идентификатор объекта метаданных
+        // }
+
         private readonly Regex rxUUID = new Regex("[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"); // Example: eb3dfdc7-58b8-4b1f-b079-368c262364c9
         private readonly Regex rxSpecialUUID = new Regex("^{[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12},\\d+(?:})?,$"); // Example: {3daea016-69b7-4ed4-9453-127911372fe6,0}, | {cf4abea7-37b2-11d4-940f-008048da11f9,5,
         private readonly Regex rxDbName = new Regex("^{\\d,\\d,[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}},\"\\w+\",$");
@@ -299,29 +344,35 @@ namespace DaJet.Metadata
 
             using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
             {
-                string line = reader.ReadLine();
+                string line = reader.ReadLine(); // 1. line
                 
-                line = reader.ReadLine();
+                line = reader.ReadLine(); // 2. line
+                _ = reader.ReadLine(); // 3. line
+                _ = reader.ReadLine(); // 4. line
+
+                line = reader.ReadLine(); // 5. line: meta object UUID and Name
                 //ParseInternalIdentifier(line, metaObject);
-
-                _ = reader.ReadLine();
-                _ = reader.ReadLine();
-
-                line = reader.ReadLine();
                 ParseMetaObjectName(line, metaObject);
 
-                line = reader.ReadLine();
+                line = reader.ReadLine(); // 6. line meta object alias
                 ParseMetaObjectAlias(line, metaObject);
 
                 SetMetaObjecNamespace(metaObject, database);
 
+                _ = reader.ReadLine(); // 7. line
+
                 if (metaObject.Token == DBToken.Reference)
                 {
-                    ParseReferenceOwner(reader, metaObject); // свойство справочника "Владелец"
+                    // starts from 8. line
+                    //ParseReferenceOwner(reader, metaObject); // свойство справочника "Владелец"
                 }
-                else if (metaObject.Token == DBToken.InfoRg || metaObject.Token == DBToken.AccumRg)
+                else if (metaObject.Token == DBToken.Document)
                 {
-                    // TODO: ParseRegisterRecorder(reader, metaObject); // свойство регистра "Регистратор"
+                    // starts from 8. line
+                    // TODO: Parse объекты метаданных, которые являются основанием для заполнения текущего
+                    // starts after count (количество объектов оснований) * 3 (размер ссылки на объект метаданных) + 1 (тэг закрытия блока объектов оснований)
+                    // TODO: Parse все регистры (информационные, накопления и бухгалтерские),
+                    //             по которым текущий документ выполняет движения
                 }
 
                 int count = 0;
@@ -413,9 +464,7 @@ namespace DaJet.Metadata
             int count = 0;
             string[] lines;
 
-            //_ = reader.ReadLine(); // строка описания - "Синоним" в терминах 1С
-            _ = reader.ReadLine();
-            string line = reader.ReadLine();
+            string line = reader.ReadLine(); // 8. line
             if (line != null)
             {
                 lines = line.Split(',');
@@ -592,13 +641,16 @@ namespace DaJet.Metadata
                             UUID = UUID,
                             MetaObject = dbo
                         });
+                        property.PropertyTypes.Add(dbo.TypeCode);
                     }
-                    else // UUID is not loaded yet - leave it for second pass
+                    else // UUID is not loaded yet - see MakeSecondPass procedure
                     {
+                        // TODO: get type code some how ...
                         property.Types.Add(new TypeInfo()
                         {
                             UUID = UUID
                         });
+                        property.PropertyTypes.Add(int.MaxValue); // костыль !?
                     }
                 }
             }
