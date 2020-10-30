@@ -1,14 +1,19 @@
 ﻿using DaJet.Metadata;
+using DaJet.Scripting;
 using DaJet.Studio.MVVM;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 
 namespace DaJet.Studio
@@ -21,17 +26,23 @@ namespace DaJet.Studio
         private const string ROOT_CATALOG_NAME = "scripts";
         private const string SCRIPT_DEFAULT_NAME = "new_script.qry";
 
+        private const string TREE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/tree.png";
         private const string SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/database-script.png";
         private const string NEW_SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/new-script.png";
         private const string EDIT_SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/edit-script.png";
         private const string DELETE_SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/delete-script.png";
         private const string UPLOAD_SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/upload-script.png";
+        private const string EXECUTE_SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/run.png";
+        private const string SQL_CODE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/sql-query.png";
 
+        private readonly BitmapImage TREE_ICON = new BitmapImage(new Uri(TREE_ICON_PATH));
         private readonly BitmapImage SCRIPT_ICON = new BitmapImage(new Uri(SCRIPT_ICON_PATH));
         private readonly BitmapImage NEW_SCRIPT_ICON = new BitmapImage(new Uri(NEW_SCRIPT_ICON_PATH));
         private readonly BitmapImage EDIT_SCRIPT_ICON = new BitmapImage(new Uri(EDIT_SCRIPT_ICON_PATH));
         private readonly BitmapImage DELETE_SCRIPT_ICON = new BitmapImage(new Uri(DELETE_SCRIPT_ICON_PATH));
         private readonly BitmapImage UPLOAD_SCRIPT_ICON = new BitmapImage(new Uri(UPLOAD_SCRIPT_ICON_PATH));
+        private readonly BitmapImage EXECUTE_SCRIPT_ICON = new BitmapImage(new Uri(EXECUTE_SCRIPT_ICON_PATH));
+        private readonly BitmapImage SQL_CODE_ICON = new BitmapImage(new Uri(SQL_CODE_ICON_PATH));
 
         #endregion
 
@@ -87,11 +98,34 @@ namespace DaJet.Studio
             };
             node.ContextMenuItems.Add(new MenuItemViewModel()
             {
+                MenuItemHeader = "Execute script",
+                MenuItemIcon = EXECUTE_SCRIPT_ICON,
+                MenuItemCommand = new RelayCommand(ExecuteScriptCommand),
+                MenuItemPayload = node
+            });
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
                 MenuItemHeader = "Edit script",
                 MenuItemIcon = EDIT_SCRIPT_ICON,
                 MenuItemCommand = new RelayCommand(EditScriptCommand),
                 MenuItemPayload = node
             });
+            node.ContextMenuItems.Add(new MenuItemViewModel() { IsSeparator = true });
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Show SQL code",
+                MenuItemIcon = SQL_CODE_ICON,
+                MenuItemCommand = new RelayCommand(ShowSqlCodeCommand),
+                MenuItemPayload = node
+            });
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Show syntax tree",
+                MenuItemIcon = TREE_ICON,
+                MenuItemCommand = new RelayCommand(ShowSyntaxTreeCommand),
+                MenuItemPayload = node
+            });
+            node.ContextMenuItems.Add(new MenuItemViewModel() { IsSeparator = true });
             node.ContextMenuItems.Add(new MenuItemViewModel()
             {
                 MenuItemHeader = "Delete script",
@@ -99,12 +133,13 @@ namespace DaJet.Studio
                 MenuItemCommand = new RelayCommand(DeleteScriptCommand),
                 MenuItemPayload = node
             });
+
             // TODO: отложено до реализации основного функционала
             //node.ContextMenuItems.Add(new MenuItemViewModel()
             //{
-            //    MenuItemHeader = "Deploy script",
+            //    MenuItemHeader = "Deploy script to web server",
             //    MenuItemIcon = UPLOAD_SCRIPT_ICON,
-            //    MenuItemCommand = new RelayCommand(DeployScriptCommand),
+            //    MenuItemCommand = new RelayCommand(DeployScriptToWebServerCommand),
             //    MenuItemPayload = node
             //});
 
@@ -167,6 +202,141 @@ namespace DaJet.Studio
             MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
             ScriptEditorView editorView = new ScriptEditorView() { DataContext = scriptEditor };
             mainWindow.AddNewTab(scriptEditor.Name, editorView);
+        }
+        private void ExecuteScriptCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is ScriptEditorViewModel scriptEditor)) return;
+
+            DatabaseInfo database = treeNode.GetAncestorPayload<DatabaseInfo>();
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+
+            if (string.IsNullOrWhiteSpace(scriptEditor.ScriptCode))
+            {
+                IFileInfo file = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{server.Identity.ToString().ToLower()}/{database.Identity.ToString().ToLower()}/{scriptEditor.Name}");
+                if (file != null && file.Exists)
+                {
+                    using (StreamReader reader = new StreamReader(file.PhysicalPath, Encoding.UTF8))
+                    {
+                        scriptEditor.ScriptCode = reader.ReadToEnd();
+                    }
+                }
+            }
+
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+
+            IMetadataService metadata = Services.GetService<IMetadataService>();
+            metadata.AttachDatabase(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address, database);
+
+            IScriptingService scripting = Services.GetService<IScriptingService>();
+            string sql = scripting.PrepareScript(scriptEditor.ScriptCode, out IList<ParseError> errors);
+            string errorMessage = string.Empty;
+            foreach (ParseError error in errors)
+            {
+                errorMessage += error.Message + Environment.NewLine;
+            }
+            if (errors.Count > 0)
+            {
+                ScriptEditorViewModel editor = Services.GetService<ScriptEditorViewModel>();
+                editor.Name = "Errors";
+                editor.ScriptCode = errorMessage;
+                ScriptEditorView scriptView = new ScriptEditorView()
+                {
+                    DataContext = editor
+                };
+                mainWindow.AddNewTab(editor.Name, scriptView);
+                return;
+            }
+
+            string json = "[]";
+            try
+            {
+                json = scripting.ExecuteScript(sql, out IList<ParseError> executeErrors);
+                foreach (ParseError error in executeErrors)
+                {
+                    errorMessage += error.Message + Environment.NewLine;
+                }
+                if (executeErrors.Count > 0)
+                {
+                    ScriptEditorViewModel editor = Services.GetService<ScriptEditorViewModel>();
+                    editor.Name = "Errors";
+                    editor.ScriptCode = errorMessage;
+                    ScriptEditorView scriptView = new ScriptEditorView()
+                    {
+                        DataContext = editor
+                    };
+                    mainWindow.AddNewTab(editor.Name, scriptView);
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                ScriptEditorViewModel editor = Services.GetService<ScriptEditorViewModel>();
+                editor.Name = "Errors";
+                editor.ScriptCode = ex.Message;
+                ScriptEditorView scriptView = new ScriptEditorView()
+                {
+                    DataContext = editor
+                };
+                mainWindow.AddNewTab(editor.Name, scriptView);
+                return;
+            }
+            JsonSerializerOptions serializerOptions = new JsonSerializerOptions();
+            serializerOptions.Converters.Add(new DynamicJsonConverter());
+            dynamic data = JsonSerializer.Deserialize<dynamic>(json, serializerOptions);
+
+            DataGrid dataView = DynamicGridCreator.CreateDynamicDataGrid(data);
+            mainWindow.AddNewTab($"{scriptEditor.Name} (data)", dataView);
+        }
+        private void ShowSqlCodeCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is ScriptEditorViewModel scriptEditor)) return;
+
+            DatabaseInfo database = treeNode.GetAncestorPayload<DatabaseInfo>();
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+
+            if (string.IsNullOrWhiteSpace(scriptEditor.ScriptCode))
+            {
+                IFileInfo file = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{server.Identity.ToString().ToLower()}/{database.Identity.ToString().ToLower()}/{scriptEditor.Name}");
+                if (file != null && file.Exists)
+                {
+                    using (StreamReader reader = new StreamReader(file.PhysicalPath, Encoding.UTF8))
+                    {
+                        scriptEditor.ScriptCode = reader.ReadToEnd();
+                    }
+                }
+            }
+
+            IMetadataService metadata = Services.GetService<IMetadataService>();
+            metadata.AttachDatabase(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address, database);
+
+            IScriptingService scripting = Services.GetService<IScriptingService>();
+            string sql = scripting.PrepareScript(scriptEditor.ScriptCode, out IList<ParseError> errors);
+            string errorMessage = string.Empty;
+            foreach (ParseError error in errors)
+            {
+                errorMessage += error.Message + Environment.NewLine;
+            }
+
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            ScriptEditorViewModel editor = Services.GetService<ScriptEditorViewModel>();
+
+            if (errors.Count > 0)
+            {
+                editor.Name = "Errors";
+                editor.ScriptCode = errorMessage;
+            }
+            else
+            {
+                editor.Name = $"{scriptEditor.Name} (SQL)";
+                editor.ScriptCode = sql;
+            }
+            ScriptEditorView scriptView = new ScriptEditorView()
+            {
+                DataContext = editor
+            };
+            mainWindow.AddNewTab(editor.Name, scriptView);
         }
         private void EditScriptCommand(object node)
         {
@@ -297,9 +467,58 @@ namespace DaJet.Studio
                 _ = MessageBox.Show(ex.Message, "DaJet", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+        private void ShowSyntaxTreeCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is ScriptEditorViewModel scriptEditor)) return;
+
+            if (string.IsNullOrWhiteSpace(scriptEditor.ScriptCode))
+            {
+                DatabaseInfo database = treeNode.GetAncestorPayload<DatabaseInfo>();
+                DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+
+                IFileInfo file = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{server.Identity.ToString().ToLower()}/{database.Identity.ToString().ToLower()}/{scriptEditor.Name}");
+                if (file != null && file.Exists)
+                {
+                    using (StreamReader reader = new StreamReader(file.PhysicalPath, Encoding.UTF8))
+                    {
+                        scriptEditor.ScriptCode = reader.ReadToEnd();
+                    }
+                }
+            }
+
+            IScriptingService scripting = Services.GetService<IScriptingService>();
+            TSqlFragment syntaxTree = scripting.ParseScript(scriptEditor.ScriptCode, out IList<ParseError> errors);
+            string errorMessage = string.Empty;
+            foreach (ParseError error in errors)
+            {
+                errorMessage += error.Message + Environment.NewLine;
+            }
+
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            ScriptEditorViewModel viewModel = Services.GetService<ScriptEditorViewModel>();
+
+            if (errors.Count > 0)
+            {
+                viewModel.Name = "Errors";
+                viewModel.ScriptCode = errorMessage;
+                ScriptEditorView scriptView = new ScriptEditorView() { DataContext = viewModel };
+                mainWindow.AddNewTab(viewModel.Name, scriptView);
+                return;
+            }
+
+            TreeNodeViewModel treeModel;
+            TSqlFragmentTreeBuilder builder = new TSqlFragmentTreeBuilder();
+            builder.Build(syntaxTree, out treeModel);
+
+            TreeNodeView treeView = new TreeNodeView() { DataContext = treeModel };
+            mainWindow.AddNewTab(scriptEditor.Name + " (syntax tree)", treeView);
+            treeView.DataContext = treeModel;
+        }
+        
 
 
-        private void DeployScriptCommand(object node)
+        private void DeployScriptToWebServerCommand(object node)
         {
             if (!(node is TreeNodeViewModel treeNode)) return;
             if (!(treeNode.NodePayload is ScriptEditorViewModel scriptEditor)) return;

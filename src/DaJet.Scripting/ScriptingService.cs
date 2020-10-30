@@ -10,6 +10,7 @@ namespace DaJet.Scripting
     {
         string PrepareScript(string script, out IList<ParseError> errors);
         string ExecuteScript(string script, out IList<ParseError> errors);
+        TSqlFragment ParseScript(string script, out IList<ParseError> errors);
     }
     public sealed class ScriptingService : IScriptingService
     {
@@ -48,6 +49,10 @@ namespace DaJet.Scripting
         {
             errors = new ParseError[] { }; // TODO
             return ScriptExecutor.ExecuteJson(script);
+        }
+        public TSqlFragment ParseScript(string script, out IList<ParseError> errors)
+        {
+            return Parser.Parse(new StringReader(script), out errors);
         }
     }
 }

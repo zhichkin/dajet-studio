@@ -34,6 +34,7 @@ namespace DaJet.Studio.MVVM
             TextBoxLostFocus = new RelayCommand(TextBoxLostFocusHandler);
             EnableEditingCommand = new RelayCommand(EnableEditingCommandHandler);
         }
+        public override string ToString() { return this.NodeText; }
         public TreeNodeViewModel Parent { get; set; }
         public string NodeText
         {

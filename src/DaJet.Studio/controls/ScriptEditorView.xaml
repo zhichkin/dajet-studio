@@ -19,9 +19,9 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Orientation="Horizontal">
-            <Button Content="Translate" Command="{Binding TranslateCommand}" Margin="0,0,5,0"/>
-            <Button Content="Execute" Click="SaveButton_Click" Command="{Binding ExecuteCommand}"/>
-            <Button Click="SaveButton_Click" Command="{Binding SaveCommand}" Margin="5,0,0,0" ToolTip="Save script to file"
+            <!--<Button Content="Translate" Command="{Binding TranslateCommand}" Margin="0,0,5,0"/>
+            <Button Content="Execute" Click="SaveButton_Click" Command="{Binding ExecuteCommand}"/>-->
+            <Button Click="SaveButton_Click" Command="{Binding SaveCommand}" ToolTip="Save script to file"
                     Visibility="{Binding IsScriptChanged, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Image Source="{StaticResource Icon_SaveFile}" Height="16" Width="16" VerticalAlignment="Center"/>
             </Button>
