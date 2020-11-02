@@ -20,7 +20,7 @@ namespace DaJet.Http
         public static void Main(string[] args)
         {
             IFileProvider fileProvider = ConfigureFileProvider();
-            MetadataServiceSettings settings = InitializeMetadataSettings(fileProvider);
+            MetadataSettings settings = InitializeMetadataSettings(fileProvider);
 
             IHost host = CreateHostBuilder(args).Build();
             ConfigureMetadataService(host, settings);
@@ -37,7 +37,7 @@ namespace DaJet.Http
                     .UseStartup<Startup>();
                 });
         }
-        private static void ConfigureMetadataService(IHost host, MetadataServiceSettings settings)
+        private static void ConfigureMetadataService(IHost host, MetadataSettings settings)
         {
             using (var serviceScope = host.Services.CreateScope())
             {
@@ -75,9 +75,9 @@ namespace DaJet.Http
 
             return new PhysicalFileProvider(_appCatalogPath);
         }
-        private static MetadataServiceSettings InitializeMetadataSettings(IFileProvider fileProvider)
+        private static MetadataSettings InitializeMetadataSettings(IFileProvider fileProvider)
         {
-            MetadataServiceSettings settings = new MetadataServiceSettings();
+            MetadataSettings settings = new MetadataSettings();
 
             IFileInfo fileInfo = fileProvider.GetFileInfo(METADATA_CATALOG_NAME);
             if (!fileInfo.Exists) { Directory.CreateDirectory(fileInfo.PhysicalPath); }
@@ -90,16 +90,16 @@ namespace DaJet.Http
                 {
                     json = reader.ReadToEndAsync().Result;
                 }
-                settings = JsonSerializer.Deserialize<MetadataServiceSettings>(json);
+                settings = JsonSerializer.Deserialize<MetadataSettings>(json);
             }
             else
             {
-                SaveMetadataServiceSettings(settings, fileProvider);
+                SaveMetadataSettings(settings, fileProvider);
             }
 
             return settings;
         }
-        private static void SaveMetadataServiceSettings(MetadataServiceSettings settings, IFileProvider fileProvider)
+        private static void SaveMetadataSettings(MetadataSettings settings, IFileProvider fileProvider)
         {
             IFileInfo fileInfo = fileProvider.GetFileInfo($"{METADATA_CATALOG_NAME}/{METADATA_SETTINGS_FILE_NAME}");
 
@@ -110,7 +110,7 @@ namespace DaJet.Http
                 writer.Write(json);
             }
         }
-        private static void InitializeMetadataService(MetadataServiceSettings settings, IMetadataService metadata)
+        private static void InitializeMetadataService(MetadataSettings settings, IMetadataService metadata)
         {
             foreach (DatabaseServer server in settings.Servers)
             {

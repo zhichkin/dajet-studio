@@ -12,8 +12,8 @@ namespace DaJet.Metadata
         DatabaseServer CurrentServer { get; }
         DatabaseInfo CurrentDatabase { get; }
         string ConnectionString { get; }
-        MetadataServiceSettings Settings { get; }
-        void Configure(MetadataServiceSettings settings);
+        MetadataSettings Settings { get; }
+        void Configure(MetadataSettings settings);
         void UseServer(string serverName);
         void UseDatabase(string databaseName);
         void AttachDatabase(string serverName, DatabaseInfo database);
@@ -33,7 +33,7 @@ namespace DaJet.Metadata
         private const string ERROR_SERVER_IS_NOT_DEFINED = "Current database server is not defined!";
         private XMLMetadataLoader XMLLoader { get; } = new XMLMetadataLoader();
         private SQLMetadataLoader SQLLoader { get; } = new SQLMetadataLoader();
-        public MetadataServiceSettings Settings { get; private set; }
+        public MetadataSettings Settings { get; private set; }
         public DatabaseServer CurrentServer { get; private set; }
         public DatabaseInfo CurrentDatabase { get; private set; }
         public string ConnectionString { get; private set; }
@@ -45,7 +45,7 @@ namespace DaJet.Metadata
         {
             return Path.Combine(ServerCatalogPath(serverName), databaseName + ".xml");
         }
-        public void Configure(MetadataServiceSettings settings)
+        public void Configure(MetadataSettings settings)
         {
             if (settings == null) throw new ArgumentNullException(nameof(settings));
             if (string.IsNullOrWhiteSpace(settings.Catalog)) throw new ArgumentNullException(nameof(settings.Catalog));
@@ -160,7 +160,7 @@ namespace DaJet.Metadata
             if (database == null) throw new ArgumentNullException(nameof(database));
             if (string.IsNullOrWhiteSpace(serverAddress)) throw new ArgumentNullException(nameof(serverAddress));
 
-            if (Settings == null) Settings = new MetadataServiceSettings();
+            if (Settings == null) Settings = new MetadataSettings();
 
             DatabaseServer server = Settings.Servers.Where(s => s.Name == serverAddress).FirstOrDefault();
             if (server == null)

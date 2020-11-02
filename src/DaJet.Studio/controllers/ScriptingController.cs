@@ -25,6 +25,10 @@ namespace DaJet.Studio
         private const string ROOT_NODE_NAME = "Scripts";
         private const string ROOT_CATALOG_NAME = "scripts";
         private const string SCRIPT_DEFAULT_NAME = "new_script.qry";
+        private const string FUNCTIONS_NODE_NAME = "Functions";
+        private const string TABLE_FUNCTION_NODE_NAME = "Table functions";
+        private const string SCALAR_FUNCTION_NODE_NAME = "Scalar functions";
+        private const string STORED_PROCEDURES_NODE_NAME = "Procedures";
 
         private const string TREE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/tree.png";
         private const string SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/database-script.png";
@@ -34,6 +38,11 @@ namespace DaJet.Studio
         private const string UPLOAD_SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/upload-script.png";
         private const string EXECUTE_SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/run.png";
         private const string SQL_CODE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/sql-query.png";
+        private const string ADD_QUERY_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/add-query.png";
+        private const string FUNCTION_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/function.png";
+        private const string TABLE_FUNCTION_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/table-function.png";
+        private const string SCALAR_FUNCTION_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/scalar-function.png";
+        private const string STORED_PROCEDURE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/stored-procedure.png";
 
         private readonly BitmapImage TREE_ICON = new BitmapImage(new Uri(TREE_ICON_PATH));
         private readonly BitmapImage SCRIPT_ICON = new BitmapImage(new Uri(SCRIPT_ICON_PATH));
@@ -43,18 +52,76 @@ namespace DaJet.Studio
         private readonly BitmapImage UPLOAD_SCRIPT_ICON = new BitmapImage(new Uri(UPLOAD_SCRIPT_ICON_PATH));
         private readonly BitmapImage EXECUTE_SCRIPT_ICON = new BitmapImage(new Uri(EXECUTE_SCRIPT_ICON_PATH));
         private readonly BitmapImage SQL_CODE_ICON = new BitmapImage(new Uri(SQL_CODE_ICON_PATH));
+        private readonly BitmapImage ADD_QUERY_ICON = new BitmapImage(new Uri(ADD_QUERY_ICON_PATH));
+        private readonly BitmapImage FUNCTION_ICON = new BitmapImage(new Uri(FUNCTION_ICON_PATH));
+        private readonly BitmapImage TABLE_FUNCTION_ICON = new BitmapImage(new Uri(TABLE_FUNCTION_ICON_PATH));
+        private readonly BitmapImage SCALAR_FUNCTION_ICON = new BitmapImage(new Uri(SCALAR_FUNCTION_ICON_PATH));
+        private readonly BitmapImage STORED_PROCEDURE_ICON = new BitmapImage(new Uri(STORED_PROCEDURE_ICON_PATH));
 
         #endregion
 
-        private AppSettings Settings { get; }
+        private MetadataSettings Settings { get; }
         private IServiceProvider Services { get; }
         private IFileProvider FileProvider { get; }
-        public ScriptingController(IServiceProvider serviceProvider, IFileProvider fileProvider, IOptions<AppSettings> options)
+        public ScriptingController(IServiceProvider serviceProvider, IFileProvider fileProvider, IOptions<MetadataSettings> options)
         {
             Settings = options.Value;
             Services = serviceProvider;
             FileProvider = fileProvider;
         }
+
+
+
+        private void CreateCatalogIfNotExists(string catalogName)
+        {
+            IFileInfo catalog = FileProvider.GetFileInfo(catalogName);
+            if (!catalog.Exists) { Directory.CreateDirectory(catalog.PhysicalPath); }
+        }
+        public string GetDatabaseCatalog(DatabaseServer server, DatabaseInfo database)
+        {
+            string catalogName = $"{ROOT_CATALOG_NAME}";
+
+            CreateCatalogIfNotExists(catalogName);
+
+            catalogName += $"/{server.Identity.ToString().ToLower()}";
+            
+            CreateCatalogIfNotExists(catalogName);
+            
+            catalogName += $"/{database.Identity.ToString().ToLower()}";
+            
+            CreateCatalogIfNotExists(catalogName);
+
+            return catalogName;
+        }
+        public string GetTableFunctionsCatalog(DatabaseServer server, DatabaseInfo database)
+        {
+            string catalogName = GetDatabaseCatalog(server, database) + "/table-functions";
+            CreateCatalogIfNotExists(catalogName);
+            return catalogName;
+        }
+        public string GetScalarFunctionsCatalog(DatabaseServer server, DatabaseInfo database)
+        {
+            string catalogName = GetDatabaseCatalog(server, database) + "/scalar-functions";
+            CreateCatalogIfNotExists(catalogName);
+            return catalogName;
+        }
+        public string GetStoredProceduresCatalog(DatabaseServer server, DatabaseInfo database)
+        {
+            string catalogName = GetDatabaseCatalog(server, database) + "/stored-procedures";
+            CreateCatalogIfNotExists(catalogName);
+            return catalogName;
+        }
+        public void SaveScriptFile(string catalogName, string fileName, string sourceCode)
+        {
+            IFileInfo file = FileProvider.GetFileInfo($"{catalogName}/{fileName}");
+            using (StreamWriter writer = new StreamWriter(file.PhysicalPath, false, Encoding.UTF8))
+            {
+                writer.Write(sourceCode);
+            }
+        }
+
+
+
         public TreeNodeViewModel CreateTreeNode() { throw new NotImplementedException(); }
         public TreeNodeViewModel CreateTreeNode(TreeNodeViewModel parent)
         {
@@ -67,7 +134,6 @@ namespace DaJet.Studio
                 NodeToolTip = "SQL scripts",
                 NodePayload = null
             };
-            
             node.ContextMenuItems.Add(new MenuItemViewModel()
             {
                 MenuItemHeader = "Add new script",
@@ -75,10 +141,83 @@ namespace DaJet.Studio
                 MenuItemCommand = new RelayCommand(AddScriptCommand),
                 MenuItemPayload = node
             });
-
-            CreateScriptNodesFromFileSystem(node);
+            
+            CreateFunctionsNode(node);
+            CreateStoredProceduresNode(node);
+            CreateScriptNodesFromSettings(node);
 
             return node;
+        }
+        private void CreateFunctionsNode(TreeNodeViewModel parentNode)
+        {
+            TreeNodeViewModel node = new TreeNodeViewModel()
+            {
+                Parent = parentNode,
+                NodeIcon = FUNCTION_ICON,
+                NodeText = FUNCTIONS_NODE_NAME,
+                NodeToolTip = "SQL user functions",
+                NodePayload = null
+            };
+            parentNode.TreeNodes.Add(node);
+            CreateTableFunctionsNode(node);
+            CreateScalarFunctionsNode(node);
+        }
+        private void CreateTableFunctionsNode(TreeNodeViewModel parentNode)
+        {
+            TreeNodeViewModel node = new TreeNodeViewModel()
+            {
+                Parent = parentNode,
+                NodeIcon = TABLE_FUNCTION_ICON,
+                NodeText = TABLE_FUNCTION_NODE_NAME,
+                NodeToolTip = "SQL table-valued functions",
+                NodePayload = null
+            };
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Add new table function",
+                MenuItemIcon = ADD_QUERY_ICON,
+                MenuItemCommand = new RelayCommand(AddTableFunctionCommand),
+                MenuItemPayload = node
+            });
+            parentNode.TreeNodes.Add(node);
+        }
+        private void CreateScalarFunctionsNode(TreeNodeViewModel parentNode)
+        {
+            TreeNodeViewModel node = new TreeNodeViewModel()
+            {
+                Parent = parentNode,
+                NodeIcon = SCALAR_FUNCTION_ICON,
+                NodeText = SCALAR_FUNCTION_NODE_NAME,
+                NodeToolTip = "SQL scalar-valued functions",
+                NodePayload = null
+            };
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Add new scalar function",
+                MenuItemIcon = ADD_QUERY_ICON,
+                MenuItemCommand = new RelayCommand(AddScalarFunctionCommand),
+                MenuItemPayload = node
+            });
+            parentNode.TreeNodes.Add(node);
+        }
+        private void CreateStoredProceduresNode(TreeNodeViewModel parentNode)
+        {
+            TreeNodeViewModel node = new TreeNodeViewModel()
+            {
+                Parent = parentNode,
+                NodeIcon = STORED_PROCEDURE_ICON,
+                NodeText = STORED_PROCEDURES_NODE_NAME,
+                NodeToolTip = "SQL stored procedures",
+                NodePayload = null
+            };
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Add new stored procedure",
+                MenuItemIcon = ADD_QUERY_ICON,
+                MenuItemCommand = new RelayCommand(AddStoredProcedureCommand),
+                MenuItemPayload = node
+            });
+            parentNode.TreeNodes.Add(node);
         }
         private TreeNodeViewModel CreateScriptTreeNode(TreeNodeViewModel parentNode, ScriptEditorViewModel scriptEditor)
         {
@@ -147,7 +286,7 @@ namespace DaJet.Studio
 
             return node;
         }
-        private void CreateScriptNodesFromFileSystem(TreeNodeViewModel rootNode)
+        private void CreateScriptNodesFromSettings(TreeNodeViewModel rootNode)
         {
             DatabaseInfo database = rootNode.GetAncestorPayload<DatabaseInfo>();
             DatabaseServer server = rootNode.GetAncestorPayload<DatabaseServer>();
@@ -513,9 +652,59 @@ namespace DaJet.Studio
 
             TreeNodeView treeView = new TreeNodeView() { DataContext = treeModel };
             mainWindow.AddNewTab(scriptEditor.Name + " (syntax tree)", treeView);
-            treeView.DataContext = treeModel;
         }
-        
+
+
+
+        private void AddTableFunctionCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel parentNode)) return;
+            if (parentNode.NodeText != TABLE_FUNCTION_NODE_NAME) return;
+
+            // TODO
+            MessageBox.Show("Under construction...", "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        private void AddScalarFunctionCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel parentNode)) return;
+            if (parentNode.NodeText != SCALAR_FUNCTION_NODE_NAME) return;
+
+            DatabaseInfo database = parentNode.GetAncestorPayload<DatabaseInfo>();
+            DatabaseServer server = parentNode.GetAncestorPayload<DatabaseServer>();
+
+            ScriptEditorViewModel scriptEditor = Services.GetService<ScriptEditorViewModel>();
+            scriptEditor.Name = "new func";
+            scriptEditor.MyServer = server;
+            scriptEditor.MyDatabase = database;
+            scriptEditor.ScriptType = MetaScriptType.ScalarFunction;
+            scriptEditor.ScriptCode = "CREATE FUNCTION [fn_NewFunction]\n(\n\t@param nvarchar(36)\n)\nRETURNS int\nAS\nBEGIN\n\n\tRETURN 1;\n\nEND;";
+            scriptEditor.IsScriptChanged = true;
+
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            ScriptEditorView editorView = new ScriptEditorView() { DataContext = scriptEditor };
+            mainWindow.AddNewTab(scriptEditor.Name, editorView);
+        }
+        private void AddStoredProcedureCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel parentNode)) return;
+            if (parentNode.NodeText != STORED_PROCEDURES_NODE_NAME) return;
+
+            DatabaseInfo database = parentNode.GetAncestorPayload<DatabaseInfo>();
+            DatabaseServer server = parentNode.GetAncestorPayload<DatabaseServer>();
+
+            ScriptEditorViewModel scriptEditor = Services.GetService<ScriptEditorViewModel>();
+            scriptEditor.Name = "new proc";
+            scriptEditor.MyServer = server;
+            scriptEditor.MyDatabase = database;
+            scriptEditor.ScriptType = MetaScriptType.StoredProcedure;
+            scriptEditor.ScriptCode = "CREATE PROCEDURE [sp_NewProcedure]\n\t@param nvarchar(36)\nAS\nBEGIN\n\nEND;";
+            scriptEditor.IsScriptChanged = true;
+
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            ScriptEditorView editorView = new ScriptEditorView() { DataContext = scriptEditor };
+            mainWindow.AddNewTab(scriptEditor.Name, editorView);
+        }
+
 
 
         private void DeployScriptToWebServerCommand(object node)

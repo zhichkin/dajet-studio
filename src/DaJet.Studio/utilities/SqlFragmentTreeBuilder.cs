@@ -36,7 +36,8 @@ namespace DaJet.Studio
             PropertyInfo property = type.GetProperty("Value");
             if (property != null)
             {
-                child.NodeText += " = " + property.GetValue(node).ToString();
+                object value = property.GetValue(node);
+                child.NodeText += " = " + (value == null ? string.Empty : value.ToString());
             }
             result.TreeNodes.Add(child);
             return child;

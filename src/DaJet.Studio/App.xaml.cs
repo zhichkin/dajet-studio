@@ -20,6 +20,12 @@ namespace DaJet.Studio
         private const string WEB_SETTINGS_FILE_NAME = "web-settings.json";
         private const string WEB_SETTINGS_CATALOG_NAME = "web";
 
+        private const string METADATA_SETTINGS_FILE_NAME = "metadata-settings.json";
+        private const string METADATA_SETTINGS_CATALOG_NAME = "metadata";
+
+        private const string SCRIPTING_SETTINGS_FILE_NAME = "scripting-settings.json";
+        private const string SCRIPTING_SETTINGS_CATALOG_NAME = "scripts";
+
         private readonly IHost _host;
         public App()
         {
@@ -45,6 +51,7 @@ namespace DaJet.Studio
 
             IFileProvider fileProvider = ConfigureFileProvider(services);
             WebSettings settings = ConfigureWebSettings(fileProvider, services);
+            MetadataSettings metadataSettings = ConfigureMetadataSettings(fileProvider, services);
 
             services.AddTransient<TabViewModel>();
             services.AddSingleton<MainWindowViewModel>();
@@ -128,6 +135,44 @@ namespace DaJet.Studio
             if (!fileInfo.Exists)
             {
                 WebSettings settings = new WebSettings();
+                JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
+                string json = JsonSerializer.Serialize(settings, options);
+                using (StreamWriter writer = new StreamWriter(fileInfo.PhysicalPath, false, Encoding.UTF8))
+                {
+                    writer.Write(json);
+                }
+            }
+
+            return filePath;
+        }
+        private MetadataSettings ConfigureMetadataSettings(IFileProvider fileProvider, IServiceCollection services)
+        {
+            string filePath = MetadataSettingsFilePath(fileProvider);
+
+            MetadataSettings settings = new MetadataSettings();
+            var config = new ConfigurationBuilder()
+                .AddJsonFile(filePath, optional: false)
+                .Build();
+            config.Bind(settings);
+
+            services.Configure<MetadataSettings>(config);
+
+            return settings;
+        }
+        private string MetadataSettingsFilePath(IFileProvider fileProvider)
+        {
+            string filePath = $"{METADATA_SETTINGS_CATALOG_NAME}/{METADATA_SETTINGS_FILE_NAME}";
+
+            IFileInfo fileInfo = fileProvider.GetFileInfo(METADATA_SETTINGS_CATALOG_NAME);
+            if (!fileInfo.Exists)
+            {
+                Directory.CreateDirectory(fileInfo.PhysicalPath);
+            }
+
+            fileInfo = fileProvider.GetFileInfo(filePath);
+            if (!fileInfo.Exists)
+            {
+                MetadataSettings settings = new MetadataSettings();
                 JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
                 string json = JsonSerializer.Serialize(settings, options);
                 using (StreamWriter writer = new StreamWriter(fileInfo.PhysicalPath, false, Encoding.UTF8))

@@ -2,7 +2,6 @@
 using DaJet.Metadata;
 using DaJet.Studio.MVVM;
 using DaJet.UI;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
@@ -10,7 +9,6 @@ using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
@@ -45,6 +43,7 @@ namespace DaJet.Studio
         private const string CHARACTERISTICS_REGISTER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/ПланВидовХарактеристик.png";
         private const string METADATA_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/metadata.png";
         private const string SAVE_FILE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/save-file.png";
+        private const string KEY_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/key.png";
 
         private readonly BitmapImage ADD_SERVER_ICON = new BitmapImage(new Uri(ADD_SERVER_ICON_PATH));
         private readonly BitmapImage SERVER_SETTINGS_ICON = new BitmapImage(new Uri(SERVER_SETTINGS_ICON_PATH));
@@ -69,6 +68,7 @@ namespace DaJet.Studio
         private readonly BitmapImage CHARACTERISTICS_REGISTER_ICON = new BitmapImage(new Uri(CHARACTERISTICS_REGISTER_ICON_PATH));
         private readonly BitmapImage METADATA_ICON = new BitmapImage(new Uri(METADATA_ICON_PATH));
         private readonly BitmapImage SAVE_FILE_ICON = new BitmapImage(new Uri(SAVE_FILE_ICON_PATH));
+        private readonly BitmapImage KEY_ICON = new BitmapImage(new Uri(KEY_ICON_PATH));
 
         #endregion
 
@@ -81,15 +81,15 @@ namespace DaJet.Studio
         private AppSettings Settings { get; }
         private IServiceProvider Services { get; }
         private IFileProvider FileProvider { get; }
-        private MetadataServiceSettings MetadataSettings { get; set; } = new MetadataServiceSettings();
+        private MetadataSettings MetadataSettings { get; set; } = new MetadataSettings();
         public MetadataController(IServiceProvider serviceProvider, IFileProvider fileProvider, IOptions<AppSettings> options)
         {
             Settings = options.Value;
             Services = serviceProvider;
             FileProvider = fileProvider;
-            InitializeMetadataServiceSettings();
+            InitializeMetadataSettings();
         }
-        private void SaveMetadataServiceSettings()
+        private void SaveMetadataSettings()
         {
             IFileInfo fileInfo = FileProvider.GetFileInfo($"{METADATA_CATALOG_NAME}/{METADATA_SETTINGS_FILE_NAME}");
 
@@ -100,7 +100,7 @@ namespace DaJet.Studio
                 writer.Write(json);
             }
         }
-        private void InitializeMetadataServiceSettings()
+        private void InitializeMetadataSettings()
         {
             IFileInfo fileInfo = FileProvider.GetFileInfo(METADATA_CATALOG_NAME);
             if (!fileInfo.Exists) { Directory.CreateDirectory(fileInfo.PhysicalPath); }
@@ -113,11 +113,11 @@ namespace DaJet.Studio
                 {
                     json = reader.ReadToEnd();
                 }
-                MetadataSettings = JsonSerializer.Deserialize<MetadataServiceSettings>(json);
+                MetadataSettings = JsonSerializer.Deserialize<MetadataSettings>(json);
             }
             else
             {
-                SaveMetadataServiceSettings();
+                SaveMetadataSettings();
             }
         }
         public TreeNodeViewModel CreateTreeNode(TreeNodeViewModel parent) { throw new NotImplementedException(); }
@@ -200,6 +200,8 @@ namespace DaJet.Studio
         private BitmapImage GetMetaPropertyIcon(MetaProperty property)
         {
             if (property == null) { return null; }
+            else if (property.Purpose == MetaPropertyPurpose.System && property.IsPrimaryKey()) { return KEY_ICON; }
+            else if (property.Purpose == MetaPropertyPurpose.Property && property.IsPrimaryKey()) { return KEY_ICON; }
             else if (property.Purpose == MetaPropertyPurpose.Property) { return PROPERTY_ICON; }
             else if (property.Purpose == MetaPropertyPurpose.Dimension) { return DIMENSION_ICON; }
             else if (property.Purpose == MetaPropertyPurpose.Measure) { return MEASURE_ICON; }
@@ -475,7 +477,7 @@ namespace DaJet.Studio
             }
 
             MetadataSettings.Servers.Add(dialog.Result);
-            SaveMetadataServiceSettings();
+            SaveMetadataSettings();
 
             TreeNodeViewModel serverNode = CreateServerTreeNode(dialog.Result, !string.IsNullOrEmpty(errorMessage));
             serverNode.IsSelected = true;
@@ -520,7 +522,7 @@ namespace DaJet.Studio
 
             // persist server settings changes
             serverCopy.CopyTo(server);
-            SaveMetadataServiceSettings();
+            SaveMetadataSettings();
 
             // show server name and address changes in UI
             treeNode.NodeText = serverCopyName;
@@ -575,7 +577,7 @@ namespace DaJet.Studio
             }
 
             server.Databases.Add(dialog.Result);
-            SaveMetadataServiceSettings();
+            SaveMetadataSettings();
 
             InitializeMetadata(server, dialog.Result);
 
@@ -618,7 +620,7 @@ namespace DaJet.Studio
 
             // persist database settings changes
             databaseCopy.CopyTo(database);
-            SaveMetadataServiceSettings();
+            SaveMetadataSettings();
 
             if (databaseNameChanged)
             {
@@ -657,7 +659,7 @@ namespace DaJet.Studio
             }
             server.Databases.Remove(database);
             treeNode.Parent.TreeNodes.Remove(treeNode);
-            SaveMetadataServiceSettings();
+            SaveMetadataSettings();
         }
 
 

@@ -2,13 +2,13 @@
 
 namespace DaJet.Metadata
 {
-    public sealed class MetadataServiceSettings
+    public sealed class MetadataSettings
     {
         public string Catalog { get; set; } = string.Empty;
         public List<DatabaseServer> Servers { get; set;  } = new List<DatabaseServer>();
-        public MetadataServiceSettings SettingsCopy() // This method is used to save settings to file
+        public MetadataSettings SettingsCopy() // This method is used to save settings to file
         {
-            MetadataServiceSettings copy = new MetadataServiceSettings()
+            MetadataSettings copy = new MetadataSettings()
             {
                 Catalog = this.Catalog
             };

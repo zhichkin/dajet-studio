@@ -2,7 +2,7 @@
 
 namespace DaJet.Metadata
 {
-    public sealed class MetaStoredProcedure
+    public sealed class MetaProcedure
     {
         public Guid Identity { get; set; } = Guid.NewGuid();
         public string Name { get; set; }

@@ -2,7 +2,7 @@
 
 namespace DaJet.Metadata
 {
-    public sealed class MetaTableFunction
+    public sealed class MetaFunction
     {
         public Guid Identity { get; set; } = Guid.NewGuid();
         public string Name { get; set; }

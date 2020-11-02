@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
@@ -53,7 +54,8 @@ namespace DaJet.Studio
             get { return _scriptCode; }
             set { _scriptCode = value; OnPropertyChanged(); }
         }
-        
+        public MetaScriptType ScriptType { get; set; } = MetaScriptType.Script;
+
         public ICommand TranslateCommand { get; private set; }
         private void TranslateCommandHandler(object parameter)
         {
@@ -158,20 +160,99 @@ namespace DaJet.Studio
         public ICommand SaveCommand { get; private set; }
         private void SaveCommandHandler(object parameter)
         {
-            IFileInfo serverCatalog = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{MyServer.Identity.ToString().ToLower()}");
-            if (!serverCatalog.Exists) { Directory.CreateDirectory(serverCatalog.PhysicalPath); }
-            
-            IFileInfo databaseCatalog = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{MyServer.Identity.ToString().ToLower()}/{MyDatabase.Identity.ToString().ToLower()}");
-            if (!databaseCatalog.Exists) { Directory.CreateDirectory(databaseCatalog.PhysicalPath); }
-            
-            IFileInfo file = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{MyServer.Identity.ToString().ToLower()}/{MyDatabase.Identity.ToString().ToLower()}/{Name}");
-            
-            using (StreamWriter writer = new StreamWriter(file.PhysicalPath))
+            string errorMessage = string.Empty;
+
+            if (ScriptType == MetaScriptType.Script)
             {
-                writer.Write(ScriptCode);
+                IFileInfo serverCatalog = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{MyServer.Identity.ToString().ToLower()}");
+                if (!serverCatalog.Exists) { Directory.CreateDirectory(serverCatalog.PhysicalPath); }
+
+                IFileInfo databaseCatalog = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{MyServer.Identity.ToString().ToLower()}/{MyDatabase.Identity.ToString().ToLower()}");
+                if (!databaseCatalog.Exists) { Directory.CreateDirectory(databaseCatalog.PhysicalPath); }
+
+                IFileInfo file = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{MyServer.Identity.ToString().ToLower()}/{MyDatabase.Identity.ToString().ToLower()}/{Name}");
+
+                using (StreamWriter writer = new StreamWriter(file.PhysicalPath))
+                {
+                    writer.Write(ScriptCode);
+                }
+            }
+            else if (ScriptType == MetaScriptType.TableFunction)
+            {
+                // TODO
+            }
+            else if (ScriptType == MetaScriptType.ScalarFunction)
+            {
+                try
+                {
+                    SaveScalarFunctionSourceCode();
+                }
+                catch (Exception ex)
+                {
+                    errorMessage = ex.Message;
+                }
+            }
+            else if (ScriptType == MetaScriptType.StoredProcedure)
+            {
+                // TODO
             }
 
-            IsScriptChanged = false;
+            if (string.IsNullOrEmpty(errorMessage))
+            {
+                IsScriptChanged = false;
+            }
+            else
+            {
+                MessageBox.Show(errorMessage, "DaJet", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+            }
+        }
+        private void SaveScalarFunctionSourceCode()
+        {
+            IScriptingService scripting = Services.GetService<IScriptingService>();
+            TSqlFragment syntaxTree = scripting.ParseScript(ScriptCode, out IList<ParseError> errors);
+            if (errors.Count > 0) { ShowParseErrors(errors); return; }
+
+            CreateFunctionStatementVisitor visitor = new CreateFunctionStatementVisitor();
+            syntaxTree.Accept(visitor);
+            if (string.IsNullOrWhiteSpace(visitor.FunctionName))
+            {
+                MessageBox.Show("Function name is not defined!", "DaJet", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                return;
+            }
+            Name = visitor.FunctionName;
+
+            ScriptingController controller = Services.GetService<ScriptingController>();
+            string catalogName = controller.GetScalarFunctionsCatalog(MyServer, MyDatabase);
+            controller.SaveScriptFile(catalogName, Name + ".qry", ScriptCode);
+
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            mainWindow.RefreshTabHeader(this, Name);
+        }
+        private void ShowException(Exception ex)
+        {
+            string message = ex.Message;
+
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            ScriptEditorViewModel errorsViewModel = Services.GetService<ScriptEditorViewModel>();
+            errorsViewModel.Name = "Errors";
+            errorsViewModel.ScriptCode = message;
+            ScriptEditorView errorsView = new ScriptEditorView() { DataContext = errorsViewModel };
+            mainWindow.AddNewTab(errorsViewModel.Name, errorsView);
+        }
+        private void ShowParseErrors(IList<ParseError> errors)
+        {
+            string errorMessage = string.Empty;
+            foreach (ParseError error in errors)
+            {
+                errorMessage += error.Message + Environment.NewLine;
+            }
+
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            ScriptEditorViewModel errorsViewModel = Services.GetService<ScriptEditorViewModel>();
+            errorsViewModel.Name = "Errors";
+            errorsViewModel.ScriptCode = errorMessage;
+            ScriptEditorView errorsView = new ScriptEditorView() { DataContext = errorsViewModel };
+            mainWindow.AddNewTab(errorsViewModel.Name, errorsView);
         }
     }
 }
