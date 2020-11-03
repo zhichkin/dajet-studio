@@ -162,39 +162,13 @@ namespace DaJet.Studio
         {
             string errorMessage = string.Empty;
 
-            if (ScriptType == MetaScriptType.Script)
+            try
             {
-                IFileInfo serverCatalog = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{MyServer.Identity.ToString().ToLower()}");
-                if (!serverCatalog.Exists) { Directory.CreateDirectory(serverCatalog.PhysicalPath); }
-
-                IFileInfo databaseCatalog = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{MyServer.Identity.ToString().ToLower()}/{MyDatabase.Identity.ToString().ToLower()}");
-                if (!databaseCatalog.Exists) { Directory.CreateDirectory(databaseCatalog.PhysicalPath); }
-
-                IFileInfo file = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{MyServer.Identity.ToString().ToLower()}/{MyDatabase.Identity.ToString().ToLower()}/{Name}");
-
-                using (StreamWriter writer = new StreamWriter(file.PhysicalPath))
-                {
-                    writer.Write(ScriptCode);
-                }
+                SaveScriptSourceCode();
             }
-            else if (ScriptType == MetaScriptType.TableFunction)
+            catch (Exception ex)
             {
-                // TODO
-            }
-            else if (ScriptType == MetaScriptType.ScalarFunction)
-            {
-                try
-                {
-                    SaveScalarFunctionSourceCode();
-                }
-                catch (Exception ex)
-                {
-                    errorMessage = ex.Message;
-                }
-            }
-            else if (ScriptType == MetaScriptType.StoredProcedure)
-            {
-                // TODO
+                errorMessage = ex.Message;
             }
 
             if (string.IsNullOrEmpty(errorMessage))
@@ -203,41 +177,51 @@ namespace DaJet.Studio
             }
             else
             {
-                MessageBox.Show(errorMessage, "DaJet", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                ShowException(errorMessage);
             }
         }
-        private void SaveScalarFunctionSourceCode()
+        private void SaveScriptSourceCode()
         {
             IScriptingService scripting = Services.GetService<IScriptingService>();
             TSqlFragment syntaxTree = scripting.ParseScript(ScriptCode, out IList<ParseError> errors);
             if (errors.Count > 0) { ShowParseErrors(errors); return; }
 
-            CreateFunctionStatementVisitor visitor = new CreateFunctionStatementVisitor();
-            syntaxTree.Accept(visitor);
-            if (string.IsNullOrWhiteSpace(visitor.FunctionName))
+            // TODO: check if file exists, store old name to move file instead of creating new one
+
+            if (ScriptType == MetaScriptType.TableFunction || ScriptType == MetaScriptType.ScalarFunction)
             {
-                MessageBox.Show("Function name is not defined!", "DaJet", MessageBoxButton.OK, MessageBoxImage.Exclamation);
-                return;
+                CreateFunctionStatementVisitor visitor = new CreateFunctionStatementVisitor();
+                syntaxTree.Accept(visitor);
+                Name = visitor.FunctionName;
             }
-            Name = visitor.FunctionName;
+            else if (ScriptType == MetaScriptType.StoredProcedure)
+            {
+                CreateProcedureStatementVisitor visitor = new CreateProcedureStatementVisitor();
+                syntaxTree.Accept(visitor);
+                Name = visitor.ProcedureName;
+            }
 
             ScriptingController controller = Services.GetService<ScriptingController>();
-            string catalogName = controller.GetScalarFunctionsCatalog(MyServer, MyDatabase);
-            controller.SaveScriptFile(catalogName, Name + ".qry", ScriptCode);
+            string catalogName = controller.GetScriptsCatalogName(MyServer, MyDatabase, ScriptType);
+            controller.SaveScriptFile(catalogName, Name, ScriptCode);
 
             MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
             mainWindow.RefreshTabHeader(this, Name);
+
+            // TODO: find tree node in mainWindow.MainTreeRegion to update node text
+        }
+        private void ShowException(string errorMessage)
+        {
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            ScriptEditorViewModel errorsViewModel = Services.GetService<ScriptEditorViewModel>();
+            errorsViewModel.Name = "Error";
+            errorsViewModel.ScriptCode = errorMessage;
+            ScriptEditorView errorsView = new ScriptEditorView() { DataContext = errorsViewModel };
+            mainWindow.AddNewTab(errorsViewModel.Name, errorsView);
         }
         private void ShowException(Exception ex)
         {
-            string message = ex.Message;
-
-            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
-            ScriptEditorViewModel errorsViewModel = Services.GetService<ScriptEditorViewModel>();
-            errorsViewModel.Name = "Errors";
-            errorsViewModel.ScriptCode = message;
-            ScriptEditorView errorsView = new ScriptEditorView() { DataContext = errorsViewModel };
-            mainWindow.AddNewTab(errorsViewModel.Name, errorsView);
+            ShowException(ex.Message);
         }
         private void ShowParseErrors(IList<ParseError> errors)
         {
