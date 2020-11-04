@@ -50,6 +50,11 @@ namespace DaJet.Studio.MVVM
             }
         }
         public event NodeTextPropertyChangedEventHandler NodeTextPropertyChanged;
+        public void UpdateNodeText(string nodeText)
+        {
+            _nodeText = nodeText;
+            OnPropertyChanged(nameof(NodeText));
+        }
         public string NodeToolTip
         {
             get { return _nodeToolTip; }
@@ -65,7 +70,6 @@ namespace DaJet.Studio.MVVM
             get { return _nodePayload; }
             set { _nodePayload = value; OnPropertyChanged(); }
         }
-        public string NodeTextPropertyBinding { get; set; }
         private void OnNodeTextPropertyChanged(string oldValue)
         {
             if (oldValue == null)

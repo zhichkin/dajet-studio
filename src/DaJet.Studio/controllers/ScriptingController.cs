@@ -8,6 +8,7 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -137,12 +138,36 @@ namespace DaJet.Studio
             }
             return catalogName;
         }
+        public bool ScriptFileExists(string catalogName, string scriptName)
+        {
+            return FileProvider
+                .GetFileInfo($"{catalogName}/{scriptName}{SCRIPT_FILE_EXTENSION}")
+                .Exists;
+        }
         public void SaveScriptFile(string catalogName, string scriptName, string sourceCode)
         {
             IFileInfo file = FileProvider.GetFileInfo($"{catalogName}/{scriptName}{SCRIPT_FILE_EXTENSION}");
             using (StreamWriter writer = new StreamWriter(file.PhysicalPath, false, Encoding.UTF8))
             {
                 writer.Write(sourceCode);
+            }
+        }
+        public void RenameScriptFile(string catalogName, string oldName, string newName, string sourceCode)
+        {
+            IFileInfo oldFile = FileProvider.GetFileInfo($"{catalogName}/{oldName}{SCRIPT_FILE_EXTENSION}");
+            IFileInfo newFile = FileProvider.GetFileInfo($"{catalogName}/{newName}{SCRIPT_FILE_EXTENSION}");
+            if (newFile.Exists)
+            {
+                throw new InvalidOperationException($"Renaming file failed: \"{newFile}\" already exists!");
+            }
+            File.Move(oldFile.PhysicalPath, newFile.PhysicalPath);
+        }
+        public void DeleteScriptFile(string catalogName, string scriptName)
+        {
+            IFileInfo file = FileProvider.GetFileInfo($"{catalogName}/{scriptName}{SCRIPT_FILE_EXTENSION}");
+            if (file.Exists)
+            {
+                File.Delete(file.PhysicalPath);
             }
         }
         public string ReadScriptSourceCode(DatabaseServer server, DatabaseInfo database, MetaScriptType scriptType, string scriptName)
@@ -180,6 +205,32 @@ namespace DaJet.Studio
             }
 
             return sourceCode;
+        }
+        public TreeNodeViewModel GetScriptTreeNode(ScriptEditorViewModel scriptEditor)
+        {
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            TreeNodeViewModel databaseNode = mainWindow.GetTreeNodeByPayload(mainWindow.MainTreeRegion.TreeNodes, scriptEditor.MyDatabase);
+            if (databaseNode == null) { return null; }
+
+            TreeNodeViewModel parentNode = GetParentTreeNode(databaseNode, scriptEditor.ScriptType);
+            if (parentNode == null) { return null; }
+
+            return parentNode.TreeNodes.Where(n => n.NodePayload == scriptEditor).FirstOrDefault();
+        }
+        public TreeNodeViewModel GetScriptTreeNodeByName(DatabaseServer server, DatabaseInfo database, MetaScriptType scriptType, string scriptName)
+        {
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+
+            TreeNodeViewModel serverNode = mainWindow.GetTreeNodeByPayload(mainWindow.MainTreeRegion.TreeNodes, server);
+            if (serverNode == null) { return null; }
+
+            TreeNodeViewModel databaseNode = mainWindow.GetTreeNodeByPayload(serverNode.TreeNodes, database);
+            if (databaseNode == null) { return null; }
+
+            TreeNodeViewModel parentNode = GetParentTreeNode(databaseNode, scriptType);
+            if (parentNode == null) { return null; }
+
+            return parentNode.TreeNodes.Where(n => n.NodeText == scriptName).FirstOrDefault();
         }
 
 
@@ -305,7 +356,6 @@ namespace DaJet.Studio
                 //NodeText = null, // indicates first time initialization
                 IsEditable = true,
                 NodeToolTip = "SQL script",
-                NodeTextPropertyBinding = "Name",
                 NodePayload = scriptEditor
             };
             node.ContextMenuItems.Add(new MenuItemViewModel()
@@ -359,6 +409,33 @@ namespace DaJet.Studio
 
             return node;
         }
+        public void CreateScriptTreeNode(ScriptEditorViewModel scriptEditor)
+        {
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            TreeNodeViewModel databaseNode = mainWindow.GetTreeNodeByPayload(mainWindow.MainTreeRegion.TreeNodes, scriptEditor.MyDatabase);
+            if (databaseNode == null) { return; }
+            
+            TreeNodeViewModel parentNode = GetParentTreeNode(databaseNode, scriptEditor.ScriptType);
+            if (parentNode == null) { return; }
+
+            TreeNodeViewModel scriptNode = parentNode.TreeNodes
+                .Where(n => n.NodeText == scriptEditor.Name)
+                .FirstOrDefault();
+            if (scriptNode != null)
+            {
+                parentNode.IsExpanded = true;
+                scriptNode.IsSelected = true;
+                throw new InvalidOperationException($"Script \"{scriptEditor.Name}\" already exists!");
+            }
+
+            scriptNode = CreateScriptTreeNode(parentNode, scriptEditor);
+            scriptNode.NodeText = scriptEditor.Name;
+            scriptNode.NodeIcon = GetScriptNodeIcon(scriptEditor.ScriptType);
+            parentNode.TreeNodes.Add(scriptNode);
+            parentNode.IsExpanded = true;
+            scriptNode.IsSelected = true;
+        }
+
         private void CreateScriptNodesFromSettings(TreeNodeViewModel rootNode, MetaScriptType scriptType)
         {
             DatabaseInfo database = rootNode.GetAncestorPayload<DatabaseInfo>();
@@ -381,37 +458,42 @@ namespace DaJet.Studio
             }
         }
 
-        private void AddScriptCommand(object node)
+        private TreeNodeViewModel GetParentTreeNode(TreeNodeViewModel databaseNode, MetaScriptType scriptType)
         {
-            if (!(node is TreeNodeViewModel treeNode)) return;
-            if (treeNode.NodeText != ROOT_NODE_NAME) return;
+            TreeNodeViewModel parentNode = databaseNode.TreeNodes.Where(n => n.NodeText == ROOT_NODE_NAME).FirstOrDefault();
+            if (parentNode == null) { return null; }
 
-            foreach (TreeNodeViewModel scriptNode in treeNode.TreeNodes)
+            if (scriptType == MetaScriptType.Script)
             {
-                if (scriptNode.NodeText == SCRIPT_DEFAULT_NAME)
-                {
-                    _ = MessageBox.Show("New script already exists! Rename it first.",
-                        "DaJet", MessageBoxButton.OK, MessageBoxImage.Exclamation);
-                    treeNode.IsExpanded = true;
-                    scriptNode.IsSelected = true;
-                    return;
-                }
+                return parentNode;
+            }
+            else if (scriptType == MetaScriptType.TableFunction)
+            {
+                parentNode = parentNode.TreeNodes.Where(n => n.NodeText == FUNCTIONS_NODE_NAME).FirstOrDefault();
+            }
+            else if (scriptType == MetaScriptType.ScalarFunction)
+            {
+                parentNode = parentNode.TreeNodes.Where(n => n.NodeText == FUNCTIONS_NODE_NAME).FirstOrDefault();
+            }
+            else if (scriptType == MetaScriptType.StoredProcedure)
+            {
+                return parentNode.TreeNodes.Where(n => n.NodeText == STORED_PROCEDURES_NODE_NAME).FirstOrDefault();
             }
 
-            ScriptEditorViewModel scriptEditor = Services.GetService<ScriptEditorViewModel>();
-            scriptEditor.Name = SCRIPT_DEFAULT_NAME;
-            scriptEditor.IsScriptChanged = true;
+            if (parentNode == null) { return null; }
 
-            TreeNodeViewModel child = CreateScriptTreeNode(treeNode, scriptEditor);
-            child.NodeText = SCRIPT_DEFAULT_NAME;
-            treeNode.IsExpanded = true;
-            treeNode.TreeNodes.Add(child);
-            child.IsSelected = true;
+            if (scriptType == MetaScriptType.TableFunction)
+            {
+                parentNode = parentNode.TreeNodes.Where(n => n.NodeText == TABLE_FUNCTION_NODE_NAME).FirstOrDefault();
+            }
+            else if (scriptType == MetaScriptType.ScalarFunction)
+            {
+                parentNode = parentNode.TreeNodes.Where(n => n.NodeText == SCALAR_FUNCTION_NODE_NAME).FirstOrDefault();
+            }
 
-            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
-            ScriptEditorView editorView = new ScriptEditorView() { DataContext = scriptEditor };
-            mainWindow.AddNewTab(scriptEditor.Name, editorView);
+            return parentNode;
         }
+                
         private void ExecuteScriptCommand(object node)
         {
             if (!(node is TreeNodeViewModel treeNode)) return;
@@ -666,6 +748,26 @@ namespace DaJet.Studio
 
 
 
+        private void AddScriptCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel parentNode)) return;
+            if (parentNode.NodeText != ROOT_NODE_NAME) return;
+
+            DatabaseInfo database = parentNode.GetAncestorPayload<DatabaseInfo>();
+            DatabaseServer server = parentNode.GetAncestorPayload<DatabaseServer>();
+
+            ScriptEditorViewModel scriptEditor = Services.GetService<ScriptEditorViewModel>();
+            scriptEditor.Name = SCRIPT_DEFAULT_NAME;
+            scriptEditor.MyServer = server;
+            scriptEditor.MyDatabase = database;
+            scriptEditor.ScriptType = MetaScriptType.Script;
+            scriptEditor.ScriptCode = string.Empty;
+            scriptEditor.IsScriptChanged = true;
+
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            ScriptEditorView editorView = new ScriptEditorView() { DataContext = scriptEditor };
+            mainWindow.AddNewTab(scriptEditor.Name, editorView);
+        }
         private void AddTableFunctionCommand(object node)
         {
             if (!(node is TreeNodeViewModel parentNode)) return;

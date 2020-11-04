@@ -94,19 +94,15 @@ namespace DaJet.Studio
         }
 
 
-        public bool GetServerAndDatabase(ObservableCollection<TreeNodeViewModel> treeNodes, object payload, object[] result)
+        public TreeNodeViewModel GetTreeNodeByPayload(ObservableCollection<TreeNodeViewModel> treeNodes, object payload)
         {
             foreach (var treeNode in treeNodes)
             {
-                if (treeNode.NodePayload == payload) { return true; }
-                if (treeNode.NodePayload is DatabaseServer server) { result[0] = server; }
-                if (treeNode.NodePayload is DatabaseInfo database) { result[1] = database; }
-                if (GetServerAndDatabase(treeNode.TreeNodes, payload, result))
-                {
-                    return true;
-                }
+                if (treeNode.NodePayload == payload) { return treeNode; }
+                TreeNodeViewModel node = GetTreeNodeByPayload(treeNode.TreeNodes, payload);
+                if (node != null) { return node; }
             }
-            return false;
+            return null;
         }
     }
 }
