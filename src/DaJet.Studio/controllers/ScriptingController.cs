@@ -24,6 +24,7 @@ namespace DaJet.Studio
         #region "Icons and constants"
 
         private const string ROOT_NODE_NAME = "Scripts";
+        private const string SCRIPTS_NODE_NAME = "Scripts";
         private const string ROOT_CATALOG_NAME = "scripts";
         private const string SCRIPT_FILE_EXTENSION = ".qry";
         private const string SCRIPT_DEFAULT_NAME = "new_script";
@@ -95,6 +96,12 @@ namespace DaJet.Studio
 
             return catalogName;
         }
+        public string GetScriptsCatalog(DatabaseServer server, DatabaseInfo database)
+        {
+            string catalogName = GetDatabaseCatalog(server, database) + "/scripts";
+            CreateCatalogIfNotExists(catalogName);
+            return catalogName;
+        }
         public string GetTableFunctionsCatalog(DatabaseServer server, DatabaseInfo database)
         {
             string catalogName = GetDatabaseCatalog(server, database) + "/table-functions";
@@ -118,7 +125,7 @@ namespace DaJet.Studio
             string catalogName;
             if (scriptType == MetaScriptType.Script)
             {
-                catalogName = GetDatabaseCatalog(server, database);
+                catalogName = GetScriptsCatalog(server, database);
             }
             else if (scriptType == MetaScriptType.TableFunction)
             {
@@ -177,7 +184,7 @@ namespace DaJet.Studio
             string catalogName;
             if (scriptType == MetaScriptType.Script)
             {
-                catalogName = GetDatabaseCatalog(server, database);
+                catalogName = GetScriptsCatalog(server, database);
             }
             else if (scriptType == MetaScriptType.TableFunction)
             {
@@ -244,6 +251,23 @@ namespace DaJet.Studio
                 IsExpanded = false,
                 NodeIcon = SCRIPT_ICON,
                 NodeText = ROOT_NODE_NAME,
+                NodeToolTip = "SQL scripts, functions and procedures",
+                NodePayload = null
+            };
+            
+            CreateScriptsNode(node);
+            CreateFunctionsNode(node);
+            CreateStoredProceduresNode(node);
+
+            return node;
+        }
+        private void CreateScriptsNode(TreeNodeViewModel parentNode)
+        {
+            TreeNodeViewModel node = new TreeNodeViewModel()
+            {
+                Parent = parentNode,
+                NodeIcon = SCRIPT_ICON,
+                NodeText = SCRIPTS_NODE_NAME,
                 NodeToolTip = "SQL scripts",
                 NodePayload = null
             };
@@ -254,13 +278,8 @@ namespace DaJet.Studio
                 MenuItemCommand = new RelayCommand(AddScriptCommand),
                 MenuItemPayload = node
             });
-
+            parentNode.TreeNodes.Add(node);
             CreateScriptNodesFromSettings(node, MetaScriptType.Script);
-            
-            CreateFunctionsNode(node);
-            CreateStoredProceduresNode(node);
-
-            return node;
         }
         private void CreateFunctionsNode(TreeNodeViewModel parentNode)
         {
@@ -487,7 +506,7 @@ namespace DaJet.Studio
 
             if (scriptType == MetaScriptType.Script)
             {
-                return parentNode;
+                return parentNode.TreeNodes.Where(n => n.NodeText == SCRIPTS_NODE_NAME).FirstOrDefault();
             }
             else if (scriptType == MetaScriptType.TableFunction)
             {

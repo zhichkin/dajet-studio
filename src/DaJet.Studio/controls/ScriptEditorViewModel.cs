@@ -214,7 +214,7 @@ namespace DaJet.Studio
                 }
                 else
                 {
-                    controller.RenameScriptFile(catalogName, oldName, newName, ScriptCode);
+                    controller.RenameScriptFile(catalogName, oldName, newName);
                 }
             }
             else
