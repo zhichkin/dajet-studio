@@ -10,5 +10,10 @@ namespace DaJet.Scripting
             ProcedureName = node.ProcedureReference.Name.BaseIdentifier.Value;
             base.ExplicitVisit(node);
         }
+        public override void ExplicitVisit(CreateOrAlterProcedureStatement node)
+        {
+            ProcedureName = node.ProcedureReference.Name.BaseIdentifier.Value;
+            base.ExplicitVisit(node);
+        }
     }
 }

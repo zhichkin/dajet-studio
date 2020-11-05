@@ -56,13 +56,3 @@ namespace DaJet.Scripting
         }
     }
 }
-
-//StatementList statements = Parser.ParseStatementList(new StringReader(query), out errors);
-//if (errors.Count > 0)
-//{
-//    return query;
-//}
-//foreach (var statement in statements.Statements)
-//{
-//    // TODO
-//}

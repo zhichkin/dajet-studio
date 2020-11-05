@@ -152,7 +152,7 @@ namespace DaJet.Studio
                 writer.Write(sourceCode);
             }
         }
-        public void RenameScriptFile(string catalogName, string oldName, string newName, string sourceCode)
+        public void RenameScriptFile(string catalogName, string oldName, string newName)
         {
             IFileInfo oldFile = FileProvider.GetFileInfo($"{catalogName}/{oldName}{SCRIPT_FILE_EXTENSION}");
             IFileInfo newFile = FileProvider.GetFileInfo($"{catalogName}/{newName}{SCRIPT_FILE_EXTENSION}");
@@ -254,10 +254,11 @@ namespace DaJet.Studio
                 MenuItemCommand = new RelayCommand(AddScriptCommand),
                 MenuItemPayload = node
             });
+
+            CreateScriptNodesFromSettings(node, MetaScriptType.Script);
             
             CreateFunctionsNode(node);
             CreateStoredProceduresNode(node);
-            CreateScriptNodesFromSettings(node, MetaScriptType.Script);
 
             return node;
         }
@@ -395,6 +396,27 @@ namespace DaJet.Studio
                 MenuItemCommand = new RelayCommand(DeleteScriptCommand),
                 MenuItemPayload = node
             });
+
+            if (scriptEditor.ScriptType == MetaScriptType.TableFunction
+                || scriptEditor.ScriptType == MetaScriptType.ScalarFunction
+                || scriptEditor.ScriptType == MetaScriptType.StoredProcedure)
+            {
+                node.ContextMenuItems.Add(new MenuItemViewModel() { IsSeparator = true });
+                node.ContextMenuItems.Add(new MenuItemViewModel()
+                {
+                    MenuItemHeader = "Create script in database",
+                    MenuItemIcon = UPLOAD_SCRIPT_ICON,
+                    MenuItemCommand = new RelayCommand(DeployScriptToDatabaseCommand),
+                    MenuItemPayload = node
+                });
+                node.ContextMenuItems.Add(new MenuItemViewModel()
+                {
+                    MenuItemHeader = "Delete script in database",
+                    MenuItemIcon = DELETE_SCRIPT_ICON,
+                    MenuItemCommand = new RelayCommand(DeleteScriptInDatabaseCommand),
+                    MenuItemPayload = node
+                });
+            }
 
             // TODO: отложено до реализации основного функционала
             //node.ContextMenuItems.Add(new MenuItemViewModel()
@@ -664,11 +686,11 @@ namespace DaJet.Studio
             DatabaseInfo database = node.GetAncestorPayload<DatabaseInfo>();
             DatabaseServer server = node.GetAncestorPayload<DatabaseServer>();
 
-            string catalogName = GetDatabaseCatalog(server, database);
+            string catalogName = GetScriptsCatalogName(server, database, scriptEditor.ScriptType);
 
-            IFileInfo currentFile = FileProvider.GetFileInfo($"{catalogName}/{args.OldValue}{SCRIPT_FILE_EXTENSION}");
+            IFileInfo oldFile = FileProvider.GetFileInfo($"{catalogName}/{args.OldValue}{SCRIPT_FILE_EXTENSION}");
             IFileInfo newFile = FileProvider.GetFileInfo($"{catalogName}/{args.NewValue}{SCRIPT_FILE_EXTENSION}");
-            if (!currentFile.Exists)
+            if (!oldFile.Exists)
             {
                 if (args.OldValue == SCRIPT_DEFAULT_NAME)
                 {
@@ -693,7 +715,7 @@ namespace DaJet.Studio
 
             try
             {
-                File.Move(currentFile.PhysicalPath, newFile.PhysicalPath);
+                File.Move(oldFile.PhysicalPath, newFile.PhysicalPath);
 
                 scriptEditor.Name = args.NewValue;
 
@@ -781,7 +803,7 @@ namespace DaJet.Studio
             scriptEditor.MyServer = server;
             scriptEditor.MyDatabase = database;
             scriptEditor.ScriptType = MetaScriptType.TableFunction;
-            scriptEditor.ScriptCode = "CREATE FUNCTION [fn_NewFunction]\n(\n\t@param nvarchar(36)\n)\nRETURNS TABLE\nAS\nRETURN\n\tSELECT * FROM [table];";
+            scriptEditor.ScriptCode = "CREATE OR ALTER FUNCTION [fn_NewFunction]\n(\n\t@param nvarchar(36)\n)\nRETURNS TABLE\nAS\nRETURN\n\tSELECT * FROM [table];";
             scriptEditor.IsScriptChanged = true;
 
             MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
@@ -801,7 +823,7 @@ namespace DaJet.Studio
             scriptEditor.MyServer = server;
             scriptEditor.MyDatabase = database;
             scriptEditor.ScriptType = MetaScriptType.ScalarFunction;
-            scriptEditor.ScriptCode = "CREATE FUNCTION [fn_NewFunction]\n(\n\t@param nvarchar(36)\n)\nRETURNS int\nAS\nBEGIN\n\n\tRETURN 1;\n\nEND;";
+            scriptEditor.ScriptCode = "CREATE OR ALTER FUNCTION [fn_NewFunction]\n(\n\t@param nvarchar(36)\n)\nRETURNS int\nAS\nBEGIN\n\n\tRETURN 1;\n\nEND;";
             scriptEditor.IsScriptChanged = true;
 
             MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
@@ -821,7 +843,7 @@ namespace DaJet.Studio
             scriptEditor.MyServer = server;
             scriptEditor.MyDatabase = database;
             scriptEditor.ScriptType = MetaScriptType.StoredProcedure;
-            scriptEditor.ScriptCode = "CREATE PROCEDURE [sp_NewProcedure]\n\t@param nvarchar(36)\nAS\nBEGIN\n\nEND;";
+            scriptEditor.ScriptCode = "CREATE OR ALTER PROCEDURE [sp_NewProcedure]\n\t@param nvarchar(36)\nAS\nBEGIN\n\nEND;";
             scriptEditor.IsScriptChanged = true;
 
             MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
@@ -831,6 +853,115 @@ namespace DaJet.Studio
 
 
 
+        private void DeployScriptToDatabaseCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is ScriptEditorViewModel scriptEditor)) return;
+
+            DatabaseInfo database = treeNode.GetAncestorPayload<DatabaseInfo>();
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+
+            MessageBoxResult result = MessageBox.Show("Deploy script \"" + scriptEditor.Name + "\" ?"
+                + Environment.NewLine + "Server: " + server.Name + "."
+                + Environment.NewLine + "Database: " + database.Name + ".",
+                "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (result != MessageBoxResult.OK) return;
+
+            if (scriptEditor.IsScriptChanged)
+            {
+                MessageBox.Show("The script has unsaved changes. Save them first.",
+                    "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Information);
+                return;
+            }
+
+            IMetadataService metadata = Services.GetService<IMetadataService>();
+            metadata.AttachDatabase(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address, database);
+
+            string sourceCode = ReadScriptSourceCode(server, database, scriptEditor.ScriptType, scriptEditor.Name);
+            
+            IScriptingService scripting = Services.GetService<IScriptingService>();
+            string sql = scripting.PrepareScript(sourceCode, out IList<ParseError> errors);
+            if (errors.Count > 0) { ShowParseErrors(errors); return; }
+
+            string json = "[]";
+            try
+            {
+                json = scripting.ExecuteScript(sql, out IList<ParseError> executeErrors);
+                if (executeErrors.Count > 0) { ShowParseErrors(executeErrors); return; }
+            }
+            catch (Exception ex) { ShowException(ex); return; }
+
+            MessageBox.Show($"Script \"{scriptEditor.Name}\" has been created successfully.",
+                "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Information);
+        }
+        private void DeleteScriptInDatabaseCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is ScriptEditorViewModel scriptEditor)) return;
+
+            DatabaseInfo database = treeNode.GetAncestorPayload<DatabaseInfo>();
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+
+            MessageBoxResult result = MessageBox.Show("Delete script \"" + scriptEditor.Name + "\" ?"
+                + Environment.NewLine + "Server: " + server.Name + "."
+                + Environment.NewLine + "Database: " + database.Name + ".",
+                "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (result != MessageBoxResult.OK) return;
+
+            if (scriptEditor.IsScriptChanged)
+            {
+                MessageBox.Show("The script has unsaved changes. Save them first.",
+                    "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Information);
+                return;
+            }
+
+            IMetadataService metadata = Services.GetService<IMetadataService>();
+            metadata.AttachDatabase(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address, database);
+
+            string sourceCode = ReadScriptSourceCode(server, database, scriptEditor.ScriptType, scriptEditor.Name);
+
+            IScriptingService scripting = Services.GetService<IScriptingService>();
+            TSqlFragment syntaxTree = scripting.ParseScript(sourceCode, out IList<ParseError> errors);
+            if (errors.Count > 0) { ShowParseErrors(errors); return; }
+
+            //IF OBJECT_ID('dbo.fn_is_name_valid', 'FN') IS NOT NULL
+            //BEGIN
+            //    DROP FUNCTION [dbo].[fn_is_name_valid];
+            //END;
+
+            //IF OBJECT_ID('dbo.sp_create_queue', 'P') IS NOT NULL
+            //BEGIN
+            //    DROP PROCEDURE[dbo].[sp_create_queue];
+            //END;
+
+            string sql = string.Empty;
+            string scriptName = scriptEditor.Name;
+            if (scriptEditor.ScriptType == MetaScriptType.TableFunction || scriptEditor.ScriptType == MetaScriptType.ScalarFunction)
+            {
+                CreateFunctionStatementVisitor visitor = new CreateFunctionStatementVisitor();
+                syntaxTree.Accept(visitor);
+                scriptName = visitor.FunctionName;
+                sql = $"DROP FUNCTION [{scriptName}];";
+            }
+            else if (scriptEditor.ScriptType == MetaScriptType.StoredProcedure)
+            {
+                CreateProcedureStatementVisitor visitor = new CreateProcedureStatementVisitor();
+                syntaxTree.Accept(visitor);
+                scriptName = visitor.ProcedureName;
+                sql = $"DROP PROCEDURE [{scriptName}];";
+            }
+
+            string json = "[]";
+            try
+            {
+                json = scripting.ExecuteScript(sql, out IList<ParseError> executeErrors);
+                if (executeErrors.Count > 0) { ShowParseErrors(executeErrors); return; }
+            }
+            catch (Exception ex) { ShowException(ex); return; }
+
+            MessageBox.Show($"Script \"{scriptEditor.Name}\" has been deleted successfully.",
+                "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Information);
+        }
         private void DeployScriptToWebServerCommand(object node)
         {
             if (!(node is TreeNodeViewModel treeNode)) return;

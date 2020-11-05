@@ -10,5 +10,10 @@ namespace DaJet.Scripting
             FunctionName = node.Name.BaseIdentifier.Value;
             base.ExplicitVisit(node);
         }
+        public override void ExplicitVisit(CreateOrAlterFunctionStatement node)
+        {
+            FunctionName = node.Name.BaseIdentifier.Value;
+            base.ExplicitVisit(node);
+        }
     }
 }

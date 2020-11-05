@@ -132,24 +132,23 @@ namespace DaJet.Metadata
         }
         public void UseDatabase(string databaseName)
         {
-            if (string.IsNullOrWhiteSpace(databaseName)) throw new ArgumentNullException(nameof(databaseName));
-            //if (Settings == null) throw new InvalidOperationException(ERROR_SERVICE_IS_NOT_CONFIGURED);
             if (CurrentServer == null) throw new InvalidOperationException(ERROR_SERVER_IS_NOT_DEFINED);
 
-            //string metadataFilePath = MetadataFilePath(CurrentServer.Name, databaseName);
-            //if (!File.Exists(metadataFilePath)) throw new DirectoryNotFoundException(metadataFilePath);
+            DatabaseInfo database = null;
 
-            DatabaseInfo database = CurrentServer.Databases.Where(db => db.Name == databaseName).FirstOrDefault();
-            if (database == null)
+            if (!string.IsNullOrWhiteSpace(databaseName))
             {
-                database = new DatabaseInfo() { Name = databaseName };
-                //InitializeMetadata(database, metadataFilePath);
-                CurrentServer.Databases.Add(database);
+                database = CurrentServer.Databases.Where(db => db.Name == databaseName).FirstOrDefault();
+                if (database == null)
+                {
+                    database = new DatabaseInfo() { Name = databaseName };
+                    CurrentServer.Databases.Add(database);
+                }
+
             }
-            
             SqlConnectionStringBuilder csb = new SqlConnectionStringBuilder(ConnectionString)
             {
-                InitialCatalog = database.Name
+                InitialCatalog = database?.Name
             };
             ConnectionString = csb.ToString();
 
@@ -287,14 +286,7 @@ namespace DaJet.Metadata
             string tableName = tableIdentifier.TrimStart('[').TrimEnd(']');
             string[] identifiers = tableName.Split('+');
 
-            // TODO: сделать нормальный поиск базового объекта
-            string baseObjectName = identifiers[0];
-            if (baseObjectName == "Справочник") baseObjectName = "Reference";
-            else if (baseObjectName == "Документ") baseObjectName = "Document";
-            else if (baseObjectName == "РегистрСведений") baseObjectName = "InfoRg";
-            else if (baseObjectName == "РегистрНакопления") baseObjectName = "AccumRg";
-
-            BaseObject bo = database.BaseObjects.Where(bo => bo.Name == baseObjectName).FirstOrDefault();
+            BaseObject bo = database.BaseObjects.Where(bo => bo.Name == identifiers[0]).FirstOrDefault();
             if (bo == null) return null;
 
             MetaObject @object = bo.MetaObjects.Where(mo => mo.Name == identifiers[1]).FirstOrDefault();

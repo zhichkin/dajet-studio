@@ -275,6 +275,7 @@ namespace DaJet.Metadata
         private bool IsMainTable(string token)
         {
             return token == DBToken.Enum
+                || token == DBToken.Node
                 || token == DBToken.Chrc
                 || token == DBToken.Const
                 || token == DBToken.InfoRg
@@ -340,7 +341,8 @@ namespace DaJet.Metadata
         private void ParseMetadataObject(Stream stream, string fileName, MetaObject metaObject, DatabaseInfo database)
         {
             if (metaObject.Token == null) return;
-            if (metaObject.Token == DBToken.Const) return;
+            if (metaObject.Token == DBToken.Const
+                || metaObject.Token == DBToken.Node) return;
 
             using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
             {
@@ -432,11 +434,28 @@ namespace DaJet.Metadata
                 return $"_{dbname.Token}{dbname.TypeCode}";
             }
         }
+        private string GetBaseObjectName(string token)
+        {
+            if (token == DBToken.Enum) return "Перечисление";
+            else if (token == DBToken.Reference) return "Справочник";
+            else if (token == DBToken.Document) return "Документ";
+            else if (token == DBToken.Chrc) return "ПланВидовХарактеристик";
+            else if (token == DBToken.Const) return "Константа";
+            else if (token == DBToken.InfoRg) return "РегистрСведений";
+            else if (token == DBToken.AccumRg) return "РегистрНакопления";
+            else if (token == DBToken.Node) return "ПланОбмена";
+            //else if (token == DBToken.Acc) return "РегистрБухгалтерии";
+            //else if (token == DBToken.AccumRg) return "ПланСчетов";
+            //else if (token == DBToken.Exchange) return "ПланОбмена";
+            else return "Unknown";
+        }
         private void SetMetaObjecNamespace(MetaObject dbo, DatabaseInfo database)
         {
             if (dbo.Parent != null) return;
 
-            BaseObject ns = database.BaseObjects.Where(n => n.Name == dbo.Token).FirstOrDefault();
+            string baseObjectName = GetBaseObjectName(dbo.Token);
+
+            BaseObject ns = database.BaseObjects.Where(n => n.Name == baseObjectName).FirstOrDefault();
             if (ns == null)
             {
                 if (string.IsNullOrEmpty(dbo.Token))
@@ -452,7 +471,7 @@ namespace DaJet.Metadata
                 else
                 {
                     ns = new BaseObject(); // { InfoBase = database };
-                    ns.Name = dbo.Token;
+                    ns.Name = baseObjectName;
                     database.BaseObjects.Add(ns);
                 }
             }

@@ -189,12 +189,12 @@ namespace DaJet.Studio
         private BitmapImage GetMetaObjectIcon(BaseObject baseObject)
         {
             if (baseObject == null) { return null; }
-            else if (baseObject.Name == "Reference") { return CATALOG_ICON; }
-            else if (baseObject.Name == "Document") { return DOCUMENT_ICON; }
-            else if (baseObject.Name == "InfoRg") { return INFO_REGISTER_ICON; }
-            else if (baseObject.Name == "AccumRg") { return ACCUM_REGISTER_ICON; }
-            else if (baseObject.Name == "Chrc") { return CHARACTERISTICS_REGISTER_ICON; }
-            else if (baseObject.Name == "Enum") { return ENUM_ICON; }
+            else if (baseObject.Name == "Справочник") { return CATALOG_ICON; }
+            else if (baseObject.Name == "Документ") { return DOCUMENT_ICON; }
+            else if (baseObject.Name == "РегистрСведений") { return INFO_REGISTER_ICON; }
+            else if (baseObject.Name == "РегистрНакопления") { return ACCUM_REGISTER_ICON; }
+            else if (baseObject.Name == "ПланВидовХарактеристик") { return CHARACTERISTICS_REGISTER_ICON; }
+            else if (baseObject.Name == "Перечисление") { return ENUM_ICON; }
             else { return null; }
         }
         private BitmapImage GetMetaPropertyIcon(MetaProperty property)
