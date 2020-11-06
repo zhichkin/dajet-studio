@@ -190,52 +190,24 @@ namespace DaJet.Studio
                 throw new InvalidOperationException("Saving script failed: incorrect syntax.");
             }
 
-            string oldName = Name;
-            string newName = Name;
-            if (ScriptType == MetaScriptType.TableFunction || ScriptType == MetaScriptType.ScalarFunction)
-            {
-                CreateFunctionStatementVisitor visitor = new CreateFunctionStatementVisitor();
-                syntaxTree.Accept(visitor);
-                newName = visitor.FunctionName;
-            }
-            else if (ScriptType == MetaScriptType.StoredProcedure)
-            {
-                CreateProcedureStatementVisitor visitor = new CreateProcedureStatementVisitor();
-                syntaxTree.Accept(visitor);
-                newName = visitor.ProcedureName;
-            }
             ScriptingController controller = Services.GetService<ScriptingController>();
             string catalogName = controller.GetScriptsCatalogName(MyServer, MyDatabase, ScriptType);
-            if (controller.ScriptFileExists(catalogName, oldName))
+            if (controller.ScriptFileExists(catalogName, Name))
             {
-                if (oldName == newName)
-                {
-                    controller.SaveScriptFile(catalogName, oldName, ScriptCode);
-                }
-                else
-                {
-                    controller.RenameScriptFile(catalogName, oldName, newName);
-                }
+                controller.SaveScriptFile(catalogName, Name, ScriptCode);
             }
             else
             {
-                if (controller.GetScriptTreeNodeByName(MyServer, MyDatabase, ScriptType, newName) != null)
+                if (controller.GetScriptTreeNodeByName(MyServer, MyDatabase, ScriptType, Name) != null)
                 {
-                    throw new InvalidOperationException($"Script node \"{newName}\" already exists!");
+                    throw new InvalidOperationException($"Script node \"{Name}\" already exists!");
                 }
-                controller.SaveScriptFile(catalogName, newName, ScriptCode);
+                controller.SaveScriptFile(catalogName, Name, ScriptCode);
             }
-            if (oldName != newName) { Name = newName; }
             
             MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
-            mainWindow.RefreshTabHeader(this, Name);
-
             TreeNodeViewModel treeNode = mainWindow.GetTreeNodeByPayload(mainWindow.MainTreeRegion.TreeNodes, this);
-            if (treeNode != null)
-            {
-                treeNode.UpdateNodeText(Name);
-            }
-            else
+            if (treeNode == null)
             {
                 controller.CreateScriptTreeNode(this);
             }

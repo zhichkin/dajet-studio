@@ -28,6 +28,9 @@ namespace DaJet.Studio
         private const string ROOT_CATALOG_NAME = "scripts";
         private const string SCRIPT_FILE_EXTENSION = ".qry";
         private const string SCRIPT_DEFAULT_NAME = "new_script";
+        private const string TABLE_FUNCTION_DEFAULT_NAME = "new_table_function";
+        private const string SCALAR_FUNCTION_DEFAULT_NAME = "new_scalar_function";
+        private const string STORED_PROCEDURE_DEFAULT_NAME = "new_stored_procedure";
         private const string FUNCTIONS_NODE_NAME = "Functions";
         private const string TABLE_FUNCTION_NODE_NAME = "Table functions";
         private const string SCALAR_FUNCTION_NODE_NAME = "Scalar functions";
@@ -548,6 +551,12 @@ namespace DaJet.Studio
                 scriptEditor.ScriptCode = ReadScriptSourceCode(server, database, scriptEditor.ScriptType, scriptEditor.Name);
             }
 
+            if (scriptEditor.ScriptType == MetaScriptType.StoredProcedure)
+            {
+                ExecuteStoredProcedure(server, database, scriptEditor.ScriptCode);
+                return;
+            }
+
             MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
 
             IMetadataService metadata = Services.GetService<IMetadataService>();
@@ -598,6 +607,43 @@ namespace DaJet.Studio
             {
                 ShowException(ex);
             }
+        }
+        private void ExecuteStoredProcedure(DatabaseServer server, DatabaseInfo database, string sourceCode)
+        {
+            IMetadataService metadata = Services.GetService<IMetadataService>();
+            metadata.AttachDatabase(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address, database);
+
+            IScriptingService scripting = Services.GetService<IScriptingService>();
+            TSqlFragment syntaxTree = scripting.ParseScript(sourceCode, out IList<ParseError> errors);
+            if (errors.Count > 0) { ShowParseErrors(errors); return; }
+
+            CreateProcedureStatementVisitor visitor = new CreateProcedureStatementVisitor();
+            syntaxTree.Accept(visitor);
+
+            // Generate SQL script to execute stored procedure
+            string scriptCode = string.Empty;
+            foreach (string declaration in visitor.Declarations)
+            {
+                scriptCode += declaration + Environment.NewLine;
+            }
+            scriptCode += $"EXEC [dbo].[{visitor.ProcedureName}]";
+            foreach (string parameter in visitor.Parameters)
+            {
+                scriptCode += Environment.NewLine + "\t" + parameter + ",";
+            }
+            scriptCode = scriptCode.TrimEnd(',') + ";";
+
+            // Show script code
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            ScriptEditorViewModel viewModel = Services.GetService<ScriptEditorViewModel>();
+            viewModel.Name = visitor.ProcedureName;
+            viewModel.MyServer = server;
+            viewModel.MyDatabase = database;
+            viewModel.ScriptType = MetaScriptType.Script;
+            viewModel.ScriptCode = scriptCode;
+            viewModel.IsScriptChanged = true;
+            ScriptEditorView view = new ScriptEditorView() { DataContext = viewModel };
+            mainWindow.AddNewTab(viewModel.Name, view);
         }
         private void ShowSqlCodeCommand(object node)
         {
@@ -818,7 +864,7 @@ namespace DaJet.Studio
             DatabaseServer server = parentNode.GetAncestorPayload<DatabaseServer>();
 
             ScriptEditorViewModel scriptEditor = Services.GetService<ScriptEditorViewModel>();
-            scriptEditor.Name = "new func";
+            scriptEditor.Name = TABLE_FUNCTION_DEFAULT_NAME;
             scriptEditor.MyServer = server;
             scriptEditor.MyDatabase = database;
             scriptEditor.ScriptType = MetaScriptType.TableFunction;
@@ -838,7 +884,7 @@ namespace DaJet.Studio
             DatabaseServer server = parentNode.GetAncestorPayload<DatabaseServer>();
 
             ScriptEditorViewModel scriptEditor = Services.GetService<ScriptEditorViewModel>();
-            scriptEditor.Name = "new func";
+            scriptEditor.Name = SCALAR_FUNCTION_DEFAULT_NAME;
             scriptEditor.MyServer = server;
             scriptEditor.MyDatabase = database;
             scriptEditor.ScriptType = MetaScriptType.ScalarFunction;
@@ -858,7 +904,7 @@ namespace DaJet.Studio
             DatabaseServer server = parentNode.GetAncestorPayload<DatabaseServer>();
 
             ScriptEditorViewModel scriptEditor = Services.GetService<ScriptEditorViewModel>();
-            scriptEditor.Name = "new proc";
+            scriptEditor.Name = STORED_PROCEDURE_DEFAULT_NAME;
             scriptEditor.MyServer = server;
             scriptEditor.MyDatabase = database;
             scriptEditor.ScriptType = MetaScriptType.StoredProcedure;
