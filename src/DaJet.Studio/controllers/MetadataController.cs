@@ -9,6 +9,7 @@ using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
@@ -179,10 +180,17 @@ namespace DaJet.Studio
         private async void InitializeMetadata(DatabaseServer server, DatabaseInfo database)
         {
             IMetadataService metadata = Services.GetService<IMetadataService>();
+
             IMetadataProvider provider = metadata.GetMetadataProvider(database);
             provider.UseServer(server);
             provider.UseDatabase(database);
             provider.InitializeMetadata(database);
+
+            if (!metadata.Settings.Servers.Contains(server))
+            {
+                metadata.Settings.Servers.Add(server);
+            }
+
             //await Task.Run(() => provider.InitializeMetadata(database));
         }
 

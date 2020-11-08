@@ -33,7 +33,7 @@ namespace DaJet.Metadata
         private const string ERROR_SERVER_IS_NOT_DEFINED = "Current database server is not defined!";
         private XMLMetadataLoader XMLLoader { get; } = new XMLMetadataLoader();
         private SQLMetadataLoader SQLLoader { get; } = new SQLMetadataLoader();
-        public MetadataSettings Settings { get; private set; }
+        public MetadataSettings Settings { get; private set; } = new MetadataSettings();
         public DatabaseServer CurrentServer { get; private set; }
         public DatabaseInfo CurrentDatabase { get; private set; }
         public string ConnectionString { get; private set; }
@@ -161,7 +161,7 @@ namespace DaJet.Metadata
 
             if (Settings == null) Settings = new MetadataSettings();
 
-            DatabaseServer server = Settings.Servers.Where(s => s.Name == serverAddress).FirstOrDefault();
+            DatabaseServer server = Settings.Servers.Where(s => s.Address == serverAddress || s.Name == serverAddress).FirstOrDefault();
             if (server == null)
             {
                 server = new DatabaseServer() { Name = serverAddress, Address = serverAddress };
