@@ -9,7 +9,8 @@
 
     <TreeView x:Name="CONTROL_ROOT" ItemsSource="{Binding TreeNodes}"
               HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-              BorderThickness="0" BorderBrush="Transparent">
+              BorderThickness="0" BorderBrush="Transparent"
+              MouseMove="TreeView_MouseMove">
 
         <TreeView.Resources>
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>

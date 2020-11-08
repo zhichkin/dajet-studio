@@ -1,5 +1,6 @@
 ﻿using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace DaJet.Metadata
@@ -136,6 +137,8 @@ namespace DaJet.Metadata
                 {
                     if (string.IsNullOrEmpty(p.DbName)) { continue; }
 
+                    if (info.COLUMN_NAME.TrimStart('_') == DBToken.Periodicity) { continue; }
+
                     if (info.COLUMN_NAME.TrimStart('_').StartsWith(p.DbName))
                     {
                         field = new MetaField()
@@ -150,13 +153,44 @@ namespace DaJet.Metadata
                 }
                 if (!found)
                 {
-                    MetaProperty property = new MetaProperty()
+                    string propertyName = string.Empty;
+                    List<int> propertyTypes = null;
+
+                    if (@object.Token == DBToken.AccumRgT && @object.Owner != null && @object.Owner.Token == DBToken.AccumRg)
                     {
-                        Parent = @object,
-                        Name = info.COLUMN_NAME,
-                        Purpose = MetaPropertyPurpose.System
-                    };
-                    MatchFieldToProperty(info, property);
+                        // find property name in main table object by field name
+                        foreach (MetaProperty ownerProperty in @object.Owner.Properties)
+                        {
+                            if (ownerProperty.Fields.Where(f => f.Name == info.COLUMN_NAME).FirstOrDefault() != null)
+                            {
+                                propertyName = ownerProperty.Name;
+                                if (ownerProperty.PropertyTypes.Count > 0)
+                                {
+                                    propertyTypes = ownerProperty.PropertyTypes.ToList();
+                                }
+                                break;
+                            }
+                        }
+                    }
+
+                    MetaProperty property = @object.Properties.Where(p => p.Name == propertyName).FirstOrDefault();
+                    if (property == null)
+                    {
+                        property = new MetaProperty()
+                        {
+                            Parent = @object,
+                            Name = string.IsNullOrEmpty(propertyName) ? info.COLUMN_NAME : propertyName,
+                            Purpose = MetaPropertyPurpose.System
+                        };
+                        @object.Properties.Add(property);
+                        
+                        MatchFieldToProperty(info, property);
+
+                        if (property.PropertyTypes.Count == 0 && propertyTypes != null)
+                        {
+                            property.PropertyTypes = propertyTypes;
+                        }
+                    }
 
                     field = new MetaField()
                     {
@@ -164,7 +198,6 @@ namespace DaJet.Metadata
                         Purpose = SqlUtility.ParseFieldPurpose(info.COLUMN_NAME)
                     };
                     property.Fields.Add(field);
-                    @object.Properties.Add(property);
                 }
                 field.TypeName = info.DATA_TYPE;
                 field.Length = info.CHARACTER_MAXIMUM_LENGTH;
@@ -249,81 +282,105 @@ namespace DaJet.Metadata
             {
                 property.Name = "Ссылка";
                 property.DbName = DBToken.IDRRef;
+                property.PropertyTypes.Add(int.MaxValue);
             }
             else if (columnName.StartsWith(DBToken.Version))
             {
                 property.Name = "ВерсияДанных";
                 property.DbName = DBToken.Version;
+                property.PropertyTypes.Add((int)TypeCodes.Binary);
             }
             else if (columnName.StartsWith(DBToken.Marked))
             {
                 property.Name = "ПометкаУдаления";
                 property.DbName = DBToken.Marked;
+                property.PropertyTypes.Add((int)TypeCodes.Boolean);
             }
             else if (columnName.StartsWith(DBToken.PredefinedID))
             {
                 property.Name = "ИмяПредопределённыхДанных";
                 property.DbName = DBToken.PredefinedID;
+                property.PropertyTypes.Add((int)TypeCodes.Guid);
             }
             else if (columnName.StartsWith(DBToken.Code))
             {
                 property.Name = "Код";
                 property.DbName = DBToken.Code;
+                //property.PropertyTypes.Add((int)TypeCodes.String);
             }
             else if (columnName.StartsWith(DBToken.Description))
             {
                 property.Name = "Наименование";
                 property.DbName = DBToken.Description;
+                property.PropertyTypes.Add((int)TypeCodes.String);
             }
             else if (columnName.StartsWith(DBToken.Folder))
             {
                 property.Name = "ЭтоГруппа";
                 property.DbName = DBToken.Folder;
+                property.PropertyTypes.Add((int)TypeCodes.Boolean);
             }
             else if (columnName.StartsWith(DBToken.ParentIDRRef))
             {
                 property.Name = "Родитель";
                 property.DbName = DBToken.ParentIDRRef;
+                property.PropertyTypes.Add(int.MaxValue);
             }
             else if (columnName.StartsWith(DBToken.OwnerID))
             {
                 property.Name = "Владелец";
                 property.DbName = DBToken.OwnerID;
+                property.PropertyTypes.Add(int.MaxValue);
             }
             else if (columnName.StartsWith(DBToken.DateTime))
             {
                 property.Name = "Дата";
                 property.DbName = DBToken.DateTime;
+                property.PropertyTypes.Add((int)TypeCodes.DateTime);
             }
             else if (columnName == DBToken.Number)
             {
                 property.Name = "Номер";
                 property.DbName = DBToken.Number;
+                //property.PropertyTypes.Add((int)TypeCodes.String);
             }
             else if (columnName.StartsWith(DBToken.Posted))
             {
                 property.Name = "Проведён";
                 property.DbName = DBToken.Posted;
+                property.PropertyTypes.Add((int)TypeCodes.Boolean);
             }
             else if (columnName == DBToken.NumberPrefix)
             {
                 property.Name = "МоментВремени";
                 property.DbName = DBToken.NumberPrefix;
             }
+            else if (columnName.StartsWith(DBToken.Periodicity))
+            {
+                property.Name = "Периодичность";
+                property.DbName = DBToken.Periodicity;
+            }
             else if (columnName.StartsWith(DBToken.Period))
             {
                 property.Name = "Период";
                 property.DbName = DBToken.Period;
             }
+            else if (columnName.StartsWith(DBToken.ActualPeriod))
+            {
+                property.Name = "ПериодАктуальности";
+                property.DbName = DBToken.ActualPeriod;
+            }
             else if (columnName.StartsWith(DBToken.Recorder))
             {
                 property.Name = "Регистратор";
                 property.DbName = DBToken.Recorder;
+                property.PropertyTypes.Add(int.MaxValue);
             }
             else if (columnName.StartsWith(DBToken.Active))
             {
                 property.Name = "Активность";
                 property.DbName = DBToken.Active;
+                property.PropertyTypes.Add((int)TypeCodes.Boolean);
             }
             else if (columnName.StartsWith(DBToken.LineNo))
             {
@@ -344,6 +401,7 @@ namespace DaJet.Metadata
             {
                 property.Name = "Ссылка";
                 property.DbName = DBToken.IDRRef;
+                property.PropertyTypes.Add(int.MaxValue);
             }
             else if (columnName == DBToken.EnumOrder)
             {
@@ -354,6 +412,52 @@ namespace DaJet.Metadata
             {
                 property.Name = "ТипЗначения"; // ОписаниеТипов - TypeConstraint
                 property.DbName = DBToken.Type;
+            }
+            else if (columnName == DBToken.Splitter)
+            {
+                property.Name = "РазделительИтогов";
+                property.DbName = DBToken.Splitter;
+            }
+            else if (columnName == DBToken.NodeTRef)
+            {
+                property.Name = "Узел";
+                property.DbName = DBToken.Node;
+                property.PropertyTypes.Add(int.MaxValue);
+            }
+            else if (columnName == DBToken.NodeRRef)
+            {
+                property.Name = "Узел";
+                property.DbName = DBToken.Node;
+            }
+            else if (columnName == DBToken.MessageNo)
+            {
+                property.Name = "НомерСообщения";
+                property.DbName = DBToken.MessageNo;
+            }
+            else if (columnName == DBToken.RepetitionFactor)
+            {
+                property.Name = "КоэффициентПериодичности";
+                property.DbName = DBToken.RepetitionFactor;
+            }
+            else if (columnName == DBToken.UseTotals)
+            {
+                property.Name = "ИспользоватьИтоги";
+                property.DbName = DBToken.UseTotals;
+            }
+            else if (columnName == DBToken.UseSplitter)
+            {
+                property.Name = "ИспользоватьРазделительИтогов";
+                property.DbName = DBToken.UseSplitter;
+            }
+            else if (columnName == DBToken.MinPeriod)
+            {
+                property.Name = "МинимальныйПериод";
+                property.DbName = DBToken.MinPeriod;
+            }
+            else if (columnName == DBToken.MinCalculatedPeriod)
+            {
+                property.Name = "МинимальныйПериодРассчитанныхИтогов";
+                property.DbName = DBToken.MinCalculatedPeriod;
             }
         }
     }

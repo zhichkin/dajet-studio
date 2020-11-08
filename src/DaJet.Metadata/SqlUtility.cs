@@ -60,7 +60,7 @@ namespace DaJet.Metadata
             string TRef = DBToken.TRef;
             string RRef = DBToken.RRef;
 
-            string postfix = fieldName.Substring(fieldName.Count() - 4);
+            string postfix = fieldName.Count() < 8 ? string.Empty : fieldName.Substring(fieldName.Count() - 4);
 
             if (postfix == TYPE)
             {

@@ -56,6 +56,8 @@ namespace DaJet.Metadata
         internal const string Type = "Type"; // ТипЗначения (ПланВидовХарактеристик)
 
         internal const string Period = "Period";
+        internal const string Periodicity = "Periodicity";
+        internal const string ActualPeriod = "ActualPeriod";
         internal const string Recorder = "Recorder";
         internal const string RecorderRRef = "RecorderRRef";
         internal const string RecorderTRef = "RecorderTRef";
@@ -67,10 +69,25 @@ namespace DaJet.Metadata
         internal const string Chrc = "Chrc";
         internal const string Const = "Const";
         internal const string InfoRg = "InfoRg";
-        internal const string AccumRg = "AccumRg";
+        internal const string AccRg = "AccRg"; // Регистр бухгалтерии
+        internal const string AccRgED = "AccRgED"; // Операции регистра бухгалтерии (журнал проводок)
+        internal const string AccumRg = "AccumRg"; // Регистр накопления
+        internal const string AccumRgT = "AccumRgT"; // Таблица итогов регистра накопления
+        internal const string AccumRgOpt = "AccumRgOpt"; // Таблица настроек регистра накопления
+        internal const string AccumRgChngR = "AccumRgChngR"; // Таблица изменений регистра накопления
         internal const string Document = "Document";
         internal const string Reference = "Reference";
         internal const string Node = "Node";
         internal const string ChngR = "ChngR";
+
+        internal const string Splitter = "Splitter";
+        internal const string NodeTRef = "NodeTRef";
+        internal const string NodeRRef = "NodeRRef";
+        internal const string MessageNo = "MessageNo";
+        internal const string UseTotals = "UseTotals";
+        internal const string UseSplitter = "UseSplitter";
+        internal const string MinPeriod = "MinPeriod";
+        internal const string MinCalculatedPeriod = "MinCalculatedPeriod";
+        internal const string RepetitionFactor = "RepetitionFactor";
     }
 }

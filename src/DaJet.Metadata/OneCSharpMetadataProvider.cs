@@ -341,8 +341,9 @@ namespace DaJet.Metadata
         private void ParseMetadataObject(Stream stream, string fileName, MetaObject metaObject, DatabaseInfo database)
         {
             if (metaObject.Token == null) return;
-            if (metaObject.Token == DBToken.Const
-                || metaObject.Token == DBToken.Node) return;
+            if (metaObject.Token == DBToken.Const || metaObject.Token == DBToken.Node) return;
+
+            if (metaObject.Token == DBToken.AccumRg) { ParseAccumulationRegister(fileName); }
 
             using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
             {
@@ -735,6 +736,35 @@ namespace DaJet.Metadata
                     break;
                 }
             }
+        }
+
+
+
+        private void ParseAccumulationRegister(string fileName)
+        {
+            if (!DBNames.TryGetValue(fileName, out DBNameEntry entry)) return;
+
+            foreach (DBName dbname in entry.DBNames)
+            {
+                string name = GetChildMetaObjectName(dbname.Token);
+                if (string.IsNullOrEmpty(name)) { continue; }
+                entry.MetaObject.MetaObjects.Add(
+                    new MetaObject()
+                    {
+                        Name = name,
+                        Token = dbname.Token,
+                        Owner = entry.MetaObject,
+                        TypeCode = dbname.TypeCode,
+                        TableName = $"_{dbname.Token}{dbname.TypeCode}"
+                    });
+            }
+        }
+        private string GetChildMetaObjectName(string token)
+        {
+            if (token == DBToken.AccumRgT) return "Итоги";
+            else if (token == DBToken.AccumRgOpt) return "Настройки";
+            else if (token == DBToken.AccumRgChngR) return "Изменения";
+            return string.Empty;
         }
 
         #endregion

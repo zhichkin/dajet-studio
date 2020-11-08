@@ -17,6 +17,8 @@ namespace DaJet.Studio
 {
     public partial class App : Application
     {
+        #region Constants
+
         private const string WEB_SETTINGS_FILE_NAME = "web-settings.json";
         private const string WEB_SETTINGS_CATALOG_NAME = "web";
 
@@ -25,6 +27,8 @@ namespace DaJet.Studio
 
         private const string SCRIPTING_SETTINGS_FILE_NAME = "scripting-settings.json";
         private const string SCRIPTING_SETTINGS_CATALOG_NAME = "scripts";
+
+        #endregion
 
         private readonly IHost _host;
         public App()

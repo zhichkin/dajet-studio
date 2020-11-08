@@ -265,14 +265,14 @@ namespace DaJet.Studio
             });
             databaseNode.ContextMenuItems.Add(new MenuItemViewModel()
             {
-                MenuItemHeader = "Save DBNames",
+                MenuItemHeader = "Save DBNames to file...",
                 MenuItemIcon = SAVE_FILE_ICON,
                 MenuItemCommand = new RelayCommand(SaveDBNamesCommand),
                 MenuItemPayload = databaseNode
             });
             databaseNode.ContextMenuItems.Add(new MenuItemViewModel()
             {
-                MenuItemHeader = "Delete database",
+                MenuItemHeader = "Remove database from the list",
                 MenuItemIcon = DELETE_DATABASE_ICON,
                 MenuItemCommand = new RelayCommand(DeleteDatabaseCommand),
                 MenuItemPayload = databaseNode

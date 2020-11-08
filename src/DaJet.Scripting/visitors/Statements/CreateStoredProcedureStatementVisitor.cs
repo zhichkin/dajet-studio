@@ -1,4 +1,5 @@
 ﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
+using System;
 using System.Collections.Generic;
 
 namespace DaJet.Scripting
@@ -6,8 +7,8 @@ namespace DaJet.Scripting
     public sealed class CreateProcedureStatementVisitor : TSqlFragmentVisitor
     {
         public string ProcedureName { get; private set; } = string.Empty;
-        public List<string> Parameters { get; } = new List<string>();
-        public List<string> Declarations { get; } = new List<string>();
+        private List<string> Parameters { get; } = new List<string>();
+        private List<string> Declarations { get; } = new List<string>();
         public override void ExplicitVisit(CreateProcedureStatement node)
         {
             ProcedureName = node.ProcedureReference.Name.BaseIdentifier.Value;
@@ -48,6 +49,21 @@ namespace DaJet.Scripting
                 VariableName = name
             });
             return statement;
+        }
+        public string GenerateExecuteProcedureCode()
+        {
+            string scriptCode = string.Empty;
+            foreach (string declaration in Declarations)
+            {
+                scriptCode += declaration + Environment.NewLine;
+            }
+            scriptCode += $"EXEC [dbo].[{ProcedureName}]";
+            foreach (string parameter in Parameters)
+            {
+                scriptCode += Environment.NewLine + "\t" + parameter + ",";
+            }
+            scriptCode = scriptCode.TrimEnd(',') + ";";
+            return scriptCode;
         }
     }
 }

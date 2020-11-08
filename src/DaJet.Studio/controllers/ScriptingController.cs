@@ -395,7 +395,6 @@ namespace DaJet.Studio
                 MenuItemCommand = new RelayCommand(EditScriptCommand),
                 MenuItemPayload = node
             });
-            node.ContextMenuItems.Add(new MenuItemViewModel() { IsSeparator = true });
             node.ContextMenuItems.Add(new MenuItemViewModel()
             {
                 MenuItemHeader = "Show SQL code",
@@ -413,17 +412,15 @@ namespace DaJet.Studio
             node.ContextMenuItems.Add(new MenuItemViewModel() { IsSeparator = true });
             node.ContextMenuItems.Add(new MenuItemViewModel()
             {
-                MenuItemHeader = "Delete script",
+                MenuItemHeader = "Delete script from file system",
                 MenuItemIcon = DELETE_SCRIPT_ICON,
                 MenuItemCommand = new RelayCommand(DeleteScriptCommand),
                 MenuItemPayload = node
             });
-
             if (scriptEditor.ScriptType == MetaScriptType.TableFunction
                 || scriptEditor.ScriptType == MetaScriptType.ScalarFunction
                 || scriptEditor.ScriptType == MetaScriptType.StoredProcedure)
             {
-                node.ContextMenuItems.Add(new MenuItemViewModel() { IsSeparator = true });
                 node.ContextMenuItems.Add(new MenuItemViewModel()
                 {
                     MenuItemHeader = "Create script in database",
@@ -551,12 +548,21 @@ namespace DaJet.Studio
                 scriptEditor.ScriptCode = ReadScriptSourceCode(server, database, scriptEditor.ScriptType, scriptEditor.Name);
             }
 
-            if (scriptEditor.ScriptType == MetaScriptType.StoredProcedure)
+            if (scriptEditor.ScriptType == MetaScriptType.Script)
+            {
+                ExecuteScript(server, database, scriptEditor);
+            }
+            else if (scriptEditor.ScriptType == MetaScriptType.TableFunction || scriptEditor.ScriptType == MetaScriptType.ScalarFunction)
+            {
+                ExecuteFunction(server, database, scriptEditor.ScriptCode);
+            }
+            else if (scriptEditor.ScriptType == MetaScriptType.StoredProcedure)
             {
                 ExecuteStoredProcedure(server, database, scriptEditor.ScriptCode);
-                return;
             }
-
+        }
+        private void ExecuteScript(DatabaseServer server, DatabaseInfo database, ScriptEditorViewModel scriptEditor)
+        {
             MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
 
             IMetadataService metadata = Services.GetService<IMetadataService>();
@@ -608,6 +614,32 @@ namespace DaJet.Studio
                 ShowException(ex);
             }
         }
+        private void ExecuteFunction(DatabaseServer server, DatabaseInfo database, string sourceCode)
+        {
+            IMetadataService metadata = Services.GetService<IMetadataService>();
+            metadata.AttachDatabase(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address, database);
+
+            IScriptingService scripting = Services.GetService<IScriptingService>();
+            TSqlFragment syntaxTree = scripting.ParseScript(sourceCode, out IList<ParseError> errors);
+            if (errors.Count > 0) { ShowParseErrors(errors); return; }
+
+            // Generate SQL script to execute stored procedure
+            CreateFunctionStatementVisitor visitor = new CreateFunctionStatementVisitor();
+            syntaxTree.Accept(visitor);
+            string scriptCode = visitor.GenerateExecuteFunctionCode();
+
+            // Show script code
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            ScriptEditorViewModel viewModel = Services.GetService<ScriptEditorViewModel>();
+            viewModel.Name = visitor.FunctionName;
+            viewModel.MyServer = server;
+            viewModel.MyDatabase = database;
+            viewModel.ScriptType = MetaScriptType.Script;
+            viewModel.ScriptCode = scriptCode;
+            viewModel.IsScriptChanged = true;
+            ScriptEditorView view = new ScriptEditorView() { DataContext = viewModel };
+            mainWindow.AddNewTab(viewModel.Name, view);
+        }
         private void ExecuteStoredProcedure(DatabaseServer server, DatabaseInfo database, string sourceCode)
         {
             IMetadataService metadata = Services.GetService<IMetadataService>();
@@ -617,21 +649,10 @@ namespace DaJet.Studio
             TSqlFragment syntaxTree = scripting.ParseScript(sourceCode, out IList<ParseError> errors);
             if (errors.Count > 0) { ShowParseErrors(errors); return; }
 
+            // Generate SQL script to execute stored procedure
             CreateProcedureStatementVisitor visitor = new CreateProcedureStatementVisitor();
             syntaxTree.Accept(visitor);
-
-            // Generate SQL script to execute stored procedure
-            string scriptCode = string.Empty;
-            foreach (string declaration in visitor.Declarations)
-            {
-                scriptCode += declaration + Environment.NewLine;
-            }
-            scriptCode += $"EXEC [dbo].[{visitor.ProcedureName}]";
-            foreach (string parameter in visitor.Parameters)
-            {
-                scriptCode += Environment.NewLine + "\t" + parameter + ",";
-            }
-            scriptCode = scriptCode.TrimEnd(',') + ";";
+            string scriptCode = visitor.GenerateExecuteProcedureCode();
 
             // Show script code
             MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
