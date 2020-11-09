@@ -3,6 +3,7 @@
 1. Installation.
 
 [Download and unpack zip file.](https://github.com/zhichkin/DaJet/releases/download/v0.1/dajet-0-1.zip)
+
 Run DaJet.Studio.exe program from bin folder.
 
 2. Quick start.
