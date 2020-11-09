@@ -1,2 +1,2 @@
 # DaJet
-DaJet - integration tools studio
+DaJet Studio - SODA tools studio
