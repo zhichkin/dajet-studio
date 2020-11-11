@@ -8,25 +8,20 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using System.IO;
 using System.Reflection;
+using System.Text;
+using System.Text.Json;
 
 namespace DaJet.Http
 {
     public class Startup
     {
+        internal const string METADATA_SETTINGS_FILE_NAME = "metadata-settings.json";
+
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
         }
         public IConfiguration Configuration { get; }
-        public void ConfigureServices(IServiceCollection services)
-        {
-            services.AddControllers();
-            services.AddSingleton<IQueryExecutor, QueryExecutor>();
-            services.AddSingleton<IMetadataService, MetadataService>();
-            services.AddSingleton<IScriptingService, ScriptingService>();
-
-            IFileProvider fileProvider = ConfigureFileProvider(services);
-        }
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
@@ -41,24 +36,58 @@ namespace DaJet.Http
                 endpoints.MapControllers();
             });
         }
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddOptions();
+            IFileProvider fileProvider = ConfigureFileProvider(services);
+            MetadataSettings metadataSettings = ConfigureMetadataSettings(fileProvider, services);
+
+            // TODO: intialize and cash metadata
+
+            services.AddControllers();
+            services.AddSingleton<IQueryExecutor, QueryExecutor>();
+            services.AddSingleton<IMetadataService, MetadataService>();
+            services.AddSingleton<IScriptingService, ScriptingService>();
+        }
         private IFileProvider ConfigureFileProvider(IServiceCollection services)
         {
             Assembly asm = Assembly.GetExecutingAssembly();
             string _appCatalogPath = Path.GetDirectoryName(asm.Location);
-
-            string[] requiredCatalogs = new string[] { "web", "scripts", "metadata" };
-
-            foreach (string catalog in requiredCatalogs)
-            {
-                string _catalogPath = Path.Combine(_appCatalogPath, catalog);
-                if (!Directory.Exists(_catalogPath))
-                {
-                    _ = Directory.CreateDirectory(_catalogPath);
-                }
-            }
             PhysicalFileProvider fileProvider = new PhysicalFileProvider(_appCatalogPath);
             services.AddSingleton<IFileProvider>(fileProvider);
             return fileProvider;
+        }
+        private MetadataSettings ConfigureMetadataSettings(IFileProvider fileProvider, IServiceCollection services)
+        {
+            string filePath = MetadataSettingsFilePath(fileProvider);
+
+            MetadataSettings settings = new MetadataSettings();
+            var config = new ConfigurationBuilder()
+                .AddJsonFile(filePath, optional: false)
+                .Build();
+            config.Bind(settings);
+
+            services.Configure<MetadataSettings>(config);
+
+            return settings;
+        }
+        private string MetadataSettingsFilePath(IFileProvider fileProvider)
+        {
+            string filePath = $"{METADATA_SETTINGS_FILE_NAME}";
+
+            IFileInfo fileInfo = fileProvider.GetFileInfo(filePath);
+            if (!fileInfo.Exists)
+            {
+                MetadataSettings settings = new MetadataSettings();
+                JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
+                string json = JsonSerializer.Serialize(settings, options);
+                using (StreamWriter writer = new StreamWriter(fileInfo.PhysicalPath, false, Encoding.UTF8))
+                {
+                    writer.Write(json);
+                }
+            }
+
+            return filePath;
         }
     }
 }

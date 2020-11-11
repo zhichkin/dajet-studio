@@ -1,5 +1,4 @@
-﻿using DaJet.Metadata;
-using DaJet.Studio.MVVM;
+﻿using DaJet.Studio.MVVM;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System;
@@ -40,12 +39,12 @@ namespace DaJet.Studio
             {
                 MainTreeRegion.TreeNodes.Add(controller.CreateTreeNode());
             }
-            // TODO: отложено до реализации основного функционала
-            //controller = Services.GetService<HttpServicesController>();
-            //if (controller != null)
-            //{
-            //    MainTreeRegion.TreeNodes.Add(controller.CreateTreeNode());
-            //}
+
+            controller = Services.GetService<HttpServicesController>();
+            if (controller != null)
+            {
+                MainTreeRegion.TreeNodes.Add(controller.CreateTreeNode());
+            }
         }
         
         public object SelectedTabViewModel

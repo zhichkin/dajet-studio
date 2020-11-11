@@ -12,6 +12,7 @@ namespace DaJet.Metadata
         public string Alias { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
+        public List<MetaScript> Scripts { get; set; } = new List<MetaScript>();
         [JsonIgnore] public List<BaseObject> BaseObjects { get; set; } = new List<BaseObject>();
         public override string ToString() { return Name; }
         public DatabaseInfo Copy()

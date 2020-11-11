@@ -73,26 +73,26 @@ namespace DaJet.Studio
                 writer.Write(json);
             }
         }
-        public void CreateScriptNode(WebServer webServer, DatabaseServer server, DatabaseInfo database, string script)
+        public void CreateScriptNode(WebServer webServer, DatabaseServer server, DatabaseInfo database, MetaScript script)
         {
             if (RootNode == null) return;
             foreach (TreeNodeViewModel webServerNode in RootNode.TreeNodes)
             {
                 if (webServerNode.NodePayload != webServer) continue;
 
-                DatabaseServerReference dataServer = webServer.DatabaseServers.Where(s => s.Identity == server.Identity).FirstOrDefault();
+                DatabaseServer dataServer = webServer.DatabaseServers.Where(s => s.Identity == server.Identity).FirstOrDefault();
                 if (dataServer == null)
                 {
-                    dataServer = new DatabaseServerReference()
+                    dataServer = new DatabaseServer()
                     {
                         Name = server.Name,
                         Identity = server.Identity
                     };
-                    DatabaseReference newDatabase = new DatabaseReference()
+                    DatabaseInfo newDatabase = new DatabaseInfo()
                     {
                         Name = database.Name,
                         Identity = database.Identity,
-                        Scripts = new List<string>() { script }
+                        Scripts = new List<MetaScript>() { script }
                     };
                     dataServer.Databases.Add(newDatabase);
                     webServer.DatabaseServers.Add(dataServer);
@@ -106,14 +106,14 @@ namespace DaJet.Studio
                 }
                 else
                 {
-                    DatabaseReference dbref = dataServer.Databases.Where(db => db.Identity == database.Identity).FirstOrDefault();
+                    DatabaseInfo dbref = dataServer.Databases.Where(db => db.Identity == database.Identity).FirstOrDefault();
                     if (dbref == null)
                     {
-                        DatabaseReference newDatabase = new DatabaseReference()
+                        DatabaseInfo newDatabase = new DatabaseInfo()
                         {
                             Name = database.Name,
                             Identity = database.Identity,
-                            Scripts = new List<string>() { script }
+                            Scripts = new List<MetaScript>() { script }
                         };
                         dataServer.Databases.Add(newDatabase);
 
@@ -236,7 +236,7 @@ namespace DaJet.Studio
         }
         private void CreateDatabaseServerNodes(TreeNodeViewModel parentNode, WebServer server)
         {
-            foreach (DatabaseServerReference dataServer in server.DatabaseServers)
+            foreach (DatabaseServer dataServer in server.DatabaseServers)
             {
                 TreeNodeViewModel node = CreateDatabaseServerNode(parentNode, dataServer);
                 parentNode.TreeNodes.Add(node);
@@ -244,7 +244,7 @@ namespace DaJet.Studio
                 CreateDatabaseNodes(node, dataServer);
             }
         }
-        private TreeNodeViewModel CreateDatabaseServerNode(TreeNodeViewModel parentNode, DatabaseServerReference server)
+        private TreeNodeViewModel CreateDatabaseServerNode(TreeNodeViewModel parentNode, DatabaseServer server)
         {
             TreeNodeViewModel node = new TreeNodeViewModel()
             {
@@ -257,9 +257,9 @@ namespace DaJet.Studio
             };
             return node;
         }
-        private void CreateDatabaseNodes(TreeNodeViewModel parentNode, DatabaseServerReference server)
+        private void CreateDatabaseNodes(TreeNodeViewModel parentNode, DatabaseServer server)
         {
-            foreach (DatabaseReference database in server.Databases)
+            foreach (DatabaseInfo database in server.Databases)
             {
                 TreeNodeViewModel node = CreateDatabaseNode(parentNode, database);
                 parentNode.TreeNodes.Add(node);
@@ -267,7 +267,7 @@ namespace DaJet.Studio
                 CreateScriptNodes(node, database);
             }
         }
-        private TreeNodeViewModel CreateDatabaseNode(TreeNodeViewModel parentNode, DatabaseReference database)
+        private TreeNodeViewModel CreateDatabaseNode(TreeNodeViewModel parentNode, DatabaseInfo database)
         {
             TreeNodeViewModel node = new TreeNodeViewModel()
             {
@@ -280,22 +280,22 @@ namespace DaJet.Studio
             };
             return node;
         }
-        private void CreateScriptNodes(TreeNodeViewModel parentNode, DatabaseReference database)
+        private void CreateScriptNodes(TreeNodeViewModel parentNode, DatabaseInfo database)
         {
-            foreach (string script in database.Scripts)
+            foreach (MetaScript script in database.Scripts)
             {
                 TreeNodeViewModel node = CreateScriptNode(parentNode, script);
                 parentNode.TreeNodes.Add(node);
             }
         }
-        private TreeNodeViewModel CreateScriptNode(TreeNodeViewModel parentNode, string script)
+        private TreeNodeViewModel CreateScriptNode(TreeNodeViewModel parentNode, MetaScript script)
         {
             TreeNodeViewModel node = new TreeNodeViewModel()
             {
                 Parent = parentNode,
                 IsExpanded = false,
                 NodeIcon = SCRIPT_ICON,
-                NodeText = script,
+                NodeText = script.Name,
                 NodeToolTip = string.Empty,
                 NodePayload = script
             };

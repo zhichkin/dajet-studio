@@ -14,7 +14,7 @@ namespace DaJet.Studio
         public Guid Identity { get; set; } = Guid.NewGuid();
         public string Name { get; set; }
         public string Address { get; set; }
-        public List<DatabaseServerReference> DatabaseServers { get; set; } = new List<DatabaseServerReference>();
+        public List<DatabaseServer> DatabaseServers { get; set; } = new List<DatabaseServer>();
         public override string ToString()
         {
             return string.IsNullOrWhiteSpace(Address) ? Name : string.Format("{0} ({1})", Name, Address);
@@ -34,17 +34,5 @@ namespace DaJet.Studio
                 property.SetValue(server, property.GetValue(this));
             }
         }
-    }
-    public sealed class DatabaseServerReference
-    {
-        public Guid Identity { get; set; }
-        public string Name { get; set; }
-        public List<DatabaseReference> Databases { get; set; } = new List<DatabaseReference>();
-    }
-    public sealed class DatabaseReference
-    {
-        public Guid Identity { get; set; }
-        public string Name { get; set; }
-        public List<string> Scripts { get; set; } = new List<string>();
     }
 }

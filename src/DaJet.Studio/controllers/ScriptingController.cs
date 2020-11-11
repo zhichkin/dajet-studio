@@ -436,15 +436,20 @@ namespace DaJet.Studio
                     MenuItemPayload = node
                 });
             }
-
-            // TODO: отложено до реализации основного функционала
-            //node.ContextMenuItems.Add(new MenuItemViewModel()
-            //{
-            //    MenuItemHeader = "Deploy script to web server",
-            //    MenuItemIcon = UPLOAD_SCRIPT_ICON,
-            //    MenuItemCommand = new RelayCommand(DeployScriptToWebServerCommand),
-            //    MenuItemPayload = node
-            //});
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Deploy script to web server",
+                MenuItemIcon = UPLOAD_SCRIPT_ICON,
+                MenuItemCommand = new RelayCommand(DeployScriptToWebServerCommand),
+                MenuItemPayload = node
+            });
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Delete script from web server",
+                MenuItemIcon = DELETE_SCRIPT_ICON,
+                MenuItemCommand = new RelayCommand(DeleteScriptFromWebServerCommand),
+                MenuItemPayload = node
+            });
 
             node.NodeTextPropertyChanged += NodeTextPropertyChangedHandler;
 
@@ -1100,7 +1105,7 @@ namespace DaJet.Studio
                     if (controller != null)
                     {
                         // TODO: add tree node to the "Http services" node
-                        controller.CreateScriptNode(controller.WebSettings.WebServers[0], server, database, scriptEditor.Name);
+                        controller.CreateScriptNode(controller.WebSettings.WebServers[0], server, database, new MetaScript() { Name = scriptEditor.Name });
                     }
                     _ = MessageBox.Show("Script has been deployed successfully.", scriptEditor.Name, MessageBoxButton.OK, MessageBoxImage.Information);
                 }
@@ -1114,9 +1119,21 @@ namespace DaJet.Studio
                 _ = MessageBox.Show(ex.Message, scriptEditor.Name);
             }
         }
+        private void DeleteScriptFromWebServerCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is ScriptEditorViewModel scriptEditor)) return;
 
+            MessageBoxResult result = MessageBox.Show("Delete script \"" + scriptEditor.Name + "\" ?",
+                "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (result != MessageBoxResult.OK) return;
 
+            // TODO
 
+        }
+        
+        
+        
         private void ShowException(string errorMessage)
         {
             MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
