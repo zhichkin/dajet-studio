@@ -1,9 +1,11 @@
 ﻿using DaJet.Metadata;
+using DaJet.Scripting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -21,6 +23,7 @@ namespace DaJet.Http
     public class DaJetHttpController : ControllerBase
     {
         private const string SCRIPTS_CATALOG_NAME = "scripts";
+        private const string SCRIPT_FILE_EXTENSION = ".qry";
         private MetadataSettings Metadata { get; }
         private IServiceProvider Services { get; }
         private IFileProvider FileProvider { get; }
@@ -30,6 +33,7 @@ namespace DaJet.Http
             Services = serviceProvider;
             FileProvider = fileProvider;
         }
+        
         private Dictionary<string, object> ParseParameters(HttpContext context)
         {
             object parameters = null;
@@ -94,6 +98,16 @@ namespace DaJet.Http
             return result;
         }
 
+        private void SaveMetadataSettings()
+        {
+            IFileInfo fileInfo = FileProvider.GetFileInfo($"{Startup.METADATA_SETTINGS_FILE_NAME}");
+            JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
+            string json = JsonSerializer.Serialize(Metadata, options);
+            using (StreamWriter writer = new StreamWriter(fileInfo.PhysicalPath, false, Encoding.UTF8))
+            {
+                writer.Write(json);
+            }
+        }
         private void CreateCatalogIfNotExists(string catalogName)
         {
             IFileInfo catalog = FileProvider.GetFileInfo(catalogName);
@@ -123,40 +137,59 @@ namespace DaJet.Http
 
             return catalogName;
         }
-
-        private void SaveMetadataSettings()
+        private string ReadScriptSourceCode(DatabaseServer server, DatabaseInfo database, MetaScript script)
         {
-            IFileInfo fileInfo = FileProvider.GetFileInfo($"{Startup.METADATA_SETTINGS_FILE_NAME}");
-            JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
-            string json = JsonSerializer.Serialize(Metadata, options);
-            using (StreamWriter writer = new StreamWriter(fileInfo.PhysicalPath, false, Encoding.UTF8))
+            string sourceCode;
+
+            string catalogName = GetDatabaseCatalog(server, database);
+            string scriptPath = $"{catalogName}/{script.Identity.ToString().ToLower()}{SCRIPT_FILE_EXTENSION}";
+            IFileInfo file = FileProvider.GetFileInfo(scriptPath);
+            if (!file.Exists)
             {
-                writer.Write(json);
+                throw new FileNotFoundException();
             }
+
+            using (StreamReader reader = new StreamReader(file.PhysicalPath, Encoding.UTF8))
+            {
+                sourceCode = reader.ReadToEnd();
+            }
+
+            return sourceCode;
         }
 
         [HttpGet("ping")] public ActionResult Ping() { return Ok(); }
 
-
-
-        [HttpGet("server")] public async Task<ActionResult> SelectDatabaseServers()
+        [HttpGet("server/{uuid?}")] public async Task<ActionResult> SelectDatabaseServer([FromRoute] Guid uuid)
         {
             List<DatabaseServer> servers = new List<DatabaseServer>();
             foreach (DatabaseServer server in Metadata.Servers)
             {
-                servers.Add(new DatabaseServer()
+                if (uuid == Guid.Empty || server.Identity == uuid)
                 {
-                    Name = server.Name,
-                    Identity = server.Identity
-                });
+                    servers.Add(new DatabaseServer()
+                    {
+                        Name = server.Name,
+                        Identity = server.Identity
+                    });
+                }
             }
+            
+            if (uuid != Guid.Empty && servers.Count == 0)
+            {
+                return NotFound();
+            }
+
             JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
             string json = JsonSerializer.Serialize(servers, options);
             return Content(json);
         }
-        [HttpPost("server")] public async Task<ActionResult> CreateDatabaseServer([FromBody] DatabaseServer server)
+        [HttpPost("server/{uuid}")] public async Task<ActionResult> CreateDatabaseServer([FromRoute] Guid uuid, [FromBody] DatabaseServer server)
         {
-            if (Metadata.Servers.Where(s => s.Identity == server.Identity).FirstOrDefault() != null)
+            if (server.Identity != uuid)
+            {
+                return BadRequest();
+            }
+            if (Metadata.Servers.Where(s => s.Identity == uuid).FirstOrDefault() != null)
             {
                 return Conflict();
             }
@@ -167,102 +200,319 @@ namespace DaJet.Http
 
             return Created(catalogName, server.Identity);
         }
-        [HttpPut("server")] public async Task<ActionResult> UpdateDatabaseServer([FromBody] DatabaseServer server)
+        [HttpPut("server/{uuid}")] public async Task<ActionResult> UpdateDatabaseServer([FromRoute] Guid uuid, [FromBody] DatabaseServer server)
         {
-            DatabaseServer existing = Metadata.Servers.Where(s => s.Identity == server.Identity).FirstOrDefault();
-            if (existing == null) { return NotFound(); }
+            if (server.Identity != uuid)
+            {
+                return BadRequest();
+            }
+            DatabaseServer existing = Metadata.Servers.Where(s => s.Identity == uuid).FirstOrDefault();
+            if (existing == null)
+            {
+                return NotFound();
+            }
 
             server.CopyTo(existing);
             SaveMetadataSettings();
 
             return Ok();
         }
-        [HttpDelete("server")] public async Task<ActionResult> DeleteDatabaseServer([FromBody] DatabaseServer server)
+        [HttpDelete("server/{uuid}")] public async Task<ActionResult> DeleteDatabaseServer([FromRoute] Guid uuid)
         {
-            // TODO
+            DatabaseServer existing = Metadata.Servers.Where(s => s.Identity == uuid).FirstOrDefault();
+            if (existing == null) { return NotFound(); }
 
-            return StatusCode(StatusCodes.Status405MethodNotAllowed);
+            string catalogName = GetServerCatalog(existing);
+            IFileInfo fileInfo = FileProvider.GetFileInfo(catalogName);
+            Directory.Delete(fileInfo.PhysicalPath);
+
+            Metadata.Servers.Remove(existing);
+            SaveMetadataSettings();
+
+            return Ok();
+        }
+
+        [HttpGet("{server}/database/{uuid?}")] public async Task<ActionResult> SelectDatabase([FromRoute] Guid server, [FromRoute] Guid uuid)
+        {
+            DatabaseServer srv = Metadata.Servers.Where(s => s.Identity == server).FirstOrDefault();
+            if (srv == null)
+            {
+                return NotFound();
+            }
+
+            List<DatabaseInfo> databases = new List<DatabaseInfo>();
+
+            foreach (DatabaseInfo database in srv.Databases)
+            {
+                if (uuid == Guid.Empty || database.Identity == uuid)
+                {
+                    databases.Add(new DatabaseInfo()
+                    {
+                        Name = database.Name,
+                        Identity = database.Identity
+                    });
+                }
+            }
+
+            if (uuid != Guid.Empty && databases.Count == 0)
+            {
+                return NotFound();
+            }
+
+            JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
+            string json = JsonSerializer.Serialize(databases, options);
+            return Content(json);
+        }
+        [HttpPost("{server}/database/{uuid}")] public async Task<ActionResult> CreateDatabase([FromRoute] Guid server, [FromRoute] Guid uuid, [FromBody] DatabaseInfo database)
+        {
+            if (database.Identity != uuid)
+            {
+                return BadRequest();
+            }
+            DatabaseServer srv = Metadata.Servers.Where(s => s.Identity == server).FirstOrDefault();
+            if (srv == null)
+            {
+                return NotFound();
+            }
+            if (srv.Databases.Where(db => db.Identity == uuid).FirstOrDefault() != null)
+            {
+                return Conflict();
+            }
+
+            string catalogName = GetDatabaseCatalog(srv, database);
+            srv.Databases.Add(database);
+            SaveMetadataSettings();
+
+            // TODO: initialize database metadata !?
+
+            return Created(catalogName, database.Identity);
+        }
+        [HttpPut("{server}/database/{uuid}")] public async Task<ActionResult> UpdateDatabase([FromRoute] Guid server, [FromRoute] Guid uuid, [FromBody] DatabaseInfo database)
+        {
+            if (database.Identity != uuid)
+            {
+                return BadRequest();
+            }
+            DatabaseServer srv = Metadata.Servers.Where(s => s.Identity == server).FirstOrDefault();
+            if (srv == null)
+            {
+                return NotFound();
+            }
+            DatabaseInfo existing = srv.Databases.Where(db => db.Identity == uuid).FirstOrDefault();
+            if (existing == null)
+            {
+                return NotFound();
+            }
+
+            database.CopyTo(existing);
+            SaveMetadataSettings();
+
+            return Ok();
+        }
+        [HttpDelete("{server}/database/{uuid}")] public async Task<ActionResult> DeleteDatabase([FromRoute] Guid server, [FromRoute] Guid uuid)
+        {
+            DatabaseServer srv = Metadata.Servers.Where(s => s.Identity == server).FirstOrDefault();
+            if (srv == null)
+            {
+                return NotFound();
+            }
+            DatabaseInfo existing = srv.Databases.Where(db => db.Identity == uuid).FirstOrDefault();
+            if (existing == null)
+            {
+                return NotFound();
+            }
+
+            string catalogName = GetDatabaseCatalog(srv, existing);
+            IFileInfo fileInfo = FileProvider.GetFileInfo(catalogName);
+            Directory.Delete(fileInfo.PhysicalPath);
+
+            srv.Databases.Remove(existing);
+            SaveMetadataSettings();
+
+            return Ok();
+        }
+
+        [HttpGet("{server}/{database}/script/{uuid?}")] public async Task<ActionResult> SelectScript([FromRoute] Guid server, [FromRoute] Guid database, [FromRoute] Guid uuid)
+        {
+            DatabaseServer srv = Metadata.Servers.Where(s => s.Identity == server).FirstOrDefault();
+            if (srv == null)
+            {
+                return NotFound();
+            }
+            DatabaseInfo db = srv.Databases.Where(db => db.Identity == database).FirstOrDefault();
+            if (db == null)
+            {
+                return NotFound();
+            }
+
+            List<MetaScript> scripts = new List<MetaScript>();
+
+            foreach (MetaScript script in db.Scripts)
+            {
+                if (uuid == Guid.Empty || script.Identity == uuid)
+                {
+                    scripts.Add(new MetaScript()
+                    {
+                        Name = script.Name,
+                        Identity = script.Identity
+                    });
+                }
+            }
+
+            if (uuid != Guid.Empty && scripts.Count == 0)
+            {
+                return NotFound();
+            }
+
+            JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
+            string json = JsonSerializer.Serialize(scripts, options);
+            return Content(json);
+        }
+        [HttpPost("{server}/{database}/script/{uuid}")] public async Task<ActionResult> CreateScript([FromRoute] Guid server, [FromRoute] Guid database, [FromRoute] Guid uuid, [FromBody] MetaScript script)
+        {
+            if (script.Identity != uuid)
+            {
+                return BadRequest();
+            }
+            DatabaseServer srv = Metadata.Servers.Where(s => s.Identity == server).FirstOrDefault();
+            if (srv == null)
+            {
+                return NotFound();
+            }
+            DatabaseInfo db = srv.Databases.Where(db => db.Identity == database).FirstOrDefault();
+            if (db == null)
+            {
+                return NotFound();
+            }
+            if (db.Scripts.Where(scr => scr.Identity == uuid).FirstOrDefault() != null)
+            {
+                return Conflict();
+            }
+
+            string catalogName = GetDatabaseCatalog(srv, db);
+            string scriptPath = $"{catalogName}/{uuid.ToString().ToLower()}{SCRIPT_FILE_EXTENSION}";
+            IFileInfo fileInfo = FileProvider.GetFileInfo(scriptPath);
+            using (var stream = System.IO.File.Create(fileInfo.PhysicalPath))
+            {
+                await stream.WriteAsync(Convert.FromBase64String(script.SourceCode));
+            }
+
+            script.SourceCode = string.Empty;
+            db.Scripts.Add(script);
+            SaveMetadataSettings();
+
+            return Created(scriptPath, script.Identity);
+        }
+        [HttpPut("{server}/{database}/script/{uuid}")] public async Task<ActionResult> UpdateScript([FromRoute] Guid server, [FromRoute] Guid database, [FromRoute] Guid uuid, [FromBody] MetaScript script)
+        {
+            if (script.Identity != uuid)
+            {
+                return BadRequest();
+            }
+            DatabaseServer srv = Metadata.Servers.Where(s => s.Identity == server).FirstOrDefault();
+            if (srv == null)
+            {
+                return NotFound();
+            }
+            DatabaseInfo db = srv.Databases.Where(db => db.Identity == database).FirstOrDefault();
+            if (db == null)
+            {
+                return NotFound();
+            }
+            MetaScript existing = db.Scripts.Where(scr => scr.Identity == uuid).FirstOrDefault();
+            if (existing == null)
+            {
+                return NotFound();
+            }
+
+            string catalogName = GetDatabaseCatalog(srv, db);
+            string scriptPath = $"{catalogName}/{uuid.ToString().ToLower()}{SCRIPT_FILE_EXTENSION}";
+            IFileInfo fileInfo = FileProvider.GetFileInfo(scriptPath);
+            using (var stream = System.IO.File.Create(fileInfo.PhysicalPath))
+            {
+                await stream.WriteAsync(Convert.FromBase64String(script.SourceCode));
+            }
+
+            script.CopyTo(existing);
+            existing.SourceCode = string.Empty;
+            SaveMetadataSettings();
+
+            return Ok();
+        }
+        [HttpDelete("{server}/{database}/script/{uuid}")] public async Task<ActionResult> DeleteScript([FromRoute] Guid server, [FromRoute] Guid database, [FromRoute] Guid uuid)
+        {
+            DatabaseServer srv = Metadata.Servers.Where(s => s.Identity == server).FirstOrDefault();
+            if (srv == null)
+            {
+                return NotFound();
+            }
+            DatabaseInfo db = srv.Databases.Where(db => db.Identity == database).FirstOrDefault();
+            if (db == null)
+            {
+                return NotFound();
+            }
+            MetaScript existing = db.Scripts.Where(scr => scr.Identity == uuid).FirstOrDefault();
+            if (existing == null)
+            {
+                return NotFound();
+            }
+
+            string catalogName = GetDatabaseCatalog(srv, db);
+            string scriptPath = $"{catalogName}/{uuid.ToString().ToLower()}{SCRIPT_FILE_EXTENSION}";
+            IFileInfo fileInfo = FileProvider.GetFileInfo(scriptPath);
+            System.IO.File.Delete(fileInfo.PhysicalPath);
+
+            db.Scripts.Remove(existing);
+            SaveMetadataSettings();
+
+            return Ok();
         }
 
 
 
         [HttpPost("{server}/{database}/{script}")]
-        public ActionResult ExecuteScript([FromRoute] string server, [FromRoute] string database, [FromRoute] string script)
+        public ActionResult ExecuteScript([FromRoute] Guid server, [FromRoute] Guid database, [FromRoute] Guid script)
         {
-            string response = $"{{ \"Server\": \"{server}\", \"Database\": \"{database}\", \"Script\": \"{script}\" }}";
-            string input = "";
-            Dictionary<string, object> parameters = ParseParameters(HttpContext);
-            foreach (var p in parameters)
+            DatabaseServer srv = Metadata.Servers.Where(srv => srv.Identity == server).FirstOrDefault();
+            if (srv == null) { return NotFound(); }
+            DatabaseInfo db = srv.Databases.Where(db => db.Identity == database).FirstOrDefault();
+            if (db == null) { return NotFound(); }
+            MetaScript scr = db.Scripts.Where(scr => scr.Identity == script).FirstOrDefault();
+            if (scr == null) { return NotFound(); }
+
+            // TODO: initialize script with parameters
+            //Dictionary<string, object> parameters = ParseParameters(HttpContext);
+            //foreach (var p in parameters)
+            //{
+            //    //input += p.Key + " = " + p.Value.ToString() + Environment.NewLine;
+            //}
+
+            string responseJson = "[]";
+            string errorMessage = string.Empty;
+
+            string sourceCode = ReadScriptSourceCode(srv, db, scr);
+
+            IMetadataService metadata = Services.GetService<IMetadataService>();
+            metadata.AttachDatabase(string.IsNullOrWhiteSpace(srv.Address) ? srv.Name : srv.Address, db);
+
+            IScriptingService scripting = Services.GetService<IScriptingService>();
+            string sql = scripting.PrepareScript(sourceCode, out IList<ParseError> parseErrors);
+            foreach (ParseError error in parseErrors) { errorMessage += error.Message + Environment.NewLine; }
+            if (parseErrors.Count > 0) { return StatusCode(StatusCodes.Status500InternalServerError, errorMessage); }
+
+            try
             {
-                input += p.Key + " = " + p.Value.ToString() + Environment.NewLine;
+                responseJson = scripting.ExecuteScript(sql, out IList<ParseError> executeErrors);
+                foreach (ParseError error in executeErrors) { errorMessage += error.Message + Environment.NewLine; }
+                if (executeErrors.Count > 0) { return StatusCode(StatusCodes.Status500InternalServerError, errorMessage); }
             }
-            response += Environment.NewLine + input;
-            return Content(response);
-        }
-
-
-
-        [HttpPut("{server}/{database}/{script}")]
-        public async Task<ActionResult> DeployScript([FromRoute] string server, [FromRoute] string database, [FromRoute] string script)
-        {
-            string content = string.Empty;
-            Dictionary<string, object> parameters = ParseParameters(HttpContext);
-            foreach (var p in parameters)
+            catch (Exception ex)
             {
-                if (p.Key == "script")
-                {
-                    content = (string)p.Value;
-                }
-            }
-            if (string.IsNullOrWhiteSpace(content))
-            {
-                return BadRequest();
-            }
-
-            string scriptPath = $"web/{server}/{database}/{script}";
-
-            IFileInfo fileInfo = FileProvider.GetFileInfo($"web/{server}");
-            if (!fileInfo.Exists)
-            {
-                Directory.CreateDirectory(fileInfo.PhysicalPath);
-            }
-
-            fileInfo = FileProvider.GetFileInfo($"web/{server}/{database}");
-            if (!fileInfo.Exists)
-            {
-                Directory.CreateDirectory(fileInfo.PhysicalPath);
-            }
-
-            fileInfo = FileProvider.GetFileInfo(scriptPath);
-            using (var stream = System.IO.File.Create(fileInfo.PhysicalPath))
-            {
-                await stream.WriteAsync(Convert.FromBase64String(content));
-            }
-
-            // TODO: save web, scripts and metadata settings
-
-            return Ok();
-        }
-
-
-
-        [HttpDelete("{server}/{database}/{script}")]
-        public ActionResult DeleteScript([FromRoute] string server, [FromRoute] string database, [FromRoute] string script)
-        {
-            string scriptPath = $"web/{server}/{database}/{script}";
-
-            IFileInfo fileInfo = FileProvider.GetFileInfo(scriptPath);
-            if (fileInfo.Exists)
-            {
-                System.IO.File.Delete(fileInfo.PhysicalPath);
+                errorMessage = ExceptionHelper.GetErrorText(ex);
+                return StatusCode(StatusCodes.Status500InternalServerError, errorMessage);
             }
             
-            return Ok();
+            return Content(responseJson);
         }
     }
 }
-
-//POST   Creates a new resource.
-//GET    Retrieves a resource.
-//PUT    Updates an existing resource.
-//DELETE Deletes a resource.

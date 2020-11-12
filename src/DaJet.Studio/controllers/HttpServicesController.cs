@@ -1,8 +1,10 @@
 ﻿using DaJet.Metadata;
+using DaJet.Scripting;
 using DaJet.Studio.MVVM;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -34,6 +36,9 @@ namespace DaJet.Studio
         private const string DATA_SERVER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/data-server.png";
         private const string DATABASE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/database.png";
         private const string SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/database-script.png";
+        private const string UPLOAD_SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/upload-script.png";
+        private const string DELETE_SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/delete-script.png";
+        private const string EXECUTE_SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/run.png";
 
         private readonly BitmapImage WEB_SERVER_ICON = new BitmapImage(new Uri(WEB_SERVER_ICON_PATH));
         private readonly BitmapImage ADD_WEB_SERVICE_ICON = new BitmapImage(new Uri(ADD_WEB_SERVICE_ICON_PATH));
@@ -44,6 +49,9 @@ namespace DaJet.Studio
         private readonly BitmapImage DATA_SERVER_ICON = new BitmapImage(new Uri(DATA_SERVER_ICON_PATH));
         private readonly BitmapImage DATABASE_ICON = new BitmapImage(new Uri(DATABASE_ICON_PATH));
         private readonly BitmapImage SCRIPT_ICON = new BitmapImage(new Uri(SCRIPT_ICON_PATH));
+        private readonly BitmapImage UPLOAD_SCRIPT_ICON = new BitmapImage(new Uri(UPLOAD_SCRIPT_ICON_PATH));
+        private readonly BitmapImage DELETE_SCRIPT_ICON = new BitmapImage(new Uri(DELETE_SCRIPT_ICON_PATH));
+        private readonly BitmapImage EXECUTE_SCRIPT_ICON = new BitmapImage(new Uri(EXECUTE_SCRIPT_ICON_PATH));
 
         #endregion
 
@@ -159,7 +167,27 @@ namespace DaJet.Studio
                 break;
             }
         }
-
+        public WebServer SelectWebServer()
+        {
+            SelectWebServerWindow dialog = new SelectWebServerWindow(WebSettings.WebServers);
+            _ = dialog.ShowDialog();
+            return dialog.Result;
+        }
+        public string GetExecuteScriptUrl(WebServer webServer, DatabaseServer server, DatabaseInfo database, MetaScript script)
+        {
+            if (webServer == null)
+            {
+                return $"{server.Identity.ToString().ToLower()}/{database.Identity.ToString().ToLower()}/{script.Identity.ToString().ToLower()}";
+            }
+            else
+            {
+                return $"{webServer.Address}/{server.Identity.ToString().ToLower()}/{database.Identity.ToString().ToLower()}/{script.Identity.ToString().ToLower()}";
+            }
+        }
+        public string GetActionScriptUrl(DatabaseServer server, DatabaseInfo database, MetaScript script)
+        {
+            return $"{server.Identity.ToString().ToLower()}/{database.Identity.ToString().ToLower()}/script/{script.Identity.ToString().ToLower()}";
+        }
 
 
         public TreeNodeViewModel CreateTreeNode(TreeNodeViewModel parent) { throw new NotImplementedException(); }
@@ -299,6 +327,34 @@ namespace DaJet.Studio
                 NodeToolTip = string.Empty,
                 NodePayload = script
             };
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Show script URL",
+                MenuItemIcon = SCRIPT_ICON,
+                MenuItemCommand = new RelayCommand(ShowScriptUrlCommand),
+                MenuItemPayload = node
+            });
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Execute script at web server",
+                MenuItemIcon = EXECUTE_SCRIPT_ICON,
+                MenuItemCommand = new RelayCommand(ExecuteScriptCommand),
+                MenuItemPayload = node
+            });
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Update script at web server",
+                MenuItemIcon = UPLOAD_SCRIPT_ICON,
+                MenuItemCommand = new RelayCommand(UpdateScriptCommand),
+                MenuItemPayload = node
+            });
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Delete script from web server",
+                MenuItemIcon = DELETE_SCRIPT_ICON,
+                MenuItemCommand = new RelayCommand(DeleteScriptCommand),
+                MenuItemPayload = node
+            });
             return node;
         }
 
@@ -441,25 +497,193 @@ namespace DaJet.Studio
 
 
 
-        private void DeleteScriptCommand(object node)
+        private void ShowScriptUrlCommand(object node)
         {
             if (!(node is TreeNodeViewModel treeNode)) return;
-            if (!(treeNode.NodePayload is WebServer server)) return;
+            if (!(treeNode.NodePayload is MetaScript script)) return;
 
-            MessageBoxResult result = MessageBox.Show("Удалить скрипт \"" + server.Name + "\" ?",
+            WebServer webServer = treeNode.GetAncestorPayload<WebServer>();
+            DatabaseInfo database = treeNode.GetAncestorPayload<DatabaseInfo>();
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+
+            string url = GetExecuteScriptUrl(webServer, server, database, script);
+
+            ScriptingController controller = Services.GetService<ScriptingController>();
+            string sourceCode = controller.ReadScriptSourceCode(server, database, MetaScriptType.Script, script.Name);
+
+            IMetadataService metadata = Services.GetService<IMetadataService>();
+            metadata.AttachDatabase(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address, database);
+
+            IScriptingService scripting = Services.GetService<IScriptingService>();
+            TSqlFragment syntaxTree = scripting.ParseScript(sourceCode, out IList<ParseError> errors);
+            if (errors.Count > 0) { ShowParseErrors(errors); return; }
+
+            DeclareVariableStatementVisitor visitor = new DeclareVariableStatementVisitor();
+            syntaxTree.Accept(visitor);
+            string jsonDTO = visitor.GenerateJsonParametersObject();
+
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            ScriptEditorViewModel editor = Services.GetService<ScriptEditorViewModel>();
+            editor.Name = $"{script.Name} (URL)";
+            editor.ScriptCode = url + Environment.NewLine + jsonDTO;
+            ScriptEditorView scriptView = new ScriptEditorView() { DataContext = editor };
+            mainWindow.AddNewTab(editor.Name, scriptView);
+        }
+        private void ExecuteScriptCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is MetaScript script)) return;
+
+            WebServer webServer = treeNode.GetAncestorPayload<WebServer>();
+            DatabaseInfo database = treeNode.GetAncestorPayload<DatabaseInfo>();
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+
+            string url = GetExecuteScriptUrl(null, server, database, script);
+
+            ScriptingController controller = Services.GetService<ScriptingController>();
+            string sourceCode = controller.ReadScriptSourceCode(server, database, MetaScriptType.Script, script.Name);
+
+            IMetadataService metadata = Services.GetService<IMetadataService>();
+            metadata.AttachDatabase(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address, database);
+
+            IScriptingService scripting = Services.GetService<IScriptingService>();
+            TSqlFragment syntaxTree = scripting.ParseScript(sourceCode, out IList<ParseError> errors);
+            if (errors.Count > 0) { ShowParseErrors(errors); return; }
+
+            DeclareVariableStatementVisitor visitor = new DeclareVariableStatementVisitor();
+            syntaxTree.Accept(visitor);
+            string requestJson = visitor.GenerateJsonParametersObject();
+            StringContent body = new StringContent(requestJson, Encoding.UTF8, "application/json");
+
+            IHttpClientFactory http = Services.GetService<IHttpClientFactory>();
+            HttpClient client = http.CreateClient(webServer.Name);
+            if (client.BaseAddress == null) { client.BaseAddress = new Uri(webServer.Address); }
+
+            try
+            {
+                var response = client.PostAsync(url, body).Result;
+
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+                    ScriptEditorViewModel editor = Services.GetService<ScriptEditorViewModel>();
+                    editor.Name = $"{script.Name} (WEB response)";
+                    editor.ScriptCode = url + Environment.NewLine + response.Content.ReadAsStringAsync().Result;
+                    ScriptEditorView scriptView = new ScriptEditorView() { DataContext = editor };
+                    mainWindow.AddNewTab(editor.Name, scriptView);
+                }
+                else
+                {
+                    _ = MessageBox.Show(((int)response.StatusCode).ToString() + " (" + response.StatusCode.ToString() + "): " + response.ReasonPhrase, script.Name);
+                }
+            }
+            catch (Exception ex)
+            {
+                _ = MessageBox.Show(ex.Message, script.Name);
+            }
+        }
+        private void UpdateScriptCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is MetaScript script)) return;
+
+            MessageBoxResult result = MessageBox.Show("Обновить скрипт \"" + script.Name + "\" ?",
                 "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
             if (result != MessageBoxResult.OK) return;
 
-            //WebSettings.WebServers.Remove(server);
-            //SaveWebSettings();
+            WebServer webServer = treeNode.GetAncestorPayload<WebServer>();
+            DatabaseInfo database = treeNode.GetAncestorPayload<DatabaseInfo>();
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
 
-            //IFileInfo catalog = FileProvider.GetFileInfo($"{WEB_SETTINGS_CATALOG_NAME}/{server.Identity.ToString().ToLower()}");
-            //if (catalog.Exists)
-            //{
-            //    Directory.Delete(catalog.PhysicalPath);
-            //}
+            string url = GetActionScriptUrl(server, database, script);
 
-            //treeNode.Parent.TreeNodes.Remove(treeNode);
+            ScriptingController controller = Services.GetService<ScriptingController>();
+            byte[] bytes = controller.ReadScriptAsBytes(server, database, MetaScriptType.Script, script.Name);
+            script.SourceCode = Convert.ToBase64String(bytes);
+
+            JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
+            string requestJson = JsonSerializer.Serialize(script, options);
+            StringContent body = new StringContent(requestJson, Encoding.UTF8, "application/json");
+            script.SourceCode = string.Empty; // we do not need source code any more
+
+            IHttpClientFactory http = Services.GetService<IHttpClientFactory>();
+            HttpClient client = http.CreateClient(webServer.Name);
+            if (client.BaseAddress == null) { client.BaseAddress = new Uri(webServer.Address); }
+
+            try
+            {
+                var response = client.PutAsync(url, body).Result;
+
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    _ = MessageBox.Show("Script has been updated successfully.", script.Name, MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    _ = MessageBox.Show(((int)response.StatusCode).ToString() + " (" + response.StatusCode.ToString() + "): " + response.ReasonPhrase, script.Name);
+                }
+            }
+            catch (Exception ex)
+            {
+                _ = MessageBox.Show(ex.Message, script.Name);
+            }
+        }
+        private void DeleteScriptCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is MetaScript script)) return;
+
+            MessageBoxResult result = MessageBox.Show("Удалить скрипт \"" + script.Name + "\" ?",
+                "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (result != MessageBoxResult.OK) return;
+
+            WebServer webServer = treeNode.GetAncestorPayload<WebServer>();
+            DatabaseInfo database = treeNode.GetAncestorPayload<DatabaseInfo>();
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+
+            string url = GetActionScriptUrl(server, database, script);
+
+            IHttpClientFactory http = Services.GetService<IHttpClientFactory>();
+            HttpClient client = http.CreateClient(webServer.Name);
+            if (client.BaseAddress == null) { client.BaseAddress = new Uri(webServer.Address); }
+
+            try
+            {
+                var response = client.DeleteAsync(url).Result;
+
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    database.Scripts.Remove(script);
+                    SaveWebSettings();
+                    treeNode.Parent.TreeNodes.Remove(treeNode);
+                }
+                else
+                {
+                    _ = MessageBox.Show(((int)response.StatusCode).ToString() + " (" + response.StatusCode.ToString() + "): " + response.ReasonPhrase, script.Name);
+                }
+            }
+            catch (Exception ex)
+            {
+                _ = MessageBox.Show(ex.Message, script.Name);
+            }
+        }
+
+
+
+        private void ShowParseErrors(IList<ParseError> errors)
+        {
+            string errorMessage = string.Empty;
+            foreach (ParseError error in errors)
+            {
+                errorMessage += error.Message + Environment.NewLine;
+            }
+
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            ScriptEditorViewModel errorsViewModel = Services.GetService<ScriptEditorViewModel>();
+            errorsViewModel.Name = "Errors";
+            errorsViewModel.ScriptCode = errorMessage;
+            ScriptEditorView errorsView = new ScriptEditorView() { DataContext = errorsViewModel };
+            mainWindow.AddNewTab(errorsViewModel.Name, errorsView);
         }
     }
 }

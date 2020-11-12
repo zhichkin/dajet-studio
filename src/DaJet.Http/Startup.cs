@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -13,7 +14,7 @@ using System.Text.Json;
 
 namespace DaJet.Http
 {
-    public class Startup
+    public sealed class Startup
     {
         internal const string METADATA_SETTINGS_FILE_NAME = "metadata-settings.json";
 
@@ -35,14 +36,16 @@ namespace DaJet.Http
             {
                 endpoints.MapControllers();
             });
+
+            IMetadataService metadata = app.ApplicationServices.GetService<IMetadataService>();
+            IOptions<MetadataSettings> settings = app.ApplicationServices.GetService<IOptions<MetadataSettings>>();
+            InitializeMetadata(metadata, settings.Value);
         }
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddOptions();
             IFileProvider fileProvider = ConfigureFileProvider(services);
             MetadataSettings metadataSettings = ConfigureMetadataSettings(fileProvider, services);
-
-            // TODO: intialize and cash metadata
 
             services.AddControllers();
             services.AddSingleton<IQueryExecutor, QueryExecutor>();
@@ -88,6 +91,31 @@ namespace DaJet.Http
             }
 
             return filePath;
+        }
+        private void InitializeMetadata(IMetadataService metadata, MetadataSettings settings)
+        {
+            foreach (DatabaseServer server in settings.Servers)
+            {
+                //_ = Parallel.ForEach(server.Databases, InitializeMetadata);
+                foreach (DatabaseInfo database in server.Databases)
+                {
+                    InitializeDatabaseMetadata(server, database, metadata);
+                }
+            }
+        }
+        private void InitializeDatabaseMetadata(DatabaseServer server, DatabaseInfo database, IMetadataService metadata)
+        {
+            IMetadataProvider provider = metadata.GetMetadataProvider(database);
+            provider.UseServer(server);
+            provider.UseDatabase(database);
+            provider.InitializeMetadata(database);
+
+            if (!metadata.Settings.Servers.Contains(server))
+            {
+                metadata.Settings.Servers.Add(server);
+            }
+
+            //await Task.Run(() => provider.InitializeMetadata(database));
         }
     }
 }

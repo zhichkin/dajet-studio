@@ -216,6 +216,35 @@ namespace DaJet.Studio
 
             return sourceCode;
         }
+        public byte[] ReadScriptAsBytes(DatabaseServer server, DatabaseInfo database, MetaScriptType scriptType, string scriptName)
+        {
+            string catalogName;
+            if (scriptType == MetaScriptType.Script)
+            {
+                catalogName = GetScriptsCatalog(server, database);
+            }
+            else if (scriptType == MetaScriptType.TableFunction)
+            {
+                catalogName = GetTableFunctionsCatalog(server, database);
+            }
+            else if (scriptType == MetaScriptType.ScalarFunction)
+            {
+                catalogName = GetScalarFunctionsCatalog(server, database);
+            }
+            else if (scriptType == MetaScriptType.StoredProcedure)
+            {
+                catalogName = GetStoredProceduresCatalog(server, database);
+            }
+            else
+            {
+                throw new InvalidOperationException(scriptType.ToString() + ": unknown script type!");
+            }
+
+            IFileInfo file = FileProvider.GetFileInfo($"{catalogName}/{scriptName}{SCRIPT_FILE_EXTENSION}");
+            if (!file.Exists) { throw new FileNotFoundException(scriptName); }
+
+            return File.ReadAllBytes(file.PhysicalPath);
+        }
         public TreeNodeViewModel GetScriptTreeNode(ScriptEditorViewModel scriptEditor)
         {
             MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
@@ -436,20 +465,16 @@ namespace DaJet.Studio
                     MenuItemPayload = node
                 });
             }
-            node.ContextMenuItems.Add(new MenuItemViewModel()
+            if (scriptEditor.ScriptType == MetaScriptType.Script)
             {
-                MenuItemHeader = "Deploy script to web server",
-                MenuItemIcon = UPLOAD_SCRIPT_ICON,
-                MenuItemCommand = new RelayCommand(DeployScriptToWebServerCommand),
-                MenuItemPayload = node
-            });
-            node.ContextMenuItems.Add(new MenuItemViewModel()
-            {
-                MenuItemHeader = "Delete script from web server",
-                MenuItemIcon = DELETE_SCRIPT_ICON,
-                MenuItemCommand = new RelayCommand(DeleteScriptFromWebServerCommand),
-                MenuItemPayload = node
-            });
+                node.ContextMenuItems.Add(new MenuItemViewModel()
+                {
+                    MenuItemHeader = "Deploy script to web server",
+                    MenuItemIcon = UPLOAD_SCRIPT_ICON,
+                    MenuItemCommand = new RelayCommand(DeployScriptToWebServerCommand),
+                    MenuItemPayload = node
+                });
+            }
 
             node.NodeTextPropertyChanged += NodeTextPropertyChangedHandler;
 
@@ -1060,78 +1085,89 @@ namespace DaJet.Studio
 
             MessageBoxResult result = MessageBox.Show("Deploy script \"" + scriptEditor.Name + "\" ?",
                 "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
-            if (result != MessageBoxResult.OK) return;
+            if (result != MessageBoxResult.OK) { return; }
+
+            if (scriptEditor.IsScriptChanged)
+            {
+                MessageBox.Show("The script has unsaved changes. Save them first.",
+                    "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Information);
+                return;
+            }
+
+            HttpServicesController HttpServices = Services.GetService<HttpServicesController>();
+            WebServer webServer = HttpServices.SelectWebServer();
+            if (webServer == null) return;
 
             DatabaseInfo database = treeNode.GetAncestorPayload<DatabaseInfo>();
-            if (database == null)
-            {
-                _ = MessageBox.Show("Parent database is not found!", "DaJet", MessageBoxButton.OK, MessageBoxImage.Exclamation);
-                return;
-            }
             DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
-            if (server == null)
-            {
-                _ = MessageBox.Show("Parent server is not found!", "DaJet", MessageBoxButton.OK, MessageBoxImage.Exclamation);
-                return;
-            }
 
-            IFileInfo file = FileProvider.GetFileInfo($"{ROOT_CATALOG_NAME}/{server.Identity.ToString().ToLower()}/{database.Identity.ToString().ToLower()}/{scriptEditor.Name}");
-            if (!file.Exists)
-            {
-                _ = MessageBox.Show("Script file is not found!", "DaJet", MessageBoxButton.OK, MessageBoxImage.Exclamation);
-                return;
-            }
+            MetaScript script = new MetaScript() { Name = scriptEditor.Name };
 
-            // TODO: select web server to deploy script to
+            byte[] bytes = ReadScriptAsBytes(server, database, scriptEditor.ScriptType, scriptEditor.Name);
+            script.SourceCode = Convert.ToBase64String(bytes);
+            
+            JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
+            string requestJson = JsonSerializer.Serialize(script, options);
+            StringContent body = new StringContent(requestJson, Encoding.UTF8, "application/json");
 
             IHttpClientFactory http = Services.GetService<IHttpClientFactory>();
-            var client = http.CreateClient("test-server");
-            if (client.BaseAddress == null) { client.BaseAddress = new Uri("http://localhost:5000"); }
-
-            string url = $"{server.Identity.ToString().ToLower()}/{database.Identity.ToString().ToLower()}/{scriptEditor.Name}";
-
-            byte[] bytes = File.ReadAllBytes(file.PhysicalPath);
-            string content = Convert.ToBase64String(bytes);
-            string requestJson = $"{{ \"script\" : \"{content}\" }}";
-            StringContent body = new StringContent(requestJson, Encoding.UTF8, "application/json");
+            HttpClient client = http.CreateClient(webServer.Name);
+            if (client.BaseAddress == null) { client.BaseAddress = new Uri(webServer.Address); }
+            string url = GetScriptUrl(client, server, database, script);
 
             try
             {
-                var response = client.PutAsync(url, body).Result;
+                var response = client.PostAsync(url, body).Result;
 
-                if (response.StatusCode == HttpStatusCode.OK)
+                if (response.StatusCode == HttpStatusCode.Created)
                 {
                     HttpServicesController controller = Services.GetService<HttpServicesController>();
-                    if (controller != null)
-                    {
-                        // TODO: add tree node to the "Http services" node
-                        controller.CreateScriptNode(controller.WebSettings.WebServers[0], server, database, new MetaScript() { Name = scriptEditor.Name });
-                    }
-                    _ = MessageBox.Show("Script has been deployed successfully.", scriptEditor.Name, MessageBoxButton.OK, MessageBoxImage.Information);
+                    script.SourceCode = string.Empty; // we do not need it in the web-settings.json file
+                    controller.CreateScriptNode(webServer, server, database, script);
+                    _ = MessageBox.Show("Script has been deployed successfully.", script.Name, MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 else
                 {
-                    _ = MessageBox.Show(((int)response.StatusCode).ToString() + " (" + response.StatusCode.ToString() + "): " + response.ReasonPhrase, scriptEditor.Name);
+                    _ = MessageBox.Show(((int)response.StatusCode).ToString() + " (" + response.StatusCode.ToString() + "): " + response.ReasonPhrase, script.Name);
                 }
             }
             catch (Exception ex)
             {
-                _ = MessageBox.Show(ex.Message, scriptEditor.Name);
+                _ = MessageBox.Show(ex.Message, script.Name);
             }
         }
-        private void DeleteScriptFromWebServerCommand(object node)
+        private string GetScriptUrl(HttpClient client, DatabaseServer server, DatabaseInfo database, MetaScript script)
         {
-            if (!(node is TreeNodeViewModel treeNode)) return;
-            if (!(treeNode.NodePayload is ScriptEditorViewModel scriptEditor)) return;
+            string url = $"server/{server.Identity.ToString().ToLower()}";
+            var response = client.GetAsync(url).Result;
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                string json = JsonSerializer.Serialize(server);
+                StringContent body = new StringContent(json, Encoding.UTF8, "application/json");
+                response = client.PostAsync(url, body).Result;
+                if (response.StatusCode != HttpStatusCode.Created)
+                {
+                    string errorMessage = ((int)response.StatusCode).ToString() + " (" + response.StatusCode.ToString() + "): " + response.ReasonPhrase;
+                    throw new Exception(errorMessage);
+                }
+            }
 
-            MessageBoxResult result = MessageBox.Show("Delete script \"" + scriptEditor.Name + "\" ?",
-                "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
-            if (result != MessageBoxResult.OK) return;
+            url = $"{server.Identity.ToString().ToLower()}/database/{database.Identity.ToString().ToLower()}";
+            response = client.GetAsync(url).Result;
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                string json = JsonSerializer.Serialize(database);
+                StringContent body = new StringContent(json, Encoding.UTF8, "application/json");
+                response = client.PostAsync(url, body).Result;
+                if (response.StatusCode != HttpStatusCode.Created)
+                {
+                    string errorMessage = ((int)response.StatusCode).ToString() + " (" + response.StatusCode.ToString() + "): " + response.ReasonPhrase;
+                    throw new Exception(errorMessage);
+                }
+            }
 
-            // TODO
-
+            return $"{server.Identity.ToString().ToLower()}/{database.Identity.ToString().ToLower()}/script/{script.Identity.ToString().ToLower()}";
         }
-        
         
         
         private void ShowException(string errorMessage)
