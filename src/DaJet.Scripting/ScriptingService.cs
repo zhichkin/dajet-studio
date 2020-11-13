@@ -9,6 +9,8 @@ namespace DaJet.Scripting
     public interface IScriptingService
     {
         string PrepareScript(string script, out IList<ParseError> errors);
+        string PrepareScript(string script, Dictionary<string, object> parameters, out IList<ParseError> errors);
+        string ExecuteJson(string script, out IList<ParseError> errors);
         string ExecuteScript(string script, out IList<ParseError> errors);
         TSqlFragment ParseScript(string script, out IList<ParseError> errors);
     }
@@ -44,6 +46,31 @@ namespace DaJet.Scripting
 
             Generator.GenerateScript(fragment, out string sql);
             return sql;
+        }
+        public string PrepareScript(string script, Dictionary<string, object> parameters, out IList<ParseError> errors)
+        {
+            if (MetadataService.CurrentDatabase == null) throw new InvalidOperationException("Current database is not defined!");
+
+            TSqlFragment fragment = Parser.Parse(new StringReader(script), out errors);
+            if (errors.Count > 0)
+            {
+                return script;
+            }
+
+            DeclareVariableStatementVisitor parametersVisitor = new DeclareVariableStatementVisitor(parameters);
+            fragment.Accept(parametersVisitor);
+
+            ScriptNode result = new ScriptNode() { Database = MetadataService.CurrentDatabase };
+            SyntaxTreeVisitor visitor = new SyntaxTreeVisitor(MetadataService);
+            visitor.Visit(fragment, result);
+
+            Generator.GenerateScript(fragment, out string sql);
+            return sql;
+        }
+        public string ExecuteJson(string script, out IList<ParseError> errors)
+        {
+            errors = new ParseError[] { }; // TODO
+            return ScriptExecutor.ExecuteJsonString(script);
         }
         public string ExecuteScript(string script, out IList<ParseError> errors)
         {

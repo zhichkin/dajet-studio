@@ -50,8 +50,6 @@ namespace DaJet.Studio
                 using JsonDocument documentV = JsonDocument.ParseValue(ref reader);
                 return ReadList(documentV.RootElement);
             }
-            // Use JsonElement as fallback.
-            // Newtonsoft uses JArray or JObject.
             JsonDocument document = JsonDocument.ParseValue(ref reader);
             return document.RootElement.Clone();
         }

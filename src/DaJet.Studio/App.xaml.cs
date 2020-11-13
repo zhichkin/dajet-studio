@@ -69,6 +69,7 @@ namespace DaJet.Studio
             services.AddSingleton<IScriptingService, ScriptingService>();
             services.AddSingleton<IMessagingService, MessagingService>();
 
+            services.AddHttpClient();
             foreach (WebServer server in settings.WebServers)
             {
                 services.AddHttpClient(server.Name, client =>

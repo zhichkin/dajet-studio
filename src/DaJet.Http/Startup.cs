@@ -99,23 +99,9 @@ namespace DaJet.Http
                 //_ = Parallel.ForEach(server.Databases, InitializeMetadata);
                 foreach (DatabaseInfo database in server.Databases)
                 {
-                    InitializeDatabaseMetadata(server, database, metadata);
+                    metadata.Initialize(server, database);
                 }
             }
-        }
-        private void InitializeDatabaseMetadata(DatabaseServer server, DatabaseInfo database, IMetadataService metadata)
-        {
-            IMetadataProvider provider = metadata.GetMetadataProvider(database);
-            provider.UseServer(server);
-            provider.UseDatabase(database);
-            provider.InitializeMetadata(database);
-
-            if (!metadata.Settings.Servers.Contains(server))
-            {
-                metadata.Settings.Servers.Add(server);
-            }
-
-            //await Task.Run(() => provider.InitializeMetadata(database));
         }
     }
 }

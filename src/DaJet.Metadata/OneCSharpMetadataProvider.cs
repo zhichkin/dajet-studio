@@ -87,6 +87,12 @@ namespace DaJet.Metadata
         }
         public void InitializeMetadata(DatabaseInfo database)
         {
+            if (database.BaseObjects != null
+                && database.BaseObjects.Count > 0)
+            {
+                database.BaseObjects.Clear();
+            }
+
             Dictionary<string, DBNameEntry> dbnames = new Dictionary<string, DBNameEntry>();
             
             ReadDBNames(dbnames);

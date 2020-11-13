@@ -18,6 +18,8 @@ namespace DaJet.Metadata
         void UseDatabase(string databaseName);
         void AttachDatabase(string serverName, DatabaseInfo database);
 
+        void Initialize(DatabaseServer server, DatabaseInfo database);
+
         List<DatabaseInfo> GetDatabases(DatabaseServer server);
         IMetadataProvider GetMetadataProvider(DatabaseInfo database);
 
@@ -186,6 +188,37 @@ namespace DaJet.Metadata
             ConnectionString = csb.ToString();
         }
 
+
+
+        public void Initialize(DatabaseServer server, DatabaseInfo database)
+        {
+            DatabaseServer existingServer = Settings.Servers
+                .Where(s => s.Address == server.Address || s.Name == server.Name)
+                .FirstOrDefault();
+            
+            if (existingServer == null)
+            {
+                existingServer = server;
+                Settings.Servers.Add(existingServer);
+            }
+
+            DatabaseInfo existingDatabase = existingServer.Databases
+                .Where(db => db.Name == database.Name)
+                .FirstOrDefault();
+
+            if (existingDatabase == null)
+            {
+                existingDatabase = database;
+                existingServer.Databases.Add(existingDatabase);
+            }
+
+            existingDatabase.BaseObjects.Clear();
+
+            IMetadataProvider provider = GetMetadataProvider(existingDatabase);
+            provider.UseServer(existingServer);
+            provider.UseDatabase(existingDatabase);
+            provider.InitializeMetadata(existingDatabase);
+        }
 
 
 

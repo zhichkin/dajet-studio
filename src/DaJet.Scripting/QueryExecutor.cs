@@ -27,7 +27,7 @@ namespace DaJet.Scripting
         /// Executes SQL script and returns result as JSON.
         /// </summary>
         string ExecuteJson(string sql);
-
+        string ExecuteJsonString(string sql);
         string ExecuteValue(string sql);
         string ExecuteTable(string sql);
         string ExecuteCommand(string sql);
@@ -130,6 +130,104 @@ namespace DaJet.Scripting
                     writer.WriteEndArray();
                 }
                 json = Encoding.UTF8.GetString(stream.ToArray());
+            }
+            return json;
+        }
+
+        public string ExecuteJsonString(string sql)
+        {
+            string json;
+            using (StringWriter writer = new StringWriter())
+            {
+                writer.Write("[");
+                using (SqlConnection connection = new SqlConnection(MetadataService.ConnectionString))
+                using (SqlCommand command = new SqlCommand(sql, connection))
+                {
+                    connection.Open();
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        var schema = reader.GetColumnSchema();
+                        while (reader.Read())
+                        {
+                            writer.Write("{");
+                            for (int c = 0; c < schema.Count; c++)
+                            {
+                                object value = reader[c];
+                                string typeName = schema[c].DataTypeName;
+                                string columnName = schema[c].ColumnName;
+                                int valueSize = 0;
+                                if (schema[c].ColumnSize.HasValue)
+                                {
+                                    valueSize = schema[c].ColumnSize.Value;
+                                }
+                                if (value == DBNull.Value)
+                                {
+                                    writer.Write($"\"{columnName}\":null");
+                                }
+                                else if (DbUtilities.IsString(typeName))
+                                {
+                                    writer.Write($"\"{columnName}\":\"{(string)value}\"");
+                                }
+                                else if (DbUtilities.IsDateTime(typeName))
+                                {
+                                    writer.Write($"\"{columnName}\":\"{((DateTime)value).ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture)}\"");
+                                }
+                                else if (DbUtilities.IsVersion(typeName))
+                                {
+                                    writer.Write($"\"{columnName}\":\"0x{DbUtilities.ByteArrayToString((byte[])value)}\"");
+                                }
+                                else if (DbUtilities.IsBoolean(typeName, valueSize))
+                                {
+                                    if (typeName == "bit")
+                                    {
+                                        writer.Write($"\"{columnName}\":{((bool)value ? "true" : "false")}");
+                                    }
+                                    else // binary(1)
+                                    {
+                                        writer.Write($"\"{columnName}\":{(DbUtilities.GetInt32((byte[])value) == 0 ? "false" : "true")}");
+                                    }
+                                }
+                                else if (DbUtilities.IsNumber(typeName, valueSize))
+                                {
+                                    if (typeName == "binary" || typeName == "varbinary") // binary(4) | varbinary(4)
+                                    {
+                                        writer.Write($"\"{columnName}\":{DbUtilities.GetInt32((byte[])value)}");
+                                    }
+                                    else
+                                    {
+                                        writer.Write($"\"{columnName}\":{((decimal)value).ToString().Replace(',', '.')}");
+                                    }
+                                }
+                                else if (DbUtilities.IsUUID(typeName, valueSize))
+                                {
+                                    writer.Write($"\"{columnName}\":\"{new Guid((byte[])value).ToString().ToLower()}\"");
+                                }
+                                else if (DbUtilities.IsReference(typeName, valueSize))
+                                {
+                                    byte[] reference = (byte[])value;
+                                    int code = DbUtilities.GetInt32(reference[0..4]);
+                                    Guid uuid = new Guid(reference[4..^0]);
+                                    writer.Write($"\"{columnName}\":\"{{{code}:{uuid}}}\"");
+                                }
+                                else if (DbUtilities.IsBinary(typeName))
+                                {
+                                    writer.Write($"\"{columnName}\":\"{Convert.ToBase64String((byte[])value)}\"");
+                                }
+                                if (c < schema.Count - 1)
+                                {
+                                    writer.Write(",");
+                                }
+                                else
+                                {
+                                    writer.Write("");
+                                }
+                            }
+                            writer.Write("}");
+                            writer.Write(",");
+                        }
+                    }
+                }
+                json = writer.ToString().TrimEnd(',') + "]";
             }
             return json;
         }

@@ -1122,7 +1122,7 @@ namespace DaJet.Studio
                 if (response.StatusCode == HttpStatusCode.Created)
                 {
                     HttpServicesController controller = Services.GetService<HttpServicesController>();
-                    script.SourceCode = string.Empty; // we do not need it in the web-settings.json file
+                    script.SourceCode = string.Empty; // we do not need it any more in the web-settings.json file
                     controller.CreateScriptNode(webServer, server, database, script);
                     _ = MessageBox.Show("Script has been deployed successfully.", script.Name, MessageBoxButton.OK, MessageBoxImage.Information);
                 }
@@ -1142,7 +1142,7 @@ namespace DaJet.Studio
             var response = client.GetAsync(url).Result;
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
-                string json = JsonSerializer.Serialize(server);
+                string json = JsonSerializer.Serialize(server.Copy());
                 StringContent body = new StringContent(json, Encoding.UTF8, "application/json");
                 response = client.PostAsync(url, body).Result;
                 if (response.StatusCode != HttpStatusCode.Created)
@@ -1156,7 +1156,7 @@ namespace DaJet.Studio
             response = client.GetAsync(url).Result;
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
-                string json = JsonSerializer.Serialize(database);
+                string json = JsonSerializer.Serialize(database.Copy());
                 StringContent body = new StringContent(json, Encoding.UTF8, "application/json");
                 response = client.PostAsync(url, body).Result;
                 if (response.StatusCode != HttpStatusCode.Created)
@@ -1169,6 +1169,7 @@ namespace DaJet.Studio
             return $"{server.Identity.ToString().ToLower()}/{database.Identity.ToString().ToLower()}/script/{script.Identity.ToString().ToLower()}";
         }
         
+
         
         private void ShowException(string errorMessage)
         {

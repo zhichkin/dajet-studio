@@ -1,4 +1,4 @@
-# DaJet Studio (SODA tools)
+# DaJet Studio (SODA tools - Service Oriented Database Architecture tools)
 # Create and manage database scripts, functions, stored procedures, queues and web services in one place
 1. Installation.
 

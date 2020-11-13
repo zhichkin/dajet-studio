@@ -59,18 +59,7 @@ namespace DaJet.Http
                     {
                         if (property.Value.ValueKind == JsonValueKind.String)
                         {
-                            if (property.Value.TryGetDateTime(out DateTime date))
-                            {
-                                result.Add(property.Name, date);
-                            }
-                            else if (property.Value.TryGetGuid(out Guid uuid))
-                            {
-                                result.Add(property.Name, uuid);
-                            }
-                            else
-                            {
-                                result.Add(property.Name, property.Value.GetString());
-                            }
+                            result.Add(property.Name, property.Value.GetString());
                         }
                         else if (property.Value.ValueKind == JsonValueKind.True)
                         {
@@ -194,6 +183,8 @@ namespace DaJet.Http
                 return Conflict();
             }
 
+            server.Databases.Clear();  // replace DatabaseServer with DatabaseServerDTO !?
+
             string catalogName = GetServerCatalog(server);
             Metadata.Servers.Add(server);
             SaveMetadataSettings();
@@ -224,7 +215,7 @@ namespace DaJet.Http
 
             string catalogName = GetServerCatalog(existing);
             IFileInfo fileInfo = FileProvider.GetFileInfo(catalogName);
-            Directory.Delete(fileInfo.PhysicalPath);
+            Directory.Delete(fileInfo.PhysicalPath, true);
 
             Metadata.Servers.Remove(existing);
             SaveMetadataSettings();
@@ -279,11 +270,14 @@ namespace DaJet.Http
                 return Conflict();
             }
 
+            database.Scripts.Clear(); // replace DatabaseInfo with DatabaseDTO !?
+
+            IMetadataService metadata = Services.GetService<IMetadataService>();
+            metadata.Initialize(srv, database);
+
             string catalogName = GetDatabaseCatalog(srv, database);
             srv.Databases.Add(database);
             SaveMetadataSettings();
-
-            // TODO: initialize database metadata !?
 
             return Created(catalogName, database.Identity);
         }
@@ -303,6 +297,9 @@ namespace DaJet.Http
             {
                 return NotFound();
             }
+
+            IMetadataService metadata = Services.GetService<IMetadataService>();
+            metadata.Initialize(srv, existing);
 
             database.CopyTo(existing);
             SaveMetadataSettings();
@@ -324,7 +321,7 @@ namespace DaJet.Http
 
             string catalogName = GetDatabaseCatalog(srv, existing);
             IFileInfo fileInfo = FileProvider.GetFileInfo(catalogName);
-            Directory.Delete(fileInfo.PhysicalPath);
+            Directory.Delete(fileInfo.PhysicalPath, true);
 
             srv.Databases.Remove(existing);
             SaveMetadataSettings();
@@ -480,13 +477,8 @@ namespace DaJet.Http
             MetaScript scr = db.Scripts.Where(scr => scr.Identity == script).FirstOrDefault();
             if (scr == null) { return NotFound(); }
 
-            // TODO: initialize script with parameters
-            //Dictionary<string, object> parameters = ParseParameters(HttpContext);
-            //foreach (var p in parameters)
-            //{
-            //    //input += p.Key + " = " + p.Value.ToString() + Environment.NewLine;
-            //}
-
+            Dictionary<string, object> parameters = ParseParameters(HttpContext);
+            
             string responseJson = "[]";
             string errorMessage = string.Empty;
 
@@ -496,13 +488,22 @@ namespace DaJet.Http
             metadata.AttachDatabase(string.IsNullOrWhiteSpace(srv.Address) ? srv.Name : srv.Address, db);
 
             IScriptingService scripting = Services.GetService<IScriptingService>();
-            string sql = scripting.PrepareScript(sourceCode, out IList<ParseError> parseErrors);
+            string sql = string.Empty;
+            IList<ParseError> parseErrors = null;
+            if (parameters.Count > 0)
+            {
+                sql = scripting.PrepareScript(sourceCode, parameters, out parseErrors);
+            }
+            else
+            {
+                sql = scripting.PrepareScript(sourceCode, out parseErrors);
+            }
             foreach (ParseError error in parseErrors) { errorMessage += error.Message + Environment.NewLine; }
             if (parseErrors.Count > 0) { return StatusCode(StatusCodes.Status500InternalServerError, errorMessage); }
 
             try
             {
-                responseJson = scripting.ExecuteScript(sql, out IList<ParseError> executeErrors);
+                responseJson = scripting.ExecuteJson(sql, out IList<ParseError> executeErrors);
                 foreach (ParseError error in executeErrors) { errorMessage += error.Message + Environment.NewLine; }
                 if (executeErrors.Count > 0) { return StatusCode(StatusCodes.Status500InternalServerError, errorMessage); }
             }

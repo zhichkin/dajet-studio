@@ -31,10 +31,12 @@ namespace DaJet.Studio
         private const string ADD_WEB_SERVICE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/add-web-service.png";
         private const string SERVER_SETTINGS_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/server-settings.png";
         private const string HTTP_CONNECTION_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/http-connection.png";
+        private const string DISCONNECT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/disconnect.png";
         private const string CONNECTION_OFFLINE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/connection-offline.png";
         private const string CONNECTION_WARNING_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/connection-warning.png";
         private const string DATA_SERVER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/data-server.png";
         private const string DATABASE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/database.png";
+        private const string DELETE_DATABASE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/delete-database.png";
         private const string SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/database-script.png";
         private const string UPLOAD_SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/upload-script.png";
         private const string DELETE_SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/delete-script.png";
@@ -44,10 +46,12 @@ namespace DaJet.Studio
         private readonly BitmapImage ADD_WEB_SERVICE_ICON = new BitmapImage(new Uri(ADD_WEB_SERVICE_ICON_PATH));
         private readonly BitmapImage SERVER_SETTINGS_ICON = new BitmapImage(new Uri(SERVER_SETTINGS_ICON_PATH));
         private readonly BitmapImage HTTP_CONNECTION_ICON = new BitmapImage(new Uri(HTTP_CONNECTION_ICON_PATH));
+        private readonly BitmapImage DISCONNECT_ICON = new BitmapImage(new Uri(DISCONNECT_ICON_PATH));
         private readonly BitmapImage CONNECTION_OFFLINE_ICON = new BitmapImage(new Uri(CONNECTION_OFFLINE_ICON_PATH));
         private readonly BitmapImage CONNECTION_WARNING_ICON = new BitmapImage(new Uri(CONNECTION_WARNING_ICON_PATH));
         private readonly BitmapImage DATA_SERVER_ICON = new BitmapImage(new Uri(DATA_SERVER_ICON_PATH));
         private readonly BitmapImage DATABASE_ICON = new BitmapImage(new Uri(DATABASE_ICON_PATH));
+        private readonly BitmapImage DELETE_DATABASE_ICON = new BitmapImage(new Uri(DELETE_DATABASE_ICON_PATH));
         private readonly BitmapImage SCRIPT_ICON = new BitmapImage(new Uri(SCRIPT_ICON_PATH));
         private readonly BitmapImage UPLOAD_SCRIPT_ICON = new BitmapImage(new Uri(UPLOAD_SCRIPT_ICON_PATH));
         private readonly BitmapImage DELETE_SCRIPT_ICON = new BitmapImage(new Uri(DELETE_SCRIPT_ICON_PATH));
@@ -188,7 +192,14 @@ namespace DaJet.Studio
         {
             return $"{server.Identity.ToString().ToLower()}/{database.Identity.ToString().ToLower()}/script/{script.Identity.ToString().ToLower()}";
         }
-
+        public string GetActionDatabaseServerUrl(DatabaseServer server)
+        {
+            return $"server/{server.Identity.ToString().ToLower()}";
+        }
+        public string GetActionDatabaseUrl(DatabaseServer server, DatabaseInfo database)
+        {
+            return $"{server.Identity.ToString().ToLower()}/database/{database.Identity.ToString().ToLower()}";
+        }
 
         public TreeNodeViewModel CreateTreeNode(TreeNodeViewModel parent) { throw new NotImplementedException(); }
         public TreeNodeViewModel CreateTreeNode()
@@ -283,6 +294,13 @@ namespace DaJet.Studio
                 NodeToolTip = string.Empty,
                 NodePayload = server
             };
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Delete database server at web server",
+                MenuItemIcon = DISCONNECT_ICON,
+                MenuItemCommand = new RelayCommand(DeleteDatabaseServerCommand),
+                MenuItemPayload = node
+            });
             return node;
         }
         private void CreateDatabaseNodes(TreeNodeViewModel parentNode, DatabaseServer server)
@@ -306,6 +324,13 @@ namespace DaJet.Studio
                 NodeToolTip = string.Empty,
                 NodePayload = database
             };
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Delete database at web server",
+                MenuItemIcon = DELETE_DATABASE_ICON,
+                MenuItemCommand = new RelayCommand(DeleteDatabaseCommand),
+                MenuItemPayload = node
+            });
             return node;
         }
         private void CreateScriptNodes(TreeNodeViewModel parentNode, DatabaseInfo database)
@@ -357,6 +382,8 @@ namespace DaJet.Studio
             });
             return node;
         }
+
+
 
         private bool WebServerAddressExists(WebServer server)
         {
@@ -489,7 +516,7 @@ namespace DaJet.Studio
             IFileInfo catalog = FileProvider.GetFileInfo($"{WEB_SETTINGS_CATALOG_NAME}/{server.Identity.ToString().ToLower()}");
             if (catalog.Exists)
             {
-                Directory.Delete(catalog.PhysicalPath);
+                Directory.Delete(catalog.PhysicalPath, true);
             }
 
             treeNode.Parent.TreeNodes.Remove(treeNode);
@@ -540,19 +567,20 @@ namespace DaJet.Studio
 
             string url = GetExecuteScriptUrl(null, server, database, script);
 
-            ScriptingController controller = Services.GetService<ScriptingController>();
-            string sourceCode = controller.ReadScriptSourceCode(server, database, MetaScriptType.Script, script.Name);
+            //ScriptingController controller = Services.GetService<ScriptingController>();
+            //string sourceCode = controller.ReadScriptSourceCode(server, database, MetaScriptType.Script, script.Name);
 
-            IMetadataService metadata = Services.GetService<IMetadataService>();
-            metadata.AttachDatabase(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address, database);
+            //IMetadataService metadata = Services.GetService<IMetadataService>();
+            //metadata.AttachDatabase(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address, database);
 
-            IScriptingService scripting = Services.GetService<IScriptingService>();
-            TSqlFragment syntaxTree = scripting.ParseScript(sourceCode, out IList<ParseError> errors);
-            if (errors.Count > 0) { ShowParseErrors(errors); return; }
+            //IScriptingService scripting = Services.GetService<IScriptingService>();
+            //TSqlFragment syntaxTree = scripting.ParseScript(sourceCode, out IList<ParseError> errors);
+            //if (errors.Count > 0) { ShowParseErrors(errors); return; }
 
-            DeclareVariableStatementVisitor visitor = new DeclareVariableStatementVisitor();
-            syntaxTree.Accept(visitor);
-            string requestJson = visitor.GenerateJsonParametersObject();
+            //DeclareVariableStatementVisitor visitor = new DeclareVariableStatementVisitor();
+            //syntaxTree.Accept(visitor);
+
+            string requestJson = string.Empty;
             StringContent body = new StringContent(requestJson, Encoding.UTF8, "application/json");
 
             IHttpClientFactory http = Services.GetService<IHttpClientFactory>();
@@ -568,13 +596,14 @@ namespace DaJet.Studio
                     MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
                     ScriptEditorViewModel editor = Services.GetService<ScriptEditorViewModel>();
                     editor.Name = $"{script.Name} (WEB response)";
-                    editor.ScriptCode = url + Environment.NewLine + response.Content.ReadAsStringAsync().Result;
+                    string responseJson = response.Content.ReadAsStringAsync().Result;
+                    editor.ScriptCode = url + Environment.NewLine + responseJson;
                     ScriptEditorView scriptView = new ScriptEditorView() { DataContext = editor };
                     mainWindow.AddNewTab(editor.Name, scriptView);
                 }
                 else
                 {
-                    _ = MessageBox.Show(((int)response.StatusCode).ToString() + " (" + response.StatusCode.ToString() + "): " + response.ReasonPhrase, script.Name);
+                    ShowHttpError(script.Name + " (error)", response);
                 }
             }
             catch (Exception ex)
@@ -620,7 +649,7 @@ namespace DaJet.Studio
                 }
                 else
                 {
-                    _ = MessageBox.Show(((int)response.StatusCode).ToString() + " (" + response.StatusCode.ToString() + "): " + response.ReasonPhrase, script.Name);
+                    ShowHttpError(script.Name + " (error)", response);
                 }
             }
             catch (Exception ex)
@@ -659,12 +688,89 @@ namespace DaJet.Studio
                 }
                 else
                 {
-                    _ = MessageBox.Show(((int)response.StatusCode).ToString() + " (" + response.StatusCode.ToString() + "): " + response.ReasonPhrase, script.Name);
+                    ShowHttpError(script.Name + " (error)", response);
                 }
             }
             catch (Exception ex)
             {
                 _ = MessageBox.Show(ex.Message, script.Name);
+            }
+        }
+        private void DeleteDatabaseCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is DatabaseInfo database)) return;
+
+            MessageBoxResult result = MessageBox.Show("Удалить базу данных \"" + database.Name + "\" на web сервере ?",
+                "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (result != MessageBoxResult.OK) return;
+
+            WebServer webServer = treeNode.GetAncestorPayload<WebServer>();
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+
+            string url = GetActionDatabaseUrl(server, database);
+
+            IHttpClientFactory http = Services.GetService<IHttpClientFactory>();
+            HttpClient client = http.CreateClient(webServer.Name);
+            if (client.BaseAddress == null) { client.BaseAddress = new Uri(webServer.Address); }
+
+            try
+            {
+                var response = client.DeleteAsync(url).Result;
+
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    _ = MessageBox.Show("Database has been removed successfully.", database.Name, MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    ShowHttpError(database.Name + " (error)", response);
+                }
+                server.Databases.Remove(database);
+                SaveWebSettings();
+                treeNode.Parent.TreeNodes.Remove(treeNode);
+            }
+            catch (Exception ex)
+            {
+                _ = MessageBox.Show(ex.Message, database.Name);
+            }
+        }
+        private void DeleteDatabaseServerCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is DatabaseServer server)) return;
+
+            MessageBoxResult result = MessageBox.Show("Удалить сервер баз данных \"" + server.Name + "\" на web сервере ?",
+                "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (result != MessageBoxResult.OK) return;
+
+            WebServer webServer = treeNode.GetAncestorPayload<WebServer>();
+
+            string url = GetActionDatabaseServerUrl(server);
+
+            IHttpClientFactory http = Services.GetService<IHttpClientFactory>();
+            HttpClient client = http.CreateClient(webServer.Name);
+            if (client.BaseAddress == null) { client.BaseAddress = new Uri(webServer.Address); }
+
+            try
+            {
+                var response = client.DeleteAsync(url).Result;
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    _ = MessageBox.Show("Database server has been removed successfully.", server.Name, MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    ShowHttpError(server.Name + " (error)", response);
+                }
+
+                webServer.DatabaseServers.Remove(server);
+                SaveWebSettings();
+                treeNode.Parent.TreeNodes.Remove(treeNode);
+            }
+            catch (Exception ex)
+            {
+                _ = MessageBox.Show(ex.Message, server.Name);
             }
         }
 
@@ -682,6 +788,18 @@ namespace DaJet.Studio
             ScriptEditorViewModel errorsViewModel = Services.GetService<ScriptEditorViewModel>();
             errorsViewModel.Name = "Errors";
             errorsViewModel.ScriptCode = errorMessage;
+            ScriptEditorView errorsView = new ScriptEditorView() { DataContext = errorsViewModel };
+            mainWindow.AddNewTab(errorsViewModel.Name, errorsView);
+        }
+        private void ShowHttpError(string header, HttpResponseMessage response)
+        {
+            string errorHeader = ((int)response.StatusCode).ToString() + " (" + response.StatusCode.ToString() + "): " + response.ReasonPhrase;
+            string errorDescription = response.Content.ReadAsStringAsync().Result;
+
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            ScriptEditorViewModel errorsViewModel = Services.GetService<ScriptEditorViewModel>();
+            errorsViewModel.Name = header;
+            errorsViewModel.ScriptCode = errorHeader + Environment.NewLine + errorDescription;
             ScriptEditorView errorsView = new ScriptEditorView() { DataContext = errorsViewModel };
             mainWindow.AddNewTab(errorsViewModel.Name, errorsView);
         }
