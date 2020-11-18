@@ -232,6 +232,15 @@ namespace DaJet.Messaging
             script.AppendLine($"SELECT service_broker_guid FROM sys.databases WHERE [name] = '{SERVICE_BROKER_DATABASE}';");
             return script.ToString();
         }
+        internal static string SelectQueuesScript()
+        {
+            StringBuilder script = new StringBuilder();
+            script.AppendLine("SELECT name, is_poison_message_handling_enabled, is_retention_enabled, ");
+            script.Append("is_activation_enabled, activation_procedure, max_readers, execute_as_principal_id, ");
+            script.Append("is_receive_enabled, is_enqueue_enabled ");
+            script.Append("FROM sys.service_queues WHERE is_ms_shipped = 0;");
+            return script.ToString();
+        }
         internal static string CreateServiceQueueScript(Guid brokerId, string name)
         {
             string userName = CreateBrokerUserName(brokerId);

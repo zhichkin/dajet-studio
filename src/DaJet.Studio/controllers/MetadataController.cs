@@ -289,12 +289,21 @@ namespace DaJet.Studio
             TreeNodeViewModel scripts = CreateScriptsTreeNode(databaseNode);
             if (scripts != null) { databaseNode.TreeNodes.Add(scripts); }
 
+            TreeNodeViewModel queues = CreateQueuesTreeNode(databaseNode);
+            if (queues != null) { databaseNode.TreeNodes.Add(queues); }
+
             return databaseNode;
         }
         private TreeNodeViewModel CreateScriptsTreeNode(TreeNodeViewModel databaseNode)
         {
             ITreeNodeController controller = Services.GetService<ScriptingController>();
             if (controller == null) return null;
+            return controller.CreateTreeNode(databaseNode);
+        }
+        private TreeNodeViewModel CreateQueuesTreeNode(TreeNodeViewModel databaseNode)
+        {
+            ITreeNodeController controller = Services.GetService<MessagingController>();
+            if (controller == null) { return null; }
             return controller.CreateTreeNode(databaseNode);
         }
         private void CreateMetadataTreeNodes()

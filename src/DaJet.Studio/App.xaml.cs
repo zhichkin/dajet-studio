@@ -63,6 +63,7 @@ namespace DaJet.Studio
             services.AddSingleton<ScriptingController>();
             services.AddTransient<ScriptEditorViewModel>();
             services.AddSingleton<HttpServicesController>();
+            services.AddSingleton<MessagingController>();
 
             services.AddSingleton<IMetadataService, MetadataService>();
             services.AddSingleton<IQueryExecutor, QueryExecutor>();

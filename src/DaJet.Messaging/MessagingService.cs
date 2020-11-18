@@ -8,11 +8,13 @@ namespace DaJet.Messaging
     public interface IMessagingService
     {
         string CurrentServer { get; }
+        string CurrentDatabase { get; }
         string ConnectionString { get; }
         void UseServer(string address);
         void UseDatabase(string databaseName);
         void UseCredentials(string userName, string password);
         bool CheckConnection(out string errorMessage);
+        List<QueueInfo> SelectQueues(out string errorMessage);
         void SetupServiceBroker();
         void CreatePublicEndpoint(string name, int port);
         void CreateQueue(string name);
@@ -21,11 +23,13 @@ namespace DaJet.Messaging
     public sealed class MessagingService : IMessagingService
     {
         private const string ERROR_SERVER_IS_NOT_DEFINED = "Server is not defined. Try to call \"UseServer\" method first.";
+
         public string CurrentServer { get; private set; } = string.Empty;
+        public string CurrentDatabase { get; private set; } = string.Empty;
         public string ConnectionString { get; private set; } = string.Empty;
-        public void UseServer(string address)
+        public void UseServer(string serverAddress)
         {
-            if (string.IsNullOrWhiteSpace(address)) throw new ArgumentNullException(nameof(address));
+            if (string.IsNullOrWhiteSpace(serverAddress)) throw new ArgumentNullException(nameof(serverAddress));
 
             SqlConnectionStringBuilder csb;
             if (string.IsNullOrWhiteSpace(ConnectionString))
@@ -36,11 +40,122 @@ namespace DaJet.Messaging
             {
                 csb = new SqlConnectionStringBuilder(ConnectionString);
             }
-            csb.DataSource = address;
+            csb.DataSource = serverAddress;
             ConnectionString = csb.ToString();
 
-            CurrentServer = address;
+            CurrentServer = serverAddress;
         }
+        public void UseDatabase(string databaseName)
+        {
+            if (string.IsNullOrWhiteSpace(CurrentServer)) throw new InvalidOperationException(ERROR_SERVER_IS_NOT_DEFINED);
+
+            SqlConnectionStringBuilder csb = new SqlConnectionStringBuilder(ConnectionString)
+            {
+                InitialCatalog = databaseName
+            };
+            ConnectionString = csb.ToString();
+
+            CurrentDatabase = databaseName;
+        }
+        public void UseCredentials(string userName, string password)
+        {
+            if (string.IsNullOrWhiteSpace(CurrentServer)) throw new InvalidOperationException(ERROR_SERVER_IS_NOT_DEFINED);
+
+            SqlConnectionStringBuilder csb = new SqlConnectionStringBuilder(ConnectionString)
+            {
+                UserID = userName,
+                Password = password
+            };
+            csb.IntegratedSecurity = string.IsNullOrWhiteSpace(userName);
+
+            ConnectionString = csb.ToString();
+        }
+        public bool CheckConnection(out string errorMessage)
+        {
+            bool result = true;
+            errorMessage = string.Empty;
+
+            {
+                SqlConnection connection = new SqlConnection(ConnectionString);
+                try
+                {
+                    connection.Open();
+                    if (connection.State != ConnectionState.Open)
+                    {
+                        result = false;
+                        errorMessage = string.Format("Соединение получило статус: \"{0}\".", connection.State.ToString());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    result = false;
+                    errorMessage = ExceptionHelper.GetErrorText(ex);
+                }
+                finally
+                {
+                    if (connection.State == ConnectionState.Open)
+                    {
+                        connection.Close();
+                    }
+                    connection.Dispose();
+                }
+            }
+
+            return result;
+        }
+
+        public List<QueueInfo> SelectQueues(out string errorMessage)
+        {
+            errorMessage = string.Empty;
+            List<QueueInfo> list = new List<QueueInfo>();
+            string sql = SqlScripts.SelectQueuesScript();
+            {
+                SqlDataReader reader = null;
+                SqlConnection connection = new SqlConnection(ConnectionString);
+                SqlCommand command = connection.CreateCommand();
+                command.CommandType = CommandType.Text;
+                command.CommandText = sql;
+                try
+                {
+                    connection.Open();
+                    reader = command.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        QueueInfo queue = new QueueInfo()
+                        {
+                            Name = reader.IsDBNull("name") ? string.Empty : reader.GetString("name"),
+                            Status = reader.IsDBNull("is_enqueue_enabled") ? false : reader.GetBoolean("is_enqueue_enabled"),
+                            Retention = reader.IsDBNull("is_retention_enabled") ? false : reader.GetBoolean("is_retention_enabled"),
+                            Activation = reader.IsDBNull("is_activation_enabled") ? false : reader.GetBoolean("is_activation_enabled"),
+                            ProcedureName = reader.IsDBNull("activation_procedure") ? string.Empty : reader.GetString("activation_procedure"),
+                            MaxQueueReaders = reader.IsDBNull("max_readers") ? (short)0 : reader.GetInt16("max_readers"),
+                            PoisonMessageHandling = reader.IsDBNull("is_poison_message_handling_enabled") ? false : reader.GetBoolean("is_poison_message_handling_enabled")
+                        };
+                        list.Add(queue);
+                    }
+                }
+                catch (Exception error)
+                {
+                    errorMessage = ExceptionHelper.GetErrorText(error);
+                }
+                finally
+                {
+                    if (reader != null)
+                    {
+                        if (reader.HasRows)
+                        {
+                            command.Cancel();
+                        }
+                        reader.Dispose();
+                    }
+                    if (command != null) command.Dispose();
+                    if (connection != null) connection.Dispose();
+                }
+            }
+            return list;
+        }
+
+
 
         public void CreatePublicEndpoint(string name, int port)
         {
@@ -154,71 +269,6 @@ namespace DaJet.Messaging
         {
             // TODO
             throw new NotImplementedException();
-        }
-
-        public void UseDatabase(string databaseName)
-        {
-            //if (string.IsNullOrWhiteSpace(databaseName)) throw new ArgumentNullException(nameof(databaseName));
-            //if (Settings == null) throw new InvalidOperationException(ERROR_SERVICE_IS_NOT_CONFIGURED);
-            //if (CurrentServer == null) throw new InvalidOperationException(ERROR_SERVER_IS_NOT_DEFINED);
-
-            //string metadataFilePath = MetadataFilePath(CurrentServer.Name, databaseName);
-            //if (!File.Exists(metadataFilePath)) throw new DirectoryNotFoundException(metadataFilePath);
-
-            //InfoBase database = CurrentServer.Databases.Where(db => db.Name == databaseName).FirstOrDefault();
-            //if (database == null)
-            //{
-            //    database = new InfoBase() { Name = databaseName };
-            //    InitializeMetadata(database, metadataFilePath);
-            //    CurrentServer.Databases.Add(database);
-            //}
-
-            //SqlConnectionStringBuilder csb = new SqlConnectionStringBuilder(ConnectionString)
-            //{
-            //    InitialCatalog = database.Name
-            //};
-            //ConnectionString = csb.ToString();
-
-            //CurrentDatabase = database;
-        }
-
-        public void UseCredentials(string userName, string password)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool CheckConnection(out string errorMessage)
-        {
-            bool result = true;
-            errorMessage = string.Empty;
-
-            {
-                SqlConnection connection = new SqlConnection(ConnectionString);
-                try
-                {
-                    connection.Open();
-                    if (connection.State != ConnectionState.Open)
-                    {
-                        result = false;
-                        errorMessage = string.Format("Соединение получило статус: \"{0}\".", connection.State.ToString());
-                    }
-                }
-                catch (Exception ex)
-                {
-                    result = false;
-                    errorMessage = ExceptionHelper.GetErrorText(ex);
-                }
-                finally
-                {
-                    if (connection.State == ConnectionState.Open)
-                    {
-                        connection.Close();
-                    }
-                    connection.Dispose();
-                }
-            }
-
-            return result;
         }
     }
 }

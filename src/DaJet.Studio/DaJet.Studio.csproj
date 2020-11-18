@@ -40,6 +40,9 @@
     <None Remove="images\function.png" />
     <None Remove="images\http-connection.png" />
     <None Remove="images\key.png" />
+    <None Remove="images\message-queue-error.png" />
+    <None Remove="images\message-queue-warning.png" />
+    <None Remove="images\message-queue.png" />
     <None Remove="images\metadata.png" />
     <None Remove="images\nested-table.png" />
     <None Remove="images\new-script.png" />
@@ -120,6 +123,9 @@
     <Resource Include="images\function.png" />
     <Resource Include="images\http-connection.png" />
     <Resource Include="images\key.png" />
+    <Resource Include="images\message-queue-error.png" />
+    <Resource Include="images\message-queue-warning.png" />
+    <Resource Include="images\message-queue.png" />
     <Resource Include="images\metadata.png" />
     <Resource Include="images\nested-table.png" />
     <Resource Include="images\new-script.png" />
