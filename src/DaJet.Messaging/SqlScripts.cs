@@ -100,19 +100,19 @@ namespace DaJet.Messaging
 
         internal static string CreateQueueName(Guid brokerId, string name)
         {
-            return $"{brokerId}/Queue/{name}";
+            return $"{brokerId}/queue/{name}";
         }
         private static string CreateServiceName(Guid brokerId, string name)
         {
-            return $"{brokerId}/Service/{name}";
+            return $"{brokerId}/service/{name}";
         }
         private static string CreateBrokerUserName(Guid brokerId)
         {
-            return $"{brokerId}/User";
+            return $"{brokerId}/user";
         }
         private static string CreateRemoteUserCertificateName(Guid brokerId)
         {
-            return $"{brokerId}/RemoteUser/Certificate";
+            return $"{brokerId}/remote-user/certificate";
         }
 
         internal static Guid GetBrokerId(string queueFullName)
@@ -232,6 +232,12 @@ namespace DaJet.Messaging
             script.AppendLine($"SELECT service_broker_guid FROM sys.databases WHERE [name] = '{SERVICE_BROKER_DATABASE}';");
             return script.ToString();
         }
+        internal static string SelectServiceBrokerIdentifierScript(string databaseName)
+        {
+            StringBuilder script = new StringBuilder();
+            script.AppendLine($"SELECT service_broker_guid FROM sys.databases WHERE [name] = '{databaseName}';");
+            return script.ToString();
+        }
         internal static string SelectQueuesScript()
         {
             StringBuilder script = new StringBuilder();
@@ -266,6 +272,28 @@ namespace DaJet.Messaging
             // 1. create user for remote service
             // 2. certificate for remote service user from binary backuped at target side !
             // 3. create remote service binding
+
+            return script.ToString();
+        }
+        internal static string CreateServiceQueueScript(Guid brokerId, QueueInfo queue)
+        {
+            string queueName = CreateQueueName(brokerId, queue.Name);
+            string serviceName = CreateServiceName(brokerId, queue.Name);
+
+            StringBuilder script = new StringBuilder();
+            
+            script.AppendLine($"CREATE QUEUE [{queueName}] WITH STATUS = {(queue.Status ? "ON" : "OFF")}");
+            script.AppendLine(", RETENTION = OFF");
+            if (queue.Activation)
+            {
+                script.AppendLine(", ACTIVATION (");
+                script.AppendLine($" PROCEDURE_NAME = {queue.ProcedureName}");
+                script.AppendLine($", MAX_QUEUE_READERS = {queue.MaxQueueReaders}");
+                script.AppendLine(", EXECUTE AS OWNER)");
+            }
+            script.AppendLine(", POISON_MESSAGE_HANDLING (STATUS = OFF);");
+
+            script.AppendLine($"CREATE SERVICE [{serviceName}] ON QUEUE [{queueName}] ([DEFAULT]);");
 
             return script.ToString();
         }

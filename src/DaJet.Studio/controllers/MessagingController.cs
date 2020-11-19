@@ -64,14 +64,10 @@ namespace DaJet.Studio
         }
         private void CreateQueueNodesFromDatabase(TreeNodeViewModel rootNode)
         {
-            IMessagingService messaging = Services.GetService<IMessagingService>();
-
             DatabaseInfo database = rootNode.GetAncestorPayload<DatabaseInfo>();
             DatabaseServer server = rootNode.GetAncestorPayload<DatabaseServer>();
-
-            messaging.UseServer(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address);
-            messaging.UseDatabase(database.Name);
-            messaging.UseCredentials(database.UserName, database.Password);
+            IMessagingService messaging = Services.GetService<IMessagingService>();
+            ConfigureMessagingService(messaging, server, database);
 
             List<QueueInfo> queues = messaging.SelectQueues(out string errorMessage);
             if (!string.IsNullOrEmpty(errorMessage))
@@ -115,17 +111,44 @@ namespace DaJet.Studio
 
             return node;
         }
+
+        private void ConfigureMessagingService(IMessagingService messaging, DatabaseServer server, DatabaseInfo database)
+        {
+            messaging.UseServer(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address);
+            messaging.UseDatabase(database.Name);
+            messaging.UseCredentials(database.UserName, database.Password);
+        }
+
         private void CreateQueueCommand(object node)
         {
             if (!(node is TreeNodeViewModel treeNode)) return;
             if (treeNode.NodeText != QUEUES_NODE_NAME) return;
 
-            // TODO
+            QueueFormWindow form = new QueueFormWindow();
+            if (!form.ShowDialog().Value) return;
+            QueueInfo queue = form.Result;
 
-            //TreeNodeViewModel serverNode = CreateQueueNode(treeNode, server);
-            //treeNode.TreeNodes.Add(serverNode);
-            //treeNode.IsExpanded = true;
-            //serverNode.IsSelected = true;
+            if (string.IsNullOrWhiteSpace(queue.Name))
+            {
+                _ = MessageBox.Show("Не указано имя очереди!", "DaJet", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            DatabaseInfo database = treeNode.GetAncestorPayload<DatabaseInfo>();
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+            IMessagingService messaging = Services.GetService<IMessagingService>();
+            ConfigureMessagingService(messaging, server, database);
+
+            if (!messaging.CreateQueue(queue, out string errorMessage))
+            {
+                _ = MessageBox.Show(errorMessage, "DaJet", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            TreeNodeViewModel queueNode = CreateQueueNode(treeNode, queue);
+            treeNode.TreeNodes.Add(queueNode);
+            treeNode.IsExpanded = true;
+            queueNode.IsSelected = true;
         }
         private void EditQueueCommand(object node)
         {
@@ -136,6 +159,9 @@ namespace DaJet.Studio
             DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
 
             // TODO
+            QueueFormWindow form = new QueueFormWindow(queue);
+            if (!form.ShowDialog().Value) return;
+            //QueueInfo queue = form.Result;
         }
         private void DropQueueCommand(object node)
         {

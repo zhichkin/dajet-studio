@@ -18,11 +18,13 @@ namespace DaJet.Messaging
         void SetupServiceBroker();
         void CreatePublicEndpoint(string name, int port);
         void CreateQueue(string name);
+        bool CreateQueue(QueueInfo queue, out string errorMessage);
         void SendMessage(string routeName, string payload);
     }
     public sealed class MessagingService : IMessagingService
     {
         private const string ERROR_SERVER_IS_NOT_DEFINED = "Server is not defined. Try to call \"UseServer\" method first.";
+        private const string ERROR_DATABASE_IS_NOT_DEFINED = "Database is not defined. Try to call \"UseDatabase\" method first.";
 
         public string CurrentServer { get; private set; } = string.Empty;
         public string CurrentDatabase { get; private set; } = string.Empty;
@@ -193,6 +195,33 @@ namespace DaJet.Messaging
             Guid brokerId = SqlScripts.ExecuteScalar<Guid>(ConnectionString, SqlScripts.SelectServiceBrokerIdentifierScript());
             SqlScripts.ExecuteScript(ConnectionString, SqlScripts.CreateDatabaseUserScript(brokerId));
             SqlScripts.ExecuteScript(ConnectionString, SqlScripts.CreateChannelsTableScript());
+        }
+        public bool CreateQueue(QueueInfo queue, out string errorMessage)
+        {
+            errorMessage = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(CurrentServer))
+            {
+                errorMessage = ERROR_SERVER_IS_NOT_DEFINED;
+                return false;
+            }
+            if (string.IsNullOrWhiteSpace(CurrentDatabase))
+            {
+                errorMessage = ERROR_DATABASE_IS_NOT_DEFINED;
+                return false;
+            }
+
+            try
+            {
+                Guid brokerId = SqlScripts.ExecuteScalar<Guid>(ConnectionString, SqlScripts.SelectServiceBrokerIdentifierScript(CurrentDatabase));
+                SqlScripts.ExecuteScript(ConnectionString, SqlScripts.CreateServiceQueueScript(brokerId, queue));
+            }
+            catch (Exception ex)
+            {
+                errorMessage = ExceptionHelper.GetErrorText(ex);
+            }
+
+            return string.IsNullOrEmpty(errorMessage);
         }
         public void CreateQueue(string name)
         {
