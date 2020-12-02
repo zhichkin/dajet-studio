@@ -16,6 +16,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="dajet-mq\create-dajet-mq-database.sql" />
+    <None Remove="dajet-mq\create-public-end-point.sql" />
+    <None Remove="dajet-mq\drop-dajet-mq-database.sql" />
+    <None Remove="dajet-mq\drop-public-end-point.sql" />
     <None Remove="DaJet.ico" />
     <None Remove="images\add-catalog.png" />
     <None Remove="images\add-database.png" />
@@ -100,6 +104,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="dajet-mq\create-public-end-point.sql" />
+    <Resource Include="dajet-mq\drop-dajet-mq-database.sql" />
+    <Resource Include="dajet-mq\drop-public-end-point.sql" />
+    <Resource Include="dajet-mq\create-dajet-mq-database.sql" />
     <Resource Include="DaJet.ico" />
     <Resource Include="images\add-catalog.png" />
     <Resource Include="images\add-database.png" />

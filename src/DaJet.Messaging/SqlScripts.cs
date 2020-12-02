@@ -57,6 +57,7 @@ namespace DaJet.Messaging
                 {
                     // TODO: log error
                     _ = error.Message;
+                    throw;
                 }
                 finally
                 {
@@ -130,6 +131,18 @@ namespace DaJet.Messaging
             return names[2];
         }
 
+        internal static string DaJetMQExistsScript()
+        {
+            StringBuilder script = new StringBuilder();
+            script.AppendLine("USE [master];");
+            script.AppendLine("DECLARE @dajet_exists bit = 0x00;");
+            script.AppendLine("IF EXISTS(SELECT 1 FROM sys.databases WHERE name = 'dajet-mq')");
+            script.AppendLine("BEGIN");
+            script.AppendLine("SET @dajet_exists = 0x01;");
+            script.AppendLine("END;");
+            script.Append("SELECT @dajet_exists;");
+            return script.ToString();
+        }
         internal static string CreatePublicEndpointScript(string name, int port)
 		{
 			StringBuilder script = new StringBuilder();

@@ -164,6 +164,8 @@ namespace DaJet.Studio
                     databaseNode = CreateDatabaseTreeNode(serverNode, database);
                     serverNode.TreeNodes.Add(databaseNode);
                 }
+
+                RootNode.TreeNodes.Add(serverNode);
             }
         }
         private void InitializeDatabasesMetadata()
@@ -218,7 +220,7 @@ namespace DaJet.Studio
 
         private TreeNodeViewModel CreateServerTreeNode(DatabaseServer server, bool warning)
         {
-            TreeNodeViewModel node = new TreeNodeViewModel()
+            TreeNodeViewModel serverNode = new TreeNodeViewModel()
             {
                 IsExpanded = false,
                 NodeIcon = (warning) ? SERVER_WARNING_ICON : SERVER_ICON,
@@ -228,23 +230,25 @@ namespace DaJet.Studio
                 NodeToolTip = (warning) ? "connection might be broken" : "connection is ok",
                 NodePayload = server
             };
-            node.ContextMenuItems.Add(new MenuItemViewModel()
+            serverNode.ContextMenuItems.Add(new MenuItemViewModel()
             {
                 MenuItemHeader = "Edit server settings",
                 MenuItemIcon = SERVER_SETTINGS_ICON,
                 MenuItemCommand = new RelayCommand(EditDataServerCommand),
-                MenuItemPayload = node
+                MenuItemPayload = serverNode
             });
-            node.ContextMenuItems.Add(new MenuItemViewModel()
+            serverNode.ContextMenuItems.Add(new MenuItemViewModel()
             {
                 MenuItemHeader = "Add database",
                 MenuItemIcon = ADD_DATABASE_ICON,
                 MenuItemCommand = new RelayCommand(AddDatabaseCommand),
-                MenuItemPayload = node
+                MenuItemPayload = serverNode
             });
-            RootNode.TreeNodes.Add(node);
 
-            return node;
+            TreeNodeViewModel queues = CreateQueuesTreeNode(serverNode);
+            if (queues != null) { serverNode.TreeNodes.Add(queues); }
+
+            return serverNode;
         }
         private TreeNodeViewModel CreateDatabaseTreeNode(TreeNodeViewModel serverNode, DatabaseInfo database)
         {
@@ -298,9 +302,6 @@ namespace DaJet.Studio
             TreeNodeViewModel scripts = CreateScriptsTreeNode(databaseNode);
             if (scripts != null) { databaseNode.TreeNodes.Add(scripts); }
 
-            TreeNodeViewModel queues = CreateQueuesTreeNode(databaseNode);
-            if (queues != null) { databaseNode.TreeNodes.Add(queues); }
-
             return databaseNode;
         }
         private TreeNodeViewModel CreateScriptsTreeNode(TreeNodeViewModel databaseNode)
@@ -309,11 +310,11 @@ namespace DaJet.Studio
             if (controller == null) return null;
             return controller.CreateTreeNode(databaseNode);
         }
-        private TreeNodeViewModel CreateQueuesTreeNode(TreeNodeViewModel databaseNode)
+        private TreeNodeViewModel CreateQueuesTreeNode(TreeNodeViewModel serverNode)
         {
             ITreeNodeController controller = Services.GetService<MessagingController>();
             if (controller == null) { return null; }
-            return controller.CreateTreeNode(databaseNode);
+            return controller.CreateTreeNode(serverNode);
         }
         private void CreateMetadataTreeNodes()
         {
@@ -486,6 +487,10 @@ namespace DaJet.Studio
                 string.IsNullOrWhiteSpace(dialog.Result.Address)
                 ? dialog.Result.Name
                 : dialog.Result.Address);
+            if (!string.IsNullOrWhiteSpace(dialog.Result.UserName))
+            {
+                messaging.UseCredentials(dialog.Result.UserName, dialog.Result.Password);
+            }
 
             // check connection
             string errorMessage;
@@ -507,6 +512,7 @@ namespace DaJet.Studio
 
             TreeNodeViewModel serverNode = CreateServerTreeNode(dialog.Result, !string.IsNullOrEmpty(errorMessage));
             serverNode.IsSelected = true;
+            RootNode.TreeNodes.Add(serverNode);
         }
         private void EditDataServerCommand(object parameter)
         {

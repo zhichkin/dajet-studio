@@ -5,8 +5,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using System.Windows.Resources;
 
 namespace DaJet.Studio
 {
@@ -15,7 +17,13 @@ namespace DaJet.Studio
         #region "Icons and constants"
 
         private const string QUEUES_NODE_NAME = "Queues";
+        private const string DAJET_MQ_DATABASE_NAME = "dajet-mq";
         private const string QUEUES_NODE_TOOLTIP = "Database queues";
+
+        private const string CREATE_DAJET_MQ_DATABASE_SCRIPT = "pack://application:,,,/DaJet.Studio;component/dajet-mq/create-dajet-mq-database.sql";
+        private const string CREATE_PUBLIC_ENDPOINT_SCRIPT = "pack://application:,,,/DaJet.Studio;component/dajet-mq/create-public-end-point.sql";
+        private const string DROP_DAJET_MQ_DATABASE_SCRIPT = "pack://application:,,,/DaJet.Studio;component/dajet-mq/drop-dajet-mq-database.sql";
+        private const string DROP_PUBLIC_ENDPOINT_SCRIPT = "pack://application:,,,/DaJet.Studio;component/dajet-mq/drop-public-end-point.sql";
 
         private const string QUEUE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/message-queue.png";
         private const string ADD_QUEUE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/add-query.png";
@@ -52,6 +60,21 @@ namespace DaJet.Studio
             };
             node.ContextMenuItems.Add(new MenuItemViewModel()
             {
+                MenuItemHeader = "Create DaJet MQ",
+                MenuItemIcon = ADD_QUEUE_ICON,
+                MenuItemCommand = new RelayCommand(CreateDaJetMQCommand),
+                MenuItemPayload = node
+            });
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Drop DaJet MQ",
+                MenuItemIcon = DROP_QUEUE_ICON,
+                MenuItemCommand = new RelayCommand(DropDaJetMQCommand),
+                MenuItemPayload = node
+            });
+            node.ContextMenuItems.Add(new MenuItemViewModel() { IsSeparator = true });
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
                 MenuItemHeader = "Create new queue",
                 MenuItemIcon = ADD_QUEUE_ICON,
                 MenuItemCommand = new RelayCommand(CreateQueueCommand),
@@ -64,7 +87,10 @@ namespace DaJet.Studio
         }
         private void CreateQueueNodesFromDatabase(TreeNodeViewModel rootNode)
         {
-            DatabaseInfo database = rootNode.GetAncestorPayload<DatabaseInfo>();
+            DatabaseInfo database = new DatabaseInfo()
+            {
+                Name = DAJET_MQ_DATABASE_NAME
+            };
             DatabaseServer server = rootNode.GetAncestorPayload<DatabaseServer>();
             IMessagingService messaging = Services.GetService<IMessagingService>();
             ConfigureMessagingService(messaging, server, database);
@@ -115,9 +141,85 @@ namespace DaJet.Studio
         private void ConfigureMessagingService(IMessagingService messaging, DatabaseServer server, DatabaseInfo database)
         {
             messaging.UseServer(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address);
-            messaging.UseDatabase(database.Name);
-            messaging.UseCredentials(database.UserName, database.Password);
+            if (database == null)
+            {
+                messaging.UseCredentials(server.UserName, server.Password);
+            }
+            else
+            {
+                messaging.UseDatabase(database.Name);
+                messaging.UseCredentials(database.UserName, database.Password);
+            }
         }
+
+
+
+        private void CreateDaJetMQCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+
+            MessageBoxResult result = MessageBox.Show(
+                "Create DaJet MQ database ?", "DaJet",
+                MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (result != MessageBoxResult.OK) { return; }
+
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+
+            try
+            {
+                CreateDaJetMQ(server);
+            }
+            catch (Exception ex)
+            {
+                ExceptionHelper.ShowException(ex);
+            }
+        }
+        private void CreateDaJetMQ(DatabaseServer server)
+        {
+            if (server == null) throw new ArgumentNullException("server");
+
+            IMessagingService messaging = Services.GetService<IMessagingService>();
+            ConfigureMessagingService(messaging, server, null);
+
+            if (messaging.DaJetMQExists())
+            {
+                _ = MessageBox.Show("DaJet MQ already exists.", "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            Uri uri = new Uri(CREATE_DAJET_MQ_DATABASE_SCRIPT);
+            StreamResourceInfo resource = Application.GetResourceStream(uri);
+
+            string sql = string.Empty;
+            using (StreamReader reader = new StreamReader(resource.Stream))
+            {
+                sql = reader.ReadToEnd();
+            }
+
+            // TODO: execute sql script to create DaJet MQ database
+        }
+        private void DropDaJetMQCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+
+            MessageBoxResult result = MessageBox.Show(
+                "Drop DaJet MQ database ?", "DaJet",
+                MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (result != MessageBoxResult.OK) { return; }
+
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+
+            try
+            {
+                // TODO
+            }
+            catch (Exception ex)
+            {
+                ExceptionHelper.ShowException(ex);
+            }
+        }
+
+
 
         private void CreateQueueCommand(object node)
         {

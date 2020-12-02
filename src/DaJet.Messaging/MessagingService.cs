@@ -7,6 +7,7 @@ namespace DaJet.Messaging
 {
     public interface IMessagingService
     {
+        bool DaJetMQExists();
         string CurrentServer { get; }
         string CurrentDatabase { get; }
         string ConnectionString { get; }
@@ -23,6 +24,7 @@ namespace DaJet.Messaging
     }
     public sealed class MessagingService : IMessagingService
     {
+        private const string DAJET_MQ_DATABASE_NAME = "dajet-mq";
         private const string ERROR_SERVER_IS_NOT_DEFINED = "Server is not defined. Try to call \"UseServer\" method first.";
         private const string ERROR_DATABASE_IS_NOT_DEFINED = "Database is not defined. Try to call \"UseDatabase\" method first.";
 
@@ -105,7 +107,14 @@ namespace DaJet.Messaging
 
             return result;
         }
-
+        public bool DaJetMQExists()
+        {
+            if (string.IsNullOrWhiteSpace(CurrentServer))
+            {
+                throw new InvalidOperationException(ERROR_SERVER_IS_NOT_DEFINED);
+            }
+            return SqlScripts.ExecuteScalar<bool>(ConnectionString, SqlScripts.DaJetMQExistsScript());
+        }
         public List<QueueInfo> SelectQueues(out string errorMessage)
         {
             errorMessage = string.Empty;
