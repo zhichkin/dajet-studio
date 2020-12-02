@@ -277,7 +277,7 @@ namespace DaJet.Messaging
         }
         internal static string CreateServiceQueueScript(Guid brokerId, QueueInfo queue)
         {
-            string queueName = CreateQueueName(brokerId, queue.Name);
+            string queueName = queue.Name; // CreateQueueName(brokerId, queue.Name);
             string serviceName = CreateServiceName(brokerId, queue.Name);
 
             StringBuilder script = new StringBuilder();

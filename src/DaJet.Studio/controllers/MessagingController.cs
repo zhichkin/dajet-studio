@@ -149,6 +149,8 @@ namespace DaJet.Studio
             treeNode.TreeNodes.Add(queueNode);
             treeNode.IsExpanded = true;
             queueNode.IsSelected = true;
+
+            // TODO: create default conversation
         }
         private void EditQueueCommand(object node)
         {

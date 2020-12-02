@@ -280,6 +280,15 @@ namespace DaJet.Studio
             });
             databaseNode.ContextMenuItems.Add(new MenuItemViewModel()
             {
+                MenuItemHeader = "Find and save meta file by name",
+                MenuItemIcon = METADATA_ICON,
+                MenuItemCommand = new RelayCommand(FindAndSaveMetaFileCommand),
+                MenuItemPayload = databaseNode
+            });
+            // TODO: see ReadCommonModuleSourceCode function of the IMetadataProvider
+            databaseNode.ContextMenuItems.Add(new MenuItemViewModel() { IsSeparator = true });
+            databaseNode.ContextMenuItems.Add(new MenuItemViewModel()
+            {
                 MenuItemHeader = "Remove database from the list",
                 MenuItemIcon = DELETE_DATABASE_ICON,
                 MenuItemCommand = new RelayCommand(DeleteDatabaseCommand),
@@ -767,6 +776,43 @@ namespace DaJet.Studio
             scriptEditor.ScriptCode = configFile;
             ScriptEditorView editorView = new ScriptEditorView() { DataContext = scriptEditor };
             mainWindow.AddNewTab(scriptEditor.Name, editorView);
+        }
+        private void FindAndSaveMetaFileCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is DatabaseInfo database)) return;
+
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+            if (server == null)
+            {
+                _ = MessageBox.Show("SQL Server is not found.", "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+                return;
+            }
+
+            SaveFileDialog dialog = new SaveFileDialog()
+            {
+                Filter = "txt files (*.txt)|*.txt"
+            };
+            if (!dialog.ShowDialog().Value) return;
+
+            IMetadataService metadata = Services.GetService<IMetadataService>();
+            IMetadataProvider provider = metadata.GetMetadataProvider(database);
+            provider.UseServer(server);
+            provider.UseDatabase(database);
+            string fileContent = provider.ReadConfigFile(Path.GetFileNameWithoutExtension(dialog.FileName));
+
+            if (string.IsNullOrWhiteSpace(fileContent))
+            {
+                _ = MessageBox.Show("The meta file is empty.", "DaJet", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            using (StreamWriter writer = new StreamWriter(dialog.FileName, false, Encoding.UTF8))
+            {
+                writer.Write(fileContent);
+            }
+
+            _ = MessageBox.Show("Saving meta file is Ok.", "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 }
