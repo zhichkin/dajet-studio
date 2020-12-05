@@ -8,6 +8,8 @@ namespace DaJet.Messaging
     public interface IMessagingService
     {
         bool DaJetMQExists();
+        // void DropDaJetMQ(); ???
+
         string CurrentServer { get; }
         string CurrentDatabase { get; }
         string ConnectionString { get; }
@@ -19,7 +21,10 @@ namespace DaJet.Messaging
         void SetupServiceBroker();
         void CreatePublicEndpoint(string name, int port);
         void CreateQueue(string name);
+        string GetQueueFullName(string queueName);
         bool CreateQueue(QueueInfo queue, out string errorMessage);
+        bool TryCreateQueue(QueueInfo queue, out string errorMessage);
+        bool TryDeleteQueue(QueueInfo queue, out string errorMessage);
         void SendMessage(string routeName, string payload);
     }
     public sealed class MessagingService : IMessagingService
@@ -115,6 +120,15 @@ namespace DaJet.Messaging
             }
             return SqlScripts.ExecuteScalar<bool>(ConnectionString, SqlScripts.DaJetMQExistsScript());
         }
+        private string GetQueueName(string fullQueueName)
+        {
+            string[] nameParts = fullQueueName.Split('/');
+            if (nameParts.Length == 1)
+            {
+                return fullQueueName;
+            }
+            return nameParts[nameParts.Length - 1];
+        }
         public List<QueueInfo> SelectQueues(out string errorMessage)
         {
             errorMessage = string.Empty;
@@ -142,6 +156,7 @@ namespace DaJet.Messaging
                             MaxQueueReaders = reader.IsDBNull("max_readers") ? (short)0 : reader.GetInt16("max_readers"),
                             PoisonMessageHandling = reader.IsDBNull("is_poison_message_handling_enabled") ? false : reader.GetBoolean("is_poison_message_handling_enabled")
                         };
+                        queue.Name = string.IsNullOrWhiteSpace(queue.Name) ? string.Empty : GetQueueName(queue.Name);
                         list.Add(queue);
                     }
                 }
@@ -164,6 +179,81 @@ namespace DaJet.Messaging
                 }
             }
             return list;
+        }
+
+
+        public string GetQueueFullName(string queueName)
+        {
+            string queueFullName = queueName;
+
+            if (string.IsNullOrWhiteSpace(CurrentServer))
+            {
+                throw new InvalidOperationException(ERROR_SERVER_IS_NOT_DEFINED);
+            }
+
+            UseDatabase(DAJET_MQ_DATABASE_NAME);
+
+            Dictionary<string, object> parameters = new Dictionary<string, object>()
+            {
+                { "name", queueName }
+            };
+            SqlScripts.ExecuteProcedure(ConnectionString, "fn_create_queue_name", parameters, out queueFullName);
+
+            return queueFullName;
+        }
+        public bool TryCreateQueue(QueueInfo queue, out string errorMessage)
+        {
+            errorMessage = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(CurrentServer))
+            {
+                errorMessage = ERROR_SERVER_IS_NOT_DEFINED;
+                return false;
+            }
+
+            UseDatabase(DAJET_MQ_DATABASE_NAME);
+
+            try
+            {
+                Dictionary<string, object> parameters = new Dictionary<string, object>()
+                {
+                    { "name", queue.Name }
+                };
+                SqlScripts.ExecuteProcedure(ConnectionString, "sp_create_queue", parameters, out int result);
+            }
+            catch (Exception ex)
+            {
+                errorMessage = ExceptionHelper.GetErrorText(ex);
+            }
+
+            return string.IsNullOrEmpty(errorMessage);
+        }
+        public bool TryDeleteQueue(QueueInfo queue, out string errorMessage)
+        {
+            errorMessage = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(CurrentServer))
+            {
+                errorMessage = ERROR_SERVER_IS_NOT_DEFINED;
+                return false;
+            }
+
+            UseDatabase(DAJET_MQ_DATABASE_NAME);
+
+            try
+            {
+                Dictionary<string, object> parameters = new Dictionary<string, object>()
+                {
+                    { "name", queue.Name }
+                };
+                SqlScripts.ExecuteProcedure(ConnectionString, "sp_delete_queue", parameters, out int result);
+            }
+            catch (Exception ex)
+            {
+                errorMessage = ExceptionHelper.GetErrorText(ex);
+            }
+
+            return string.IsNullOrEmpty(errorMessage);
         }
 
 

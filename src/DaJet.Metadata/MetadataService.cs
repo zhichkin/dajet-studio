@@ -14,8 +14,10 @@ namespace DaJet.Metadata
         string ConnectionString { get; }
         MetadataSettings Settings { get; }
         void Configure(MetadataSettings settings);
+        void Configure(DatabaseServer server, DatabaseInfo database);
         void UseServer(string serverName);
         void UseDatabase(string databaseName);
+        void UseCredentials(string userName, string password);
         void AttachDatabase(string serverName, DatabaseInfo database);
 
         void Initialize(DatabaseServer server, DatabaseInfo database);
@@ -94,6 +96,19 @@ namespace DaJet.Metadata
                 }
             }
         }
+        public void Configure(DatabaseServer server, DatabaseInfo database)
+        {
+            UseServer(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address);
+            if (database == null)
+            {
+                UseCredentials(server.UserName, server.Password);
+            }
+            else
+            {
+                UseDatabase(database.Name);
+                UseCredentials(database.UserName, database.Password);
+            }
+        }
         private void InitializeMetadata(DatabaseInfo database, string metadataFilePath)
         {
             XMLLoader.Load(metadataFilePath, database);
@@ -155,6 +170,19 @@ namespace DaJet.Metadata
             ConnectionString = csb.ToString();
 
             CurrentDatabase = database;
+        }
+        public void UseCredentials(string userName, string password)
+        {
+            if (CurrentServer == null) throw new InvalidOperationException(ERROR_SERVER_IS_NOT_DEFINED);
+
+            SqlConnectionStringBuilder csb = new SqlConnectionStringBuilder(ConnectionString)
+            {
+                UserID = userName,
+                Password = password
+            };
+            csb.IntegratedSecurity = string.IsNullOrWhiteSpace(userName);
+
+            ConnectionString = csb.ToString();
         }
         public void AttachDatabase(string serverAddress, DatabaseInfo database)
         {

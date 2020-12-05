@@ -523,10 +523,7 @@ AS
 BEGIN
 	SET NOCOUNT ON;
 	
-	IF (@message_type IS NULL)
-	BEGIN
-		SET @message_type = N'DEFAULT';
-	END;
+	IF (@message_type IS NULL) SET @message_type = N'DEFAULT';
 
 	SEND ON CONVERSATION @dialog_handle MESSAGE TYPE @message_type (@message_body);
 
@@ -551,10 +548,7 @@ AS
 BEGIN
 	SET NOCOUNT ON;
 	
-	IF (@message_type IS NULL)
-	BEGIN
-		SET @message_type = N'DEFAULT';
-	END;
+	IF (@message_type IS NULL) SET @message_type = N'DEFAULT';
 
 	SEND ON CONVERSATION @dialog_handle MESSAGE TYPE @message_type (CAST(@message_body AS varbinary(max)));
 
@@ -579,10 +573,7 @@ AS
 BEGIN
 	SET NOCOUNT ON;
 	
-	IF (@message_type IS NULL)
-	BEGIN
-		SET @message_type = N'DEFAULT';
-	END;
+	IF (@message_type IS NULL) SET @message_type = N'DEFAULT';
 
 	SEND ON CONVERSATION @dialog_handle MESSAGE TYPE @message_type (CAST(@message_body AS varbinary(max)));
 

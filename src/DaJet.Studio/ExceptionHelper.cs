@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Windows;
+using System.Collections.Generic;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace DaJet.Studio
 {
@@ -16,6 +18,15 @@ namespace DaJet.Studio
                 error = error.InnerException;
             }
             return errorText;
+        }
+        public static string GetParseErrorsText(IList<ParseError> errors)
+        {
+            string errorMessage = string.Empty;
+            foreach (ParseError error in errors)
+            {
+                errorMessage += error.Message + Environment.NewLine;
+            }
+            return errorMessage;
         }
         public static void ShowException(Exception ex)
         {

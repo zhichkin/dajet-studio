@@ -13,6 +13,7 @@ namespace DaJet.Scripting
         string ExecuteJson(string script, out IList<ParseError> errors);
         string ExecuteScript(string script, out IList<ParseError> errors);
         TSqlFragment ParseScript(string script, out IList<ParseError> errors);
+        void ExecuteBatch(string script, out IList<ParseError> errors);
     }
     public sealed class ScriptingService : IScriptingService
     {
@@ -80,6 +81,13 @@ namespace DaJet.Scripting
         public TSqlFragment ParseScript(string script, out IList<ParseError> errors)
         {
             return Parser.Parse(new StringReader(script), out errors);
+        }
+        public void ExecuteBatch(string script, out IList<ParseError> errors)
+        {
+            TSqlFragment syntaxTree = ParseScript(script, out errors);
+            if (errors.Count > 0) { return; }
+
+            ScriptExecutor.ExecuteScript((TSqlScript)syntaxTree);
         }
     }
 }

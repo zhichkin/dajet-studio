@@ -98,6 +98,42 @@ namespace DaJet.Messaging
                 }
             } /* end of the limited scope */
         }
+        internal static void ExecuteProcedure<T>(string connectionString, string procedureName, Dictionary<string, object> parameters, out T returnValue)
+        {
+            returnValue = default(T);
+            {
+                SqlConnection connection = new SqlConnection(connectionString);
+                SqlCommand command = connection.CreateCommand();
+                command.CommandType = CommandType.StoredProcedure;
+                command.CommandText = procedureName;
+                command.Parameters.Add(new SqlParameter()
+                {
+                    ParameterName = "ReturnValue",
+                    Direction = ParameterDirection.ReturnValue
+                });
+                foreach (var parameter in parameters)
+                {
+                    command.Parameters.AddWithValue(parameter.Key, parameter.Value);
+                }
+                try
+                {
+                    connection.Open();
+                    int result = command.ExecuteNonQuery();
+                    returnValue = (T)command.Parameters[0].Value;
+                }
+                catch (Exception error)
+                {
+                    // TODO: log error
+                    _ = error.Message;
+                    throw;
+                }
+                finally
+                {
+                    if (command != null) command.Dispose();
+                    if (connection != null) connection.Dispose();
+                }
+            }
+        }
 
         internal static string CreateQueueName(Guid brokerId, string name)
         {
@@ -257,7 +293,7 @@ namespace DaJet.Messaging
             script.AppendLine("SELECT name, is_poison_message_handling_enabled, is_retention_enabled, ");
             script.Append("is_activation_enabled, activation_procedure, max_readers, execute_as_principal_id, ");
             script.Append("is_receive_enabled, is_enqueue_enabled ");
-            script.Append("FROM sys.service_queues WHERE is_ms_shipped = 0;");
+            script.Append("FROM sys.service_queues WHERE is_ms_shipped = 0 AND name NOT LIKE '%default';");
             return script.ToString();
         }
         internal static string CreateServiceQueueScript(Guid brokerId, string name)

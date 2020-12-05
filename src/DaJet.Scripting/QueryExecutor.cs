@@ -1,7 +1,9 @@
 ﻿using DaJet.Metadata;
 using Microsoft.Data.SqlClient;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -31,6 +33,7 @@ namespace DaJet.Scripting
         string ExecuteValue(string sql);
         string ExecuteTable(string sql);
         string ExecuteCommand(string sql);
+        void ExecuteScript(TSqlScript script);
     }
     public sealed class QueryExecutor: IQueryExecutor
     {
@@ -243,6 +246,35 @@ namespace DaJet.Scripting
         public string ExecuteCommand(string sql)
         {
             throw new NotImplementedException();
+        }
+        public void ExecuteScript(TSqlScript script)
+        {
+            {
+                SqlConnection connection = new SqlConnection(MetadataService.ConnectionString);
+                SqlCommand command = connection.CreateCommand();
+                command.CommandType = CommandType.Text;
+                try
+                {
+                    connection.Open();
+
+                    foreach (TSqlBatch batch in script.Batches)
+                    {
+                        command.CommandText = batch.ToSqlString();
+                        _ = command.ExecuteNonQuery();
+                    }
+                }
+                catch (Exception error)
+                {
+                    // TODO: log error
+                    _ = error.Message;
+                    throw;
+                }
+                finally
+                {
+                    if (command != null) command.Dispose();
+                    if (connection != null) connection.Dispose();
+                }
+            }
         }
     }
 }

@@ -47,6 +47,8 @@
     <None Remove="images\message-queue-error.png" />
     <None Remove="images\message-queue-warning.png" />
     <None Remove="images\message-queue.png" />
+    <None Remove="images\message-receive.png" />
+    <None Remove="images\message-send.png" />
     <None Remove="images\metadata.png" />
     <None Remove="images\nested-table.png" />
     <None Remove="images\new-script.png" />
@@ -134,6 +136,8 @@
     <Resource Include="images\message-queue-error.png" />
     <Resource Include="images\message-queue-warning.png" />
     <Resource Include="images\message-queue.png" />
+    <Resource Include="images\message-receive.png" />
+    <Resource Include="images\message-send.png" />
     <Resource Include="images\metadata.png" />
     <Resource Include="images\nested-table.png" />
     <Resource Include="images\new-script.png" />
