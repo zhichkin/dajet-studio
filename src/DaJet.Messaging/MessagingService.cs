@@ -18,6 +18,7 @@ namespace DaJet.Messaging
         void UseCredentials(string userName, string password);
         bool CheckConnection(out string errorMessage);
         List<QueueInfo> SelectQueues(out string errorMessage);
+        List<RouteInfo> SelectRoutes(out string errorMessage);
         void SetupServiceBroker();
         void CreatePublicEndpoint(string name, int port);
         void CreateQueue(string name);
@@ -25,6 +26,8 @@ namespace DaJet.Messaging
         bool CreateQueue(QueueInfo queue, out string errorMessage);
         bool TryCreateQueue(QueueInfo queue, out string errorMessage);
         bool TryDeleteQueue(QueueInfo queue, out string errorMessage);
+        int GetServiceBrokerPortNumber();
+        Guid GetServiceBrokerIdentifier();
         void SendMessage(string routeName, string payload);
     }
     public sealed class MessagingService : IMessagingService
@@ -60,7 +63,7 @@ namespace DaJet.Messaging
 
             SqlConnectionStringBuilder csb = new SqlConnectionStringBuilder(ConnectionString)
             {
-                InitialCatalog = databaseName
+                InitialCatalog = (string.IsNullOrWhiteSpace(databaseName) ? string.Empty : databaseName)
             };
             ConnectionString = csb.ToString();
 
@@ -180,12 +183,58 @@ namespace DaJet.Messaging
             }
             return list;
         }
+        public List<RouteInfo> SelectRoutes(out string errorMessage)
+        {
+            errorMessage = string.Empty;
+            List<RouteInfo> list = new List<RouteInfo>();
+            string sql = SqlScripts.SelectRoutesScript();
+            {
+                SqlDataReader reader = null;
+                SqlConnection connection = new SqlConnection(ConnectionString);
+                SqlCommand command = connection.CreateCommand();
+                command.CommandType = CommandType.Text;
+                command.CommandText = sql;
+                try
+                {
+                    connection.Open();
+                    reader = command.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        RouteInfo route = new RouteInfo()
+                        {
+                            Name = reader.IsDBNull("remote_service_name") ? string.Empty : reader.GetString("remote_service_name"),
+                            Broker = reader.IsDBNull("broker_instance") ? string.Empty : reader.GetString("broker_instance"),
+                            Address = reader.IsDBNull("address") ? string.Empty : reader.GetString("address")
+                        };
+                        route.Name = string.IsNullOrWhiteSpace(route.Name) ? string.Empty : GetQueueName(route.Name);
+                        list.Add(route);
+                    }
+                }
+                catch (Exception error)
+                {
+                    errorMessage = ExceptionHelper.GetErrorText(error);
+                }
+                finally
+                {
+                    if (reader != null)
+                    {
+                        if (reader.HasRows)
+                        {
+                            command.Cancel();
+                        }
+                        reader.Dispose();
+                    }
+                    if (command != null) command.Dispose();
+                    if (connection != null) connection.Dispose();
+                }
+            }
+            return list;
+        }
+
 
 
         public string GetQueueFullName(string queueName)
         {
-            string queueFullName = queueName;
-
             if (string.IsNullOrWhiteSpace(CurrentServer))
             {
                 throw new InvalidOperationException(ERROR_SERVER_IS_NOT_DEFINED);
@@ -197,7 +246,7 @@ namespace DaJet.Messaging
             {
                 { "name", queueName }
             };
-            SqlScripts.ExecuteProcedure(ConnectionString, "fn_create_queue_name", parameters, out queueFullName);
+            SqlScripts.ExecuteProcedure(ConnectionString, "fn_create_queue_name", parameters, out string queueFullName);
 
             return queueFullName;
         }
@@ -254,6 +303,30 @@ namespace DaJet.Messaging
             }
 
             return string.IsNullOrEmpty(errorMessage);
+        }
+
+
+        
+        public int GetServiceBrokerPortNumber()
+        {
+            if (string.IsNullOrWhiteSpace(CurrentServer))
+            {
+                throw new InvalidOperationException(ERROR_SERVER_IS_NOT_DEFINED);
+            }
+            return SqlScripts.ExecuteScalar<int>(ConnectionString, SqlScripts.SelectServiceBrokerPortNumberScript());
+        }
+        public Guid GetServiceBrokerIdentifier()
+        {
+            if (string.IsNullOrWhiteSpace(CurrentServer))
+            {
+                throw new InvalidOperationException(ERROR_SERVER_IS_NOT_DEFINED);
+            }
+
+            UseDatabase(DAJET_MQ_DATABASE_NAME);
+
+            SqlScripts.ExecuteProcedure(ConnectionString, "fn_service_broker_guid", null, out Guid brokerGuid);
+
+            return brokerGuid;
         }
 
 

@@ -52,6 +52,9 @@
     <None Remove="images\metadata.png" />
     <None Remove="images\nested-table.png" />
     <None Remove="images\new-script.png" />
+    <None Remove="images\route-service-error.png" />
+    <None Remove="images\route-service-warning.png" />
+    <None Remove="images\route-service.png" />
     <None Remove="images\run-web-script.png" />
     <None Remove="images\run.png" />
     <None Remove="images\save-file.png" />
@@ -141,6 +144,9 @@
     <Resource Include="images\metadata.png" />
     <Resource Include="images\nested-table.png" />
     <Resource Include="images\new-script.png" />
+    <Resource Include="images\route-service-error.png" />
+    <Resource Include="images\route-service-warning.png" />
+    <Resource Include="images\route-service.png" />
     <Resource Include="images\run-web-script.png" />
     <Resource Include="images\run.png" />
     <Resource Include="images\save-file.png" />

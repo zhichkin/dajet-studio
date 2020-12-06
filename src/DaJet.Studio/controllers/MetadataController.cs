@@ -491,11 +491,14 @@ namespace DaJet.Studio
             {
                 messaging.UseCredentials(dialog.Result.UserName, dialog.Result.Password);
             }
-
+            messaging.UseDatabase(string.Empty);
+            
             // check connection
             string errorMessage;
             if (messaging.CheckConnection(out errorMessage))
             {
+                int port = messaging.GetServiceBrokerPortNumber();
+                if (port != 0) { dialog.Result.ServiceBrokerPortNumber = port; }
                 MessageBox.Show("Соединение открыто успешно." + Environment.NewLine + messaging.ConnectionString,
                     "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
             }

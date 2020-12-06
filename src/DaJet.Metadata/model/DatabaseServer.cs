@@ -9,6 +9,8 @@ namespace DaJet.Metadata
         public Guid Identity { get; set; } = Guid.NewGuid();
         public string Name { get; set; }
         public string Address { get; set; } = string.Empty;
+        public int ServiceBrokerPortNumber { get; set; } = 4022;
+        public string NetworkAddress { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
         public List<DatabaseInfo> Databases { get; set; } = new List<DatabaseInfo>();

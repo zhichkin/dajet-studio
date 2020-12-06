@@ -19,9 +19,11 @@ namespace DaJet.Studio
     {
         #region "Icons and constants"
 
+        private const string MESSAGING_NODE_NAME = "Messaging";
         private const string QUEUES_NODE_NAME = "Queues";
+        private const string ROUTES_NODE_NAME = "Routes";
         private const string DAJET_MQ_DATABASE_NAME = "dajet-mq";
-        private const string QUEUES_NODE_TOOLTIP = "Database queues";
+        private const string QUEUES_NODE_TOOLTIP = "Service Broker messaging";
 
         private const string CREATE_DAJET_MQ_DATABASE_SCRIPT = "pack://application:,,,/DaJet.Studio;component/dajet-mq/create-dajet-mq-database.sql";
         private const string CREATE_PUBLIC_ENDPOINT_SCRIPT = "pack://application:,,,/DaJet.Studio;component/dajet-mq/create-public-end-point.sql";
@@ -35,6 +37,9 @@ namespace DaJet.Studio
         private const string ALERT_QUEUE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/message-queue-warning.png";
         private const string SEND_MESSAGE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/message-send.png";
         private const string RECEIVE_MESSAGE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/message-receive.png";
+        private const string ROUTE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/route-service.png";
+        private const string ROUTE_ERROR_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/route-service-error.png";
+        private const string ROUTE_WARNING_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/route-service-warning.png";
 
         private readonly BitmapImage QUEUE_ICON = new BitmapImage(new Uri(QUEUE_ICON_PATH));
         private readonly BitmapImage ADD_QUEUE_ICON = new BitmapImage(new Uri(ADD_QUEUE_ICON_PATH));
@@ -43,10 +48,12 @@ namespace DaJet.Studio
         private readonly BitmapImage ALERT_QUEUE_ICON = new BitmapImage(new Uri(ALERT_QUEUE_ICON_PATH));
         private readonly BitmapImage SEND_MESSAGE_ICON = new BitmapImage(new Uri(SEND_MESSAGE_ICON_PATH));
         private readonly BitmapImage RECEIVE_MESSAGE_ICON = new BitmapImage(new Uri(RECEIVE_MESSAGE_ICON_PATH));
+        private readonly BitmapImage ROUTE_ICON = new BitmapImage(new Uri(ROUTE_ICON_PATH));
+        private readonly BitmapImage ROUTE_ERROR_ICON = new BitmapImage(new Uri(ROUTE_ERROR_ICON_PATH));
+        private readonly BitmapImage ROUTE_WARNING_ICON = new BitmapImage(new Uri(ROUTE_WARNING_ICON_PATH));
 
         #endregion
 
-        private TreeNodeViewModel RootNode { get; set; }
         private IServiceProvider Services { get; }
         private IFileProvider FileProvider { get; }
         public MessagingController(IServiceProvider serviceProvider, IFileProvider fileProvider)
@@ -57,7 +64,54 @@ namespace DaJet.Studio
         public TreeNodeViewModel CreateTreeNode() { throw new NotImplementedException(); }
         public TreeNodeViewModel CreateTreeNode(TreeNodeViewModel parent)
         {
-            RootNode = new TreeNodeViewModel()
+            TreeNodeViewModel node = new TreeNodeViewModel()
+            {
+                Parent = parent,
+                IsExpanded = false,
+                NodeIcon = QUEUE_ICON,
+                NodeText = MESSAGING_NODE_NAME,
+                NodeToolTip = QUEUES_NODE_TOOLTIP,
+                NodePayload = null
+            };
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Create DaJet MQ",
+                MenuItemIcon = ADD_QUEUE_ICON,
+                MenuItemCommand = new RelayCommand(CreateDaJetMQCommand),
+                MenuItemPayload = node
+            });
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Drop DaJet MQ",
+                MenuItemIcon = DROP_QUEUE_ICON,
+                MenuItemCommand = new RelayCommand(DropDaJetMQCommand),
+                MenuItemPayload = node
+            });
+            node.ContextMenuItems.Add(new MenuItemViewModel() { IsSeparator = true });
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Open Service Broker end point",
+                MenuItemIcon = ADD_QUEUE_ICON,
+                MenuItemCommand = new RelayCommand(CreatePublicEndPoint),
+                MenuItemPayload = node
+            });
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Close Service Broker end point",
+                MenuItemIcon = DROP_QUEUE_ICON,
+                MenuItemCommand = new RelayCommand(DeletePublicEndPoint),
+                MenuItemPayload = node
+            });
+
+            node.TreeNodes.Add(CreateQueuesTreeNode(node));
+            node.TreeNodes.Add(CreateRoutesTreeNode(node));
+
+            return node;
+        }
+        
+        private TreeNodeViewModel CreateQueuesTreeNode(TreeNodeViewModel parent)
+        {
+            TreeNodeViewModel node = new TreeNodeViewModel()
             {
                 Parent = parent,
                 IsExpanded = false,
@@ -66,32 +120,17 @@ namespace DaJet.Studio
                 NodeToolTip = QUEUES_NODE_TOOLTIP,
                 NodePayload = null
             };
-            RootNode.ContextMenuItems.Add(new MenuItemViewModel()
-            {
-                MenuItemHeader = "Create DaJet MQ",
-                MenuItemIcon = ADD_QUEUE_ICON,
-                MenuItemCommand = new RelayCommand(CreateDaJetMQCommand),
-                MenuItemPayload = RootNode
-            });
-            RootNode.ContextMenuItems.Add(new MenuItemViewModel()
-            {
-                MenuItemHeader = "Drop DaJet MQ",
-                MenuItemIcon = DROP_QUEUE_ICON,
-                MenuItemCommand = new RelayCommand(DropDaJetMQCommand),
-                MenuItemPayload = RootNode
-            });
-            RootNode.ContextMenuItems.Add(new MenuItemViewModel() { IsSeparator = true });
-            RootNode.ContextMenuItems.Add(new MenuItemViewModel()
+            node.ContextMenuItems.Add(new MenuItemViewModel()
             {
                 MenuItemHeader = "Create new queue",
                 MenuItemIcon = ADD_QUEUE_ICON,
                 MenuItemCommand = new RelayCommand(CreateQueueCommand),
-                MenuItemPayload = RootNode
+                MenuItemPayload = node
             });
 
-            CreateQueueNodesFromDatabase(RootNode);
+            CreateQueueNodesFromDatabase(node);
 
-            return RootNode;
+            return node;
         }
         private void CreateQueueNodesFromDatabase(TreeNodeViewModel rootNode)
         {
@@ -162,6 +201,91 @@ namespace DaJet.Studio
             return node;
         }
 
+        private TreeNodeViewModel CreateRoutesTreeNode(TreeNodeViewModel parent)
+        {
+            TreeNodeViewModel node = new TreeNodeViewModel()
+            {
+                Parent = parent,
+                IsExpanded = false,
+                NodeIcon = ROUTE_ICON,
+                NodeText = ROUTES_NODE_NAME,
+                NodeToolTip = QUEUES_NODE_TOOLTIP,
+                NodePayload = null
+            };
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Create new route",
+                MenuItemIcon = ROUTE_ICON,
+                MenuItemCommand = new RelayCommand(CreateRouteCommand),
+                MenuItemPayload = node
+            });
+
+            CreateRouteNodesFromDatabase(node);
+
+            return node;
+        }
+        private void CreateRouteNodesFromDatabase(TreeNodeViewModel rootNode)
+        {
+            DatabaseServer server = rootNode.GetAncestorPayload<DatabaseServer>();
+            IMessagingService messaging = Services.GetService<IMessagingService>();
+            ConfigureMessagingService(messaging, server, null);
+            if (!messaging.DaJetMQExists()) { return; }
+
+            DatabaseInfo database = new DatabaseInfo() { Name = DAJET_MQ_DATABASE_NAME };
+            ConfigureMessagingService(messaging, server, database);
+
+            List<RouteInfo> routes = messaging.SelectRoutes(out string errorMessage);
+            if (!string.IsNullOrEmpty(errorMessage))
+            {
+                _ = MessageBox.Show(errorMessage, "DaJet", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            TreeNodeViewModel routeNode;
+            foreach (RouteInfo route in routes)
+            {
+                routeNode = CreateRouteNode(rootNode, route);
+                rootNode.TreeNodes.Add(routeNode);
+            }
+        }
+        private TreeNodeViewModel CreateRouteNode(TreeNodeViewModel parentNode, RouteInfo route)
+        {
+            TreeNodeViewModel node = new TreeNodeViewModel()
+            {
+                Parent = parentNode,
+                IsExpanded = false,
+                NodeIcon = ROUTE_ICON,
+                NodeText = route.Name,
+                NodeToolTip = route.ToString(),
+                NodePayload = route
+            };
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Edit route settings",
+                MenuItemIcon = EDIT_QUEUE_ICON,
+                MenuItemCommand = new RelayCommand(EditRouteCommand),
+                MenuItemPayload = node
+            });
+            node.ContextMenuItems.Add(new MenuItemViewModel() { IsSeparator = true });
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Send test message to remote queue",
+                MenuItemIcon = SEND_MESSAGE_ICON,
+                MenuItemCommand = new RelayCommand(SendTestMessageCommand),
+                MenuItemPayload = node
+            });
+            node.ContextMenuItems.Add(new MenuItemViewModel() { IsSeparator = true });
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Delete route",
+                MenuItemIcon = ROUTE_ERROR_ICON,
+                MenuItemCommand = new RelayCommand(DeleteRouteCommand),
+                MenuItemPayload = node
+            });
+
+            return node;
+        }
+
         private void ConfigureMessagingService(IMessagingService messaging, DatabaseServer server, DatabaseInfo database)
         {
             messaging.UseServer(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address);
@@ -185,6 +309,11 @@ namespace DaJet.Studio
             using (StreamReader reader = new StreamReader(resource.Stream))
             {
                 sql = reader.ReadToEnd();
+            }
+
+            if (scriptUri == CREATE_PUBLIC_ENDPOINT_SCRIPT && server.ServiceBrokerPortNumber != 4022)
+            {
+                sql = sql.Replace("LISTENER_PORT = 4022", "LISTENER_PORT = " + server.ServiceBrokerPortNumber.ToString());
             }
 
             IMetadataService metadata = Services.GetService<IMetadataService>();
@@ -245,7 +374,7 @@ namespace DaJet.Studio
             try
             {
                 ExecuteAdministrativeScript(server, DROP_DAJET_MQ_DATABASE_SCRIPT);
-                RootNode.TreeNodes.Clear(); // remove all queues from UI
+                treeNode.TreeNodes.Clear(); // remove all queues from UI
                 _ = MessageBox.Show("DaJet MQ database has been droped successfully.",
                     "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -254,7 +383,57 @@ namespace DaJet.Studio
                 ExceptionHelper.ShowException(ex);
             }
         }
-        
+        private void CreatePublicEndPoint(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+
+            MessageBoxResult result = MessageBox.Show(
+                "Open Service Broker end point (" + server.ServiceBrokerPortNumber.ToString() + ") ?", "DaJet",
+                MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (result != MessageBoxResult.OK) { return; }
+
+            IMessagingService messaging = Services.GetService<IMessagingService>();
+            ConfigureMessagingService(messaging, server, null);
+
+            try
+            {
+                ExecuteAdministrativeScript(server, CREATE_PUBLIC_ENDPOINT_SCRIPT);
+                _ = MessageBox.Show("Service Broker end point (" + server.ServiceBrokerPortNumber.ToString() + ") opened successfully.",
+                    "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                ExceptionHelper.ShowException(ex);
+            }
+        }
+        private void DeletePublicEndPoint(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+
+            MessageBoxResult result = MessageBox.Show(
+                "Close Service Broker end point (" + server.ServiceBrokerPortNumber.ToString() + ") ?", "DaJet",
+                MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (result != MessageBoxResult.OK) { return; }
+
+            IMessagingService messaging = Services.GetService<IMessagingService>();
+            ConfigureMessagingService(messaging, server, null);
+
+            try
+            {
+                ExecuteAdministrativeScript(server, DROP_PUBLIC_ENDPOINT_SCRIPT);
+                _ = MessageBox.Show("Service Broker end point (" + server.ServiceBrokerPortNumber.ToString() + ") has been closed.",
+                    "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                ExceptionHelper.ShowException(ex);
+            }
+        }
+
         private void CreateQueueCommand(object node)
         {
             if (!(node is TreeNodeViewModel treeNode)) return;
@@ -446,6 +625,30 @@ namespace DaJet.Studio
             viewModel.ScriptCode = script;
             ScriptEditorView view = new ScriptEditorView() { DataContext = viewModel };
             mainWindow.AddNewTab(viewModel.Name, view);
+        }
+
+
+
+        private void CreateRouteCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+            // TODO
+            _ = MessageBox.Show("Sorry, under construction.",
+                "DaJet", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        private void DeleteRouteCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+            // TODO
+            _ = MessageBox.Show("Sorry, under construction.",
+                "DaJet", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        private void EditRouteCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+            // TODO
+            _ = MessageBox.Show("Sorry, under construction.",
+                "DaJet", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 }

@@ -101,6 +101,7 @@ namespace DaJet.Metadata
             UseServer(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address);
             if (database == null)
             {
+                UseDatabase(string.Empty);
                 UseCredentials(server.UserName, server.Password);
             }
             else
@@ -165,7 +166,7 @@ namespace DaJet.Metadata
             }
             SqlConnectionStringBuilder csb = new SqlConnectionStringBuilder(ConnectionString)
             {
-                InitialCatalog = database?.Name
+                InitialCatalog = (database == null ? string.Empty : database.Name)
             };
             ConnectionString = csb.ToString();
 

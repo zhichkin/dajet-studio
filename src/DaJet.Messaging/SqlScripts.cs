@@ -111,9 +111,12 @@ namespace DaJet.Messaging
                     ParameterName = "ReturnValue",
                     Direction = ParameterDirection.ReturnValue
                 });
-                foreach (var parameter in parameters)
+                if (parameters != null)
                 {
-                    command.Parameters.AddWithValue(parameter.Key, parameter.Value);
+                    foreach (var parameter in parameters)
+                    {
+                        command.Parameters.AddWithValue(parameter.Key, parameter.Value);
+                    }
                 }
                 try
                 {
@@ -287,6 +290,19 @@ namespace DaJet.Messaging
             script.AppendLine($"SELECT service_broker_guid FROM sys.databases WHERE [name] = '{databaseName}';");
             return script.ToString();
         }
+        internal static string SelectServiceBrokerPortNumberScript()
+        {
+            StringBuilder script = new StringBuilder();
+            script.AppendLine("DECLARE @broker_port AS int;");
+            script.AppendLine("SELECT @broker_port = [tcp].[port]");
+            script.AppendLine("FROM sys.tcp_endpoints AS [tcp]");
+            script.AppendLine("INNER JOIN sys.service_broker_endpoints AS [sbe]");
+            script.AppendLine("ON [tcp].[endpoint_id] = [sbe].[endpoint_id]");
+            script.AppendLine("WHERE [sbe].[type] = 3;");
+            script.AppendLine("IF (@broker_port IS NULL) SET @broker_port = 0;");
+            script.Append("SELECT @broker_port;");
+            return script.ToString();
+        }
         internal static string SelectQueuesScript()
         {
             StringBuilder script = new StringBuilder();
@@ -294,6 +310,14 @@ namespace DaJet.Messaging
             script.Append("is_activation_enabled, activation_procedure, max_readers, execute_as_principal_id, ");
             script.Append("is_receive_enabled, is_enqueue_enabled ");
             script.Append("FROM sys.service_queues WHERE is_ms_shipped = 0 AND name NOT LIKE '%default';");
+            return script.ToString();
+        }
+        internal static string SelectRoutesScript()
+        {
+            StringBuilder script = new StringBuilder();
+            script.AppendLine("SELECT remote_service_name, broker_instance, address");
+            script.AppendLine("FROM sys.routes");
+            script.Append("WHERE remote_service_name IS NOT NULL AND NOT remote_service_name LIKE N'%/default';");
             return script.ToString();
         }
         internal static string CreateServiceQueueScript(Guid brokerId, string name)

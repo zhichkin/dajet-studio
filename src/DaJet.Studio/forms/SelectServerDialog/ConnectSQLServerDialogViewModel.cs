@@ -31,6 +31,16 @@ namespace DaJet.UI
             get { return MyServer.Address; }
             set { MyServer.Address = value; OnPropertyChanged(); }
         }
+        public string NetworkAddress
+        {
+            get { return MyServer.NetworkAddress; }
+            set { MyServer.NetworkAddress = value; OnPropertyChanged(); }
+        }
+        public int ServiceBrokerPortNumber
+        {
+            get { return MyServer.ServiceBrokerPortNumber; }
+            set { MyServer.ServiceBrokerPortNumber = value; OnPropertyChanged(); }
+        }
         public string UserName
         {
             get { return MyServer.UserName; }
