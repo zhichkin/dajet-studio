@@ -412,7 +412,7 @@ namespace DaJet.Metadata
                 SqlCommand command = connection.CreateCommand();
                 SqlDataReader reader = null;
                 command.CommandType = CommandType.Text;
-                command.CommandText = "SELECT [name] FROM [sys].[databases] WHERE [owner_sid] > 0x01 ORDER BY [name] ASC;";
+                command.CommandText = "SELECT [name] FROM [sys].[databases] ORDER BY [name] ASC;"; // WHERE [owner_sid] > 0x01 -- sa
                 try
                 {
                     connection.Open();

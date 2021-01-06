@@ -1,0 +1,91 @@
+{
+  "ConnectionString": "Data Source=ZHICHKIN;Initial Catalog=my_exchange;Integrated Security=True;Persist Security Info=False;",
+  "ExportQueue": {
+    "Name": "DaJetExchangeQueue",
+    "Table": "_Reference81",
+    "Fields": [
+      {
+        "Name": "Ссылка",
+        "Field": "_IDRRef"
+      },
+      {
+        "Name": "Код",
+        "Field": "_Code"
+      },
+      {
+        "Name": "ДатаВремя",
+        "Field": "_Fld82"
+      },
+      {
+        "Name": "ТипОперации",
+        "Field": "_Fld83"
+      },
+      {
+        "Name": "ТипСообщения",
+        "Field": "_Fld84"
+      },
+      {
+        "Name": "ТелоСообщения",
+        "Field": "_Fld85"
+      }
+    ]
+  },
+  "ChangeTracking": {
+    "Catalogs": {
+      "Номенклатура": {
+        "Properties": {
+          "Ссылка": true,
+          "Код": true,
+          "Наименование": true,
+          "ПометкаУдаления": true,
+          "РеквизитДата": true,
+          "РеквизитЧисло": true,
+          "РеквизитСтрока": true,
+          "РеквизитБулево": true,
+          "РеквизитСсылка": true,
+          "РеквизитПеречисление": true
+        }
+      }
+    },
+    "Documents": {
+      "ЗаказКлиента": {
+        "Properties": {
+          "Ссылка": true,
+          "Дата": true,
+          "Номер": true,
+          "Проведен": true,
+          "ПометкаУдаления": true,
+          "Товары": {
+            "Properties": {
+              "НомерСтроки": true,
+              "Номенклатура": true,
+              "Количество": true
+            }
+          }
+        }
+      }
+    },
+    "InfoRegisters": {
+      "ЦеныНоменклатуры": {
+        "Properties": {
+          "Период": true,
+          "Номенклатура": true,
+          "Цена": true
+        }
+      }
+    },
+    "AccumRegisters": {
+      "ЗаказыКлиентов": {
+        "Properties": {
+          "Период": true,
+          "Регистратор": true,
+          "НомерСтроки": true,
+          "ВидДвижения": true,
+          "ЗаказКлиента": true,
+          "Номенклатура": true,
+          "Количество": true
+        }
+      }
+    }
+  }
+}
