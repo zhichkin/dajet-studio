@@ -1,0 +1,11 @@
+/****** Script for SelectTopNRows command from SSMS  ******/
+SELECT [_IDRRef]
+      ,[_Version]
+      ,[_Marked]
+      ,[_PredefinedID]
+      ,[_Code]
+      ,[_Fld82]
+      ,[_Fld83]
+      ,[_Fld84]
+      ,[_Fld85]
+  FROM [my_exchange].[dbo].[_Reference81]

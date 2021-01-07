@@ -68,16 +68,16 @@
         ]
       }
     },
-    "InfoRegisters": {
+    "InformationRegisters": {
       "ЦеныНоменклатуры": {
         "Properties": [
           { "Name": "Период" },
           { "Name": "Номенклатура" },
-          { "Name": "Цена"}
+          { "Name": "Цена" }
         ]
       }
     },
-    "AccumRegisters": {
+    "AccumulationRegisters": {
       "ЗаказыКлиентов": {
         "Properties": [
           { "Name": "Период" },
