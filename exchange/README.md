@@ -93,6 +93,8 @@
 Получать данные из этой очереди можно при помощи прямых запросов SQL к таблице справочника или при помощи адаптера,
 например, для очередей сообщений RabbitMQ или Kafka.
 
+[**DaJet Exchange Agent**](https://github.com/zhichkin/dajet-exchange-agent) - агент обмена данными SQL Server - RabbitMQ.
+
 Пример кода SQL Server для получения сообщений (FIFO strict order required):
 ```SQL
 WITH [CTE] AS
