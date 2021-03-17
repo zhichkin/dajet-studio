@@ -15,6 +15,7 @@ namespace DaJet.Metadata
     {
         void UseServer(DatabaseServer server);
         void UseDatabase(DatabaseInfo database);
+        void UseCredentials(string userName, string password);
         void InitializeMetadata(DatabaseInfo database);
 
         string ReadDBNames();
@@ -27,6 +28,9 @@ namespace DaJet.Metadata
     internal delegate void SpecialParser(StreamReader reader, string line, MetaObject metaObject);
     public sealed class OneCSharpMetadataProvider: IMetadataProvider
     {
+        private const string ERROR_SERVER_IS_NOT_DEFINED = "Server is not defined. Try to call \"UseServer\" method first.";
+        private const string ERROR_DATABASE_IS_NOT_DEFINED = "Database is not defined. Try to call \"UseDatabase\" method first.";
+
         private const string COMMON_MODULES_COLLECTION_UUID = "0fe48980-252d-11d6-a3c7-0050bae0a776";
 
         private Dictionary<string, MetaObject> UUIDs { get; set; } = new Dictionary<string, MetaObject>();
@@ -88,6 +92,20 @@ namespace DaJet.Metadata
                 csb.UserID = database.UserName;
                 csb.Password = database.Password;
             }
+
+            ConnectionString = csb.ToString();
+        }
+        public void UseCredentials(string userName, string password)
+        {
+            if (CurrentServer == null) throw new InvalidOperationException(ERROR_SERVER_IS_NOT_DEFINED);
+            if (CurrentDatabase == null) throw new InvalidOperationException(ERROR_DATABASE_IS_NOT_DEFINED);
+
+            SqlConnectionStringBuilder csb = new SqlConnectionStringBuilder(ConnectionString)
+            {
+                UserID = userName,
+                Password = password
+            };
+            csb.IntegratedSecurity = string.IsNullOrWhiteSpace(userName);
 
             ConnectionString = csb.ToString();
         }

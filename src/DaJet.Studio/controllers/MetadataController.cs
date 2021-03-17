@@ -186,6 +186,10 @@ namespace DaJet.Studio
             IMetadataProvider provider = metadata.GetMetadataProvider(database);
             provider.UseServer(server);
             provider.UseDatabase(database);
+            if (!string.IsNullOrWhiteSpace(database.UserName))
+            {
+                provider.UseCredentials(database.UserName, database.Password);
+            }
             provider.InitializeMetadata(database);
 
             if (!metadata.Settings.Servers.Contains(server))
@@ -582,7 +586,17 @@ namespace DaJet.Studio
             if (!(treeNode.NodePayload is DatabaseServer server)) return;
 
             IMetadataService metadata = Services.GetService<IMetadataService>();
-            List<DatabaseInfo> databases = metadata.GetDatabases(server);
+            List<DatabaseInfo> databases = null;
+            try
+            {
+                databases = metadata.GetDatabases(server);
+            }
+            catch (Exception error)
+            {
+                MessageBox.Show(ExceptionHelper.GetErrorText(error),
+                    "DaJet", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
             if (databases.Count == 0)
             {
                 MessageBox.Show("Список выбора баз данных пуст.",
