@@ -139,7 +139,12 @@ namespace DaJet.Studio
             ConfigureMessagingService(messaging, server, null);
             if (!messaging.DaJetMQExists()) { return; }
 
-            DatabaseInfo database = new DatabaseInfo() { Name = DAJET_MQ_DATABASE_NAME };
+            DatabaseInfo database = new DatabaseInfo()
+            {
+                Name = DAJET_MQ_DATABASE_NAME,
+                UserName = server.UserName,
+                Password = server.Password
+            };
             ConfigureMessagingService(messaging, server, database);
 
             List<QueueInfo> queues = messaging.SelectQueues(out string errorMessage);
@@ -231,7 +236,12 @@ namespace DaJet.Studio
             ConfigureMessagingService(messaging, server, null);
             if (!messaging.DaJetMQExists()) { return; }
 
-            DatabaseInfo database = new DatabaseInfo() { Name = DAJET_MQ_DATABASE_NAME };
+            DatabaseInfo database = new DatabaseInfo()
+            {
+                Name = DAJET_MQ_DATABASE_NAME,
+                UserName = server.UserName,
+                Password = server.Password
+            };
             ConfigureMessagingService(messaging, server, database);
 
             List<RouteInfo> routes = messaging.SelectRoutes(out string errorMessage);

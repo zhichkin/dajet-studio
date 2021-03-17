@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Controls;
 
 namespace DaJet.Studio
@@ -37,13 +38,29 @@ namespace DaJet.Studio
             ITreeNodeController controller = Services.GetService<MetadataController>();
             if (controller != null)
             {
-                MainTreeRegion.TreeNodes.Add(controller.CreateTreeNode());
+                try
+                {
+                    MainTreeRegion.TreeNodes.Add(controller.CreateTreeNode());
+                }
+                catch (Exception error)
+                {
+                    _ = MessageBox.Show(ExceptionHelper.GetErrorText(error),
+                        "DaJet", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
 
             controller = Services.GetService<HttpServicesController>();
             if (controller != null)
             {
-                MainTreeRegion.TreeNodes.Add(controller.CreateTreeNode());
+                try
+                {
+                    MainTreeRegion.TreeNodes.Add(controller.CreateTreeNode());
+                }
+                catch (Exception error)
+                {
+                    _ = MessageBox.Show(ExceptionHelper.GetErrorText(error),
+                        "DaJet", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
         }
         

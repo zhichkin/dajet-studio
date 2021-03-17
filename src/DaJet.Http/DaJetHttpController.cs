@@ -486,6 +486,7 @@ namespace DaJet.Http
 
             IMetadataService metadata = Services.GetService<IMetadataService>();
             metadata.AttachDatabase(string.IsNullOrWhiteSpace(srv.Address) ? srv.Name : srv.Address, db);
+            metadata.UseCredentials(db.UserName, db.Password);
 
             IScriptingService scripting = Services.GetService<IScriptingService>();
             string sql = string.Empty;

@@ -404,6 +404,7 @@ namespace DaJet.Metadata
         public List<DatabaseInfo> GetDatabases(DatabaseServer server)
         {
             UseServer(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address);
+            UseCredentials(server.UserName, server.Password);
 
             List<DatabaseInfo> list = new List<DatabaseInfo>();
 

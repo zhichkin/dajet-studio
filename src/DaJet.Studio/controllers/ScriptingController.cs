@@ -597,6 +597,7 @@ namespace DaJet.Studio
 
             IMetadataService metadata = Services.GetService<IMetadataService>();
             metadata.AttachDatabase(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address, database);
+            metadata.UseCredentials(database.UserName, database.Password);
 
             IScriptingService scripting = Services.GetService<IScriptingService>();
             string sql = scripting.PrepareScript(scriptEditor.ScriptCode, out IList<ParseError> errors);
@@ -648,6 +649,7 @@ namespace DaJet.Studio
         {
             IMetadataService metadata = Services.GetService<IMetadataService>();
             metadata.AttachDatabase(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address, database);
+            metadata.UseCredentials(database.UserName, database.Password);
 
             IScriptingService scripting = Services.GetService<IScriptingService>();
             TSqlFragment syntaxTree = scripting.ParseScript(sourceCode, out IList<ParseError> errors);
@@ -674,6 +676,7 @@ namespace DaJet.Studio
         {
             IMetadataService metadata = Services.GetService<IMetadataService>();
             metadata.AttachDatabase(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address, database);
+            metadata.UseCredentials(database.UserName, database.Password);
 
             IScriptingService scripting = Services.GetService<IScriptingService>();
             TSqlFragment syntaxTree = scripting.ParseScript(sourceCode, out IList<ParseError> errors);
@@ -711,6 +714,7 @@ namespace DaJet.Studio
 
             IMetadataService metadata = Services.GetService<IMetadataService>();
             metadata.AttachDatabase(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address, database);
+            metadata.UseCredentials(database.UserName, database.Password);
 
             IScriptingService scripting = Services.GetService<IScriptingService>();
             string sql = scripting.PrepareScript(scriptEditor.ScriptCode, out IList<ParseError> errors);
