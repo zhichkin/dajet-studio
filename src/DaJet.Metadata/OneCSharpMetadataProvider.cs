@@ -423,7 +423,7 @@ namespace DaJet.Metadata
                 SqlCommand command = connection.CreateCommand();
                 SqlDataReader reader = null;
                 command.CommandType = CommandType.Text;
-                command.CommandText = "SELECT BinaryData FROM Config WHERE FileName = @FileName ORDER BY PartNo ASC";
+                command.CommandText = "SELECT TOP 1 BinaryData FROM Config WHERE FileName = @FileName"; //  ORDER BY PartNo ASC
                 command.Parameters.AddWithValue("FileName", fileName);
                 try
                 {

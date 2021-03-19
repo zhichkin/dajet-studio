@@ -121,7 +121,17 @@ namespace DaJet.Messaging
             {
                 throw new InvalidOperationException(ERROR_SERVER_IS_NOT_DEFINED);
             }
-            return SqlScripts.ExecuteScalar<bool>(ConnectionString, SqlScripts.DaJetMQExistsScript());
+            bool result = false;
+            try
+            {
+                result = SqlScripts.ExecuteScalar<bool>(ConnectionString, SqlScripts.DaJetMQExistsScript());
+            }
+            catch (Exception error)
+            {
+                // TODO: handle error
+                result = false;
+            }
+            return result;
         }
         private string GetQueueName(string fullQueueName)
         {
