@@ -1,4 +1,4 @@
-﻿using DaJet.Metadata;
+﻿using DaJet.UI.Model;
 using System.Collections.Generic;
 
 namespace DaJet.Studio

@@ -16,6 +16,26 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="forms\QueueInfo\**" />
+    <Compile Remove="forms\WebServer\**" />
+    <EmbeddedResource Remove="forms\QueueInfo\**" />
+    <EmbeddedResource Remove="forms\WebServer\**" />
+    <None Remove="forms\QueueInfo\**" />
+    <None Remove="forms\WebServer\**" />
+    <Page Remove="forms\QueueInfo\**" />
+    <Page Remove="forms\WebServer\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="controllers\HttpServicesController.cs" />
+    <Compile Remove="controllers\MessagingController.cs" />
+    <Compile Remove="controllers\ScriptingController.cs" />
+    <Compile Remove="controllers\WebSettings.cs" />
+    <Compile Remove="controls\ScriptEditorView.xaml.cs" />
+    <Compile Remove="controls\ScriptEditorViewModel.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Remove="dajet-mq\create-dajet-mq-database.sql" />
     <None Remove="dajet-mq\create-public-end-point.sql" />
     <None Remove="dajet-mq\drop-dajet-mq-database.sql" />
@@ -90,16 +110,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="3.1.9" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="3.1.9" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="3.1.9" />
-    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.19" />
+    <Page Remove="controls\ScriptEditorView.xaml" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\DaJet.Messaging\DaJet.Messaging.csproj" />
-    <ProjectReference Include="..\DaJet.Metadata\DaJet.Metadata.csproj" />
-    <ProjectReference Include="..\DaJet.Scripting\DaJet.Scripting.csproj" />
+    <PackageReference Include="DaJet.Data.Mapping" Version="1.0.0" />
+    <PackageReference Include="DaJet.Metadata" Version="3.1.7" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.39" />
   </ItemGroup>
 
   <ItemGroup>
@@ -185,6 +205,10 @@
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="model\" />
   </ItemGroup>
 
 </Project>

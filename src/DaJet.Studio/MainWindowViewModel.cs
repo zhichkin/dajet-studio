@@ -48,20 +48,6 @@ namespace DaJet.Studio
                         "DaJet", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
-
-            controller = Services.GetService<HttpServicesController>();
-            if (controller != null)
-            {
-                try
-                {
-                    MainTreeRegion.TreeNodes.Add(controller.CreateTreeNode());
-                }
-                catch (Exception error)
-                {
-                    _ = MessageBox.Show(ExceptionHelper.GetErrorText(error),
-                        "DaJet", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-            }
         }
         
         public object SelectedTabViewModel

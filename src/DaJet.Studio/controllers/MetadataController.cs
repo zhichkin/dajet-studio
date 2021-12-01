@@ -1,17 +1,16 @@
-﻿using DaJet.Messaging;
-using DaJet.Metadata;
+﻿using DaJet.Metadata;
+using DaJet.Metadata.Model;
 using DaJet.Studio.MVVM;
+using DaJet.Studio.UI;
 using DaJet.UI;
+using DaJet.UI.Model;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
-using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Data;
 using System.Linq;
-using System.Text;
-using System.Text.Json;
 using System.Windows;
 using System.Windows.Media.Imaging;
 
@@ -72,56 +71,116 @@ namespace DaJet.Studio
         private readonly BitmapImage KEY_ICON = new BitmapImage(new Uri(KEY_ICON_PATH));
 
         #endregion
-
-        private const string SCRIPTS_NODE_NAME = "Scripts";
-        private const string SCRIPTS_CATALOG_NAME = "scripts";
-        private const string METADATA_CATALOG_NAME = "metadata";
-        private const string METADATA_SETTINGS_FILE_NAME = "metadata-settings.json";
-
+                
         public TreeNodeViewModel RootNode { get; private set; }
         private AppSettings Settings { get; }
         private IServiceProvider Services { get; }
-        private IFileProvider FileProvider { get; }
-        private MetadataSettings MetadataSettings { get; set; } = new MetadataSettings();
-        public MetadataController(IServiceProvider serviceProvider, IFileProvider fileProvider, IOptions<AppSettings> options)
+        public MetadataController(IServiceProvider serviceProvider, IOptions<AppSettings> options)
         {
             Settings = options.Value;
             Services = serviceProvider;
-            FileProvider = fileProvider;
-            InitializeMetadataSettings();
-        }
-        private void SaveMetadataSettings()
-        {
-            IFileInfo fileInfo = FileProvider.GetFileInfo($"{METADATA_CATALOG_NAME}/{METADATA_SETTINGS_FILE_NAME}");
-
-            JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
-            string json = JsonSerializer.Serialize(MetadataSettings, options);
-            using (StreamWriter writer = new StreamWriter(fileInfo.PhysicalPath, false, Encoding.UTF8))
-            {
-                writer.Write(json);
-            }
-        }
-        private void InitializeMetadataSettings()
-        {
-            IFileInfo fileInfo = FileProvider.GetFileInfo(METADATA_CATALOG_NAME);
-            if (!fileInfo.Exists) { Directory.CreateDirectory(fileInfo.PhysicalPath); }
-
-            string json = "{}";
-            fileInfo = FileProvider.GetFileInfo($"{METADATA_CATALOG_NAME}/{METADATA_SETTINGS_FILE_NAME}");
-            if (fileInfo.Exists)
-            {
-                using (StreamReader reader = new StreamReader(fileInfo.PhysicalPath, Encoding.UTF8))
-                {
-                    json = reader.ReadToEnd();
-                }
-                MetadataSettings = JsonSerializer.Deserialize<MetadataSettings>(json);
-            }
-            else
-            {
-                SaveMetadataSettings();
-            }
         }
         public TreeNodeViewModel CreateTreeNode(TreeNodeViewModel parent) { throw new NotImplementedException(); }
+
+        //private void CreateDatabaseServersFromSettings()
+        //{
+        //    if (RootNode == null || MetadataSettings.Servers == null || MetadataSettings.Servers.Count == 0)
+        //    {
+        //        return;
+        //    }
+
+        //    TreeNodeViewModel serverNode;
+        //    foreach (DatabaseServer server in MetadataSettings.Servers)
+        //    {
+        //        serverNode = CreateServerTreeNode(server, false);
+
+        //        TreeNodeViewModel databaseNode;
+        //        foreach (DatabaseInfo database in server.Databases)
+        //        {
+        //            databaseNode = CreateDatabaseTreeNode(serverNode, database);
+        //            serverNode.TreeNodes.Add(databaseNode);
+        //        }
+
+        //        RootNode.TreeNodes.Add(serverNode);
+        //    }
+        //}
+        //private void InitializeDatabasesMetadata()
+        //{
+        //    foreach (DatabaseServer server in MetadataSettings.Servers)
+        //    {
+        //        //_ = Parallel.ForEach(server.Databases, InitializeMetadata);
+        //        foreach (DatabaseInfo database in server.Databases)
+        //        {
+        //            InitializeMetadata(server, database);
+        //        }
+        //    }
+        //}
+        //private async void InitializeMetadata(DatabaseServer server, DatabaseInfo database)
+        //{
+        //    IMetadataService metadata = Services.GetService<IMetadataService>();
+
+        //    IMetadataProvider provider = metadata.GetMetadataProvider(database);
+        //    provider.UseServer(server);
+        //    provider.UseDatabase(database);
+        //    if (!string.IsNullOrWhiteSpace(database.UserName))
+        //    {
+        //        provider.UseCredentials(database.UserName, database.Password);
+        //    }
+        //    provider.InitializeMetadata(database);
+
+        //    if (!metadata.Settings.Servers.Contains(server))
+        //    {
+        //        metadata.Settings.Servers.Add(server);
+        //    }
+
+        //    //await Task.Run(() => provider.InitializeMetadata(database));
+        //}
+
+        private BitmapImage GetNamespaceIcon(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) { return null; }
+            else if (name == "Константы") { return CONST_ICON; }
+            else if (name == "Справочники") { return CATALOG_ICON; }
+            else if (name == "Документы") { return DOCUMENT_ICON; }
+            else if (name == "Перечисления") { return ENUM_ICON; }
+            else if (name == "Планы видов характеристик") { return CHARACTERISTICS_REGISTER_ICON; }
+            else if (name == "Регистры сведений") { return INFO_REGISTER_ICON; }
+            else if (name == "Регистры накопления") { return ACCUM_REGISTER_ICON; }
+            return null;
+        }
+        private BitmapImage GetMetaObjectIcon(ApplicationObject metaObject)
+        {
+            if (metaObject == null) { return null; }
+            else if (metaObject is Catalog) { return CATALOG_ICON; }
+            else if (metaObject is Document) { return DOCUMENT_ICON; }
+            else if (metaObject is Enumeration) { return ENUM_ICON; }
+            else if (metaObject is Characteristic) { return CHARACTERISTICS_REGISTER_ICON; }
+            else if (metaObject is InformationRegister) { return INFO_REGISTER_ICON; }
+            else if (metaObject is AccumulationRegister) { return ACCUM_REGISTER_ICON; }
+            return null;
+        }
+        private BitmapImage GetMetaPropertyIcon(MetadataProperty property)
+        {
+            if (property == null) { return null; }
+            else if (property.Purpose == PropertyPurpose.System && property.IsPrimaryKey()) { return KEY_ICON; }
+            else if (property.Purpose == PropertyPurpose.Property && property.IsPrimaryKey()) { return KEY_ICON; }
+            else if (property.Purpose == PropertyPurpose.Property) { return PROPERTY_ICON; }
+            else if (property.Purpose == PropertyPurpose.Dimension) { return DIMENSION_ICON; }
+            else if (property.Purpose == PropertyPurpose.Measure) { return MEASURE_ICON; }
+            return PROPERTY_ICON;
+        }
+        private string GetMetaPropertyToolTip(MetadataProperty property)
+        {
+            string toolTip = string.Empty;
+            foreach (DatabaseField field in property.Fields)
+            {
+                toolTip += (string.IsNullOrEmpty(toolTip) ? string.Empty : Environment.NewLine) + field.Name;
+            }
+            return toolTip;
+        }
+
+        #region "Metadata Explorer Root Tree Node"
+
         public TreeNodeViewModel CreateTreeNode()
         {
             RootNode = new TreeNodeViewModel()
@@ -136,91 +195,33 @@ namespace DaJet.Studio
             {
                 MenuItemHeader = "Add server",
                 MenuItemIcon = ADD_SERVER_ICON,
-                MenuItemCommand = new RelayCommand(AddDataServerCommand),
+                MenuItemCommand = new RelayCommand(AddServerNodeCommand),
                 MenuItemPayload = RootNode
             });
 
-            CreateDatabaseServersFromSettings();
-            InitializeDatabasesMetadata();
-            CreateMetadataTreeNodes();
+            //CreateDatabaseServersFromSettings();
+            //InitializeDatabasesMetadata();
+            //CreateMetadataTreeNodes();
 
             return RootNode;
         }
-        private void CreateDatabaseServersFromSettings()
+        private void AddServerNodeCommand(object parameter)
         {
-            if (RootNode == null || MetadataSettings.Servers == null || MetadataSettings.Servers.Count == 0)
-            {
-                return;
-            }
+            if (!(parameter is TreeNodeViewModel treeNode)) return;
+            if (treeNode.NodePayload != this) return;
 
-            TreeNodeViewModel serverNode;
-            foreach (DatabaseServer server in MetadataSettings.Servers)
-            {
-                serverNode = CreateServerTreeNode(server, false);
+            ConnectSQLServerDialogWindow dialog = new ConnectSQLServerDialogWindow();
+            _ = dialog.ShowDialog();
+            if (dialog.Result == null) return;
 
-                TreeNodeViewModel databaseNode;
-                foreach (DatabaseInfo database in server.Databases)
-                {
-                    databaseNode = CreateDatabaseTreeNode(serverNode, database);
-                    serverNode.TreeNodes.Add(databaseNode);
-                }
-
-                RootNode.TreeNodes.Add(serverNode);
-            }
-        }
-        private void InitializeDatabasesMetadata()
-        {
-            foreach (DatabaseServer server in MetadataSettings.Servers)
-            {
-                //_ = Parallel.ForEach(server.Databases, InitializeMetadata);
-                foreach (DatabaseInfo database in server.Databases)
-                {
-                    InitializeMetadata(server, database);
-                }
-            }
-        }
-        private async void InitializeMetadata(DatabaseServer server, DatabaseInfo database)
-        {
-            IMetadataService metadata = Services.GetService<IMetadataService>();
-
-            IMetadataProvider provider = metadata.GetMetadataProvider(database);
-            provider.UseServer(server);
-            provider.UseDatabase(database);
-            if (!string.IsNullOrWhiteSpace(database.UserName))
-            {
-                provider.UseCredentials(database.UserName, database.Password);
-            }
-            provider.InitializeMetadata(database);
-
-            if (!metadata.Settings.Servers.Contains(server))
-            {
-                metadata.Settings.Servers.Add(server);
-            }
-
-            //await Task.Run(() => provider.InitializeMetadata(database));
+            TreeNodeViewModel serverNode = CreateServerTreeNode(dialog.Result, false);
+            serverNode.IsSelected = true;
+            RootNode.TreeNodes.Add(serverNode);
         }
 
-        private BitmapImage GetMetaObjectIcon(BaseObject baseObject)
-        {
-            if (baseObject == null) { return null; }
-            else if (baseObject.Name == "Справочник") { return CATALOG_ICON; }
-            else if (baseObject.Name == "Документ") { return DOCUMENT_ICON; }
-            else if (baseObject.Name == "РегистрСведений") { return INFO_REGISTER_ICON; }
-            else if (baseObject.Name == "РегистрНакопления") { return ACCUM_REGISTER_ICON; }
-            else if (baseObject.Name == "ПланВидовХарактеристик") { return CHARACTERISTICS_REGISTER_ICON; }
-            else if (baseObject.Name == "Перечисление") { return ENUM_ICON; }
-            else { return null; }
-        }
-        private BitmapImage GetMetaPropertyIcon(MetaProperty property)
-        {
-            if (property == null) { return null; }
-            else if (property.Purpose == MetaPropertyPurpose.System && property.IsPrimaryKey()) { return KEY_ICON; }
-            else if (property.Purpose == MetaPropertyPurpose.Property && property.IsPrimaryKey()) { return KEY_ICON; }
-            else if (property.Purpose == MetaPropertyPurpose.Property) { return PROPERTY_ICON; }
-            else if (property.Purpose == MetaPropertyPurpose.Dimension) { return DIMENSION_ICON; }
-            else if (property.Purpose == MetaPropertyPurpose.Measure) { return MEASURE_ICON; }
-            else { return PROPERTY_ICON; }
-        }
+        #endregion
+
+        #region "Server Tree Node"
 
         private TreeNodeViewModel CreateServerTreeNode(DatabaseServer server, bool warning)
         {
@@ -236,360 +237,31 @@ namespace DaJet.Studio
             };
             serverNode.ContextMenuItems.Add(new MenuItemViewModel()
             {
-                MenuItemHeader = "Edit server settings",
-                MenuItemIcon = SERVER_SETTINGS_ICON,
-                MenuItemCommand = new RelayCommand(EditDataServerCommand),
+                MenuItemHeader = "Add database to the list",
+                MenuItemIcon = ADD_DATABASE_ICON,
+                MenuItemCommand = new RelayCommand(AddDatabaseNodeCommand),
                 MenuItemPayload = serverNode
             });
+            serverNode.ContextMenuItems.Add(new MenuItemViewModel() { IsSeparator = true });
             serverNode.ContextMenuItems.Add(new MenuItemViewModel()
             {
-                MenuItemHeader = "Add database",
-                MenuItemIcon = ADD_DATABASE_ICON,
-                MenuItemCommand = new RelayCommand(AddDatabaseCommand),
+                MenuItemHeader = "Remove server from the list",
+                MenuItemIcon = DELETE_DATABASE_ICON,
+                MenuItemCommand = new RelayCommand(DeleteServerNodeCommand),
                 MenuItemPayload = serverNode
             });
-
-            TreeNodeViewModel queues = CreateQueuesTreeNode(serverNode);
-            if (queues != null) { serverNode.TreeNodes.Add(queues); }
 
             return serverNode;
         }
-        private TreeNodeViewModel CreateDatabaseTreeNode(TreeNodeViewModel serverNode, DatabaseInfo database)
-        {
-            TreeNodeViewModel databaseNode = new TreeNodeViewModel()
-            {
-                Parent = serverNode,
-                IsExpanded = false,
-                NodeIcon = DATABASE_ICON,
-                NodeText = database.Name,
-                NodeToolTip = database.Alias,
-                NodePayload = database
-            };
-            databaseNode.ContextMenuItems.Add(new MenuItemViewModel()
-            {
-                MenuItemHeader = "Edit database settings",
-                MenuItemIcon = DATABASE_SETTINGS_ICON,
-                MenuItemCommand = new RelayCommand(EditDatabaseCommand),
-                MenuItemPayload = databaseNode
-            });
-            databaseNode.ContextMenuItems.Add(new MenuItemViewModel()
-            {
-                MenuItemHeader = "Read DBNames",
-                MenuItemIcon = METADATA_ICON,
-                MenuItemCommand = new RelayCommand(ReadDBNamesCommand),
-                MenuItemPayload = databaseNode
-            });
-            databaseNode.ContextMenuItems.Add(new MenuItemViewModel()
-            {
-                MenuItemHeader = "Save DBNames to file...",
-                MenuItemIcon = SAVE_FILE_ICON,
-                MenuItemCommand = new RelayCommand(SaveDBNamesCommand),
-                MenuItemPayload = databaseNode
-            });
-            databaseNode.ContextMenuItems.Add(new MenuItemViewModel()
-            {
-                MenuItemHeader = "Find and save meta file by name",
-                MenuItemIcon = METADATA_ICON,
-                MenuItemCommand = new RelayCommand(FindAndSaveMetaFileCommand),
-                MenuItemPayload = databaseNode
-            });
-            // TODO: see ReadCommonModuleSourceCode function of the IMetadataProvider
-            databaseNode.ContextMenuItems.Add(new MenuItemViewModel() { IsSeparator = true });
-            databaseNode.ContextMenuItems.Add(new MenuItemViewModel()
-            {
-                MenuItemHeader = "Remove database from the list",
-                MenuItemIcon = DELETE_DATABASE_ICON,
-                MenuItemCommand = new RelayCommand(DeleteDatabaseCommand),
-                MenuItemPayload = databaseNode
-            });
-
-            TreeNodeViewModel scripts = CreateScriptsTreeNode(databaseNode);
-            if (scripts != null) { databaseNode.TreeNodes.Add(scripts); }
-
-            return databaseNode;
-        }
-        private TreeNodeViewModel CreateScriptsTreeNode(TreeNodeViewModel databaseNode)
-        {
-            ITreeNodeController controller = Services.GetService<ScriptingController>();
-            if (controller == null) return null;
-            return controller.CreateTreeNode(databaseNode);
-        }
-        private TreeNodeViewModel CreateQueuesTreeNode(TreeNodeViewModel serverNode)
-        {
-            ITreeNodeController controller = Services.GetService<MessagingController>();
-            if (controller == null) { return null; }
-            return controller.CreateTreeNode(serverNode);
-        }
-        private void CreateMetadataTreeNodes()
-        {
-            foreach (TreeNodeViewModel serverNode in RootNode.TreeNodes)
-            {
-                foreach (TreeNodeViewModel databaseNode in serverNode.TreeNodes)
-                {
-                    InitializeDatabaseTreeNodes(databaseNode);
-                }
-            }
-        }
-
-        private void InitializeDatabaseTreeNodes(TreeNodeViewModel databaseNode)
-        {
-            if (!(databaseNode.NodePayload is DatabaseInfo database)) return;
-
-            foreach (BaseObject baseObject in database.BaseObjects)
-            {
-                TreeNodeViewModel node = new TreeNodeViewModel()
-                {
-                    Parent = databaseNode,
-                    IsExpanded = false,
-                    NodeIcon = GetMetaObjectIcon(baseObject),
-                    NodeText = baseObject.Name,
-                    NodeToolTip = baseObject.Name,
-                    NodePayload = baseObject
-                };
-                databaseNode.TreeNodes.Add(node);
-
-                InitializeMetaObjectsTreeNodes(node);
-            }
-        }
-        private void InitializeMetaObjectsTreeNodes(TreeNodeViewModel parentNode)
-        {
-            List<MetaObject> metaObjects;
-            if (parentNode.NodePayload is BaseObject baseObject)
-            {
-                metaObjects = baseObject.MetaObjects;
-            }
-            else if (parentNode.NodePayload is MetaObject metaObject)
-            {
-                metaObjects = metaObject.MetaObjects;
-            }
-            else
-            {
-                return;
-            }
-
-            foreach (MetaObject metaObject in metaObjects)
-            {
-                TreeNodeViewModel node = new TreeNodeViewModel()
-                {
-                    Parent = parentNode,
-                    IsExpanded = false,
-                    NodeIcon = (metaObject.Owner == null)
-                                ? GetMetaObjectIcon(metaObject.Parent)
-                                : NESTED_TABLE_ICON,
-                    NodeText = metaObject.Name,
-                    NodeToolTip = string.IsNullOrWhiteSpace(metaObject.Alias) ? metaObject.TableName : metaObject.Alias,
-                    NodePayload = metaObject
-                };
-                if (metaObject.Owner == null) // is not nested object - main table
-                {
-                    node.ContextMenuItems.Add(new MenuItemViewModel()
-                    {
-                        MenuItemHeader = "Read config file",
-                        MenuItemIcon = METADATA_ICON,
-                        MenuItemCommand = new RelayCommand(ReadConfigFileCommand),
-                        MenuItemPayload = node
-                    });
-                }
-                parentNode.TreeNodes.Add(node);
-
-                InitializeMetaPropertiesTreeNodes(node);
-                InitializeMetaObjectsTreeNodes(node);
-            }
-        }
-        private void InitializeMetaPropertiesTreeNodes(TreeNodeViewModel metaObjectNode)
-        {
-            if (!(metaObjectNode.NodePayload is MetaObject metaObject)) return;
-
-            foreach (MetaProperty property in metaObject.Properties)
-            {
-                TreeNodeViewModel node = new TreeNodeViewModel()
-                {
-                    Parent = metaObjectNode,
-                    IsExpanded = false,
-                    NodeIcon = GetMetaPropertyIcon(property),
-                    NodeText = property.Name,
-                    NodeToolTip = GetPropertyToolTip(property),
-                    NodePayload = property
-                };
-                metaObjectNode.TreeNodes.Add(node);
-            }
-        }
-        private string GetPropertyToolTip(MetaProperty property)
-        {
-            string toolTip = string.Empty;
-            foreach (MetaField field in property.Fields)
-            {
-                toolTip += (string.IsNullOrEmpty(toolTip) ? string.Empty : Environment.NewLine)
-                    + SqlUtility.CreateTableFieldScript(field).Replace("[", string.Empty).Replace("]", string.Empty);
-            }
-            return toolTip;
-        }
-
-
-
-        private bool DatabaseServerExists(DatabaseServer server)
-        {
-            foreach (DatabaseServer existing in MetadataSettings.Servers)
-            {
-                if (string.IsNullOrWhiteSpace(server.Address))
-                {
-                    if (existing.Name == server.Name)
-                    {
-                        return true;
-                    }
-                }
-                else if (existing.Address == server.Address)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-        private bool DatabaseServerNameExists(DatabaseServer server)
-        {
-            foreach (DatabaseServer existing in MetadataSettings.Servers)
-            {
-                if (existing.Name == server.Name)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-        private bool DatabaseServerAddressExists(DatabaseServer server)
-        {
-            foreach (DatabaseServer existing in MetadataSettings.Servers)
-            {
-                if (existing.Address == server.Address)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-        private void AddDataServerCommand(object parameter)
-        {
-            if (!(parameter is TreeNodeViewModel treeNode)) return;
-            if (treeNode.NodePayload != this) return;
-
-            // get sql server address
-            ConnectSQLServerDialogWindow dialog = new ConnectSQLServerDialogWindow();
-            _ = dialog.ShowDialog();
-            if (dialog.Result == null) return;
-
-            // check if server name or address is already exists
-            if (DatabaseServerExists(dialog.Result))
-            {
-                MessageBox.Show("SQL сервер " + dialog.Result.Name + " уже добавлен.",
-                    "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            // setup server connection
-            IMessagingService messaging = Services.GetService<IMessagingService>();
-            messaging.UseServer(
-                string.IsNullOrWhiteSpace(dialog.Result.Address)
-                ? dialog.Result.Name
-                : dialog.Result.Address);
-            if (!string.IsNullOrWhiteSpace(dialog.Result.UserName))
-            {
-                messaging.UseCredentials(dialog.Result.UserName, dialog.Result.Password);
-            }
-            messaging.UseDatabase(string.Empty);
-            
-            // check connection
-            string errorMessage;
-            if (messaging.CheckConnection(out errorMessage))
-            {
-                int port = messaging.GetServiceBrokerPortNumber();
-                if (port != 0) { dialog.Result.ServiceBrokerPortNumber = port; }
-                MessageBox.Show("Соединение открыто успешно." + Environment.NewLine + messaging.ConnectionString,
-                    "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            else
-            {
-                MessageBox.Show("Соединение недоступно!"
-                    + Environment.NewLine + messaging.ConnectionString
-                    + Environment.NewLine + Environment.NewLine + errorMessage,
-                    "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-
-            MetadataSettings.Servers.Add(dialog.Result);
-            SaveMetadataSettings();
-
-            TreeNodeViewModel serverNode = CreateServerTreeNode(dialog.Result, !string.IsNullOrEmpty(errorMessage));
-            serverNode.IsSelected = true;
-            RootNode.TreeNodes.Add(serverNode);
-        }
-        private void EditDataServerCommand(object parameter)
+        private void AddDatabaseNodeCommand(object parameter)
         {
             if (!(parameter is TreeNodeViewModel treeNode)) return;
             if (!(treeNode.NodePayload is DatabaseServer server)) return;
 
-            // make copy of server settings to rollback changes if needed
-            DatabaseServer serverCopy = server.Copy();
-
-            // edit server settings
-            ConnectSQLServerDialogWindow dialog = new ConnectSQLServerDialogWindow(serverCopy);
-            _ = dialog.ShowDialog();
-            if (dialog.Result == null) return;
-
-            string serverCopyName = string.IsNullOrWhiteSpace(serverCopy.Address)
-                                ? serverCopy.Name
-                                : $"{serverCopy.Name} ({serverCopy.Address})";
-            
-            // check if new server name already exists
-            if (serverCopy.Name != server.Name)
-            {
-                if (DatabaseServerNameExists(serverCopy))
-                {
-                    MessageBox.Show("SQL сервер " + serverCopyName + " уже сущестует.",
-                        "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
-                    return;
-                }
-            }
-            // check if new server address already exists
-            if (serverCopy.Address != server.Address)
-            {
-                if (DatabaseServerAddressExists(serverCopy))
-                {
-                    MessageBox.Show("SQL сервер " + serverCopyName + " уже сущестует.",
-                        "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
-                    return;
-                }
-            }
-
-            // persist server settings changes
-            serverCopy.CopyTo(server);
-            SaveMetadataSettings();
-
-            // show server name and address changes in UI
-            treeNode.NodeText = serverCopyName;
-        }
-
-
-
-        private bool DatabaseNameExists(DatabaseServer server, DatabaseInfo database)
-        {
-            foreach (DatabaseInfo existing in server.Databases)
-            {
-                if (existing.Name == database.Name)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-        private void AddDatabaseCommand(object parameter)
-        {
-            if (!(parameter is TreeNodeViewModel treeNode)) return;
-            if (!(treeNode.NodePayload is DatabaseServer server)) return;
-
-            IMetadataService metadata = Services.GetService<IMetadataService>();
-            List<DatabaseInfo> databases = null;
+            List<DatabaseInfo> databases;
             try
             {
-                databases = metadata.GetDatabases(server);
+                databases = GetDatabases(server);
             }
             catch (Exception error)
             {
@@ -626,16 +298,122 @@ namespace DaJet.Studio
             }
 
             server.Databases.Add(dialog.Result);
-            SaveMetadataSettings();
-
-            InitializeMetadata(server, dialog.Result);
-
+            
             TreeNodeViewModel databaseNode = CreateDatabaseTreeNode(treeNode, dialog.Result);
             treeNode.TreeNodes.Add(databaseNode);
             treeNode.IsExpanded = true;
             databaseNode.IsSelected = true;
+        }
+        private void DeleteServerNodeCommand(object parameter)
+        {
+            if (!(parameter is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is DatabaseServer server)) return;
+            
+            MessageBoxResult result = MessageBox.Show(
+                "Delete server \"" + server.Name + "\" from the list ?",
+                "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            
+            if (result != MessageBoxResult.OK) return;
 
-            InitializeDatabaseTreeNodes(databaseNode);
+            RootNode.TreeNodes.Remove(treeNode);
+        }
+
+        //private void EditDataServerCommand(object parameter)
+        //{
+        //    if (!(parameter is TreeNodeViewModel treeNode)) return;
+        //    if (!(treeNode.NodePayload is DatabaseServer server)) return;
+
+        //    // make copy of server settings to rollback changes if needed
+        //    DatabaseServer serverCopy = server.Copy();
+
+        //    // edit server settings
+        //    ConnectSQLServerDialogWindow dialog = new ConnectSQLServerDialogWindow(serverCopy);
+        //    _ = dialog.ShowDialog();
+        //    if (dialog.Result == null) return;
+
+        //    string serverCopyName = string.IsNullOrWhiteSpace(serverCopy.Address)
+        //                        ? serverCopy.Name
+        //                        : $"{serverCopy.Name} ({serverCopy.Address})";
+
+        //    // check if new server name already exists
+        //    if (serverCopy.Name != server.Name)
+        //    {
+        //        if (DatabaseServerNameExists(serverCopy))
+        //        {
+        //            MessageBox.Show("SQL сервер " + serverCopyName + " уже сущестует.",
+        //                "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
+        //            return;
+        //        }
+        //    }
+        //    // check if new server address already exists
+        //    if (serverCopy.Address != server.Address)
+        //    {
+        //        if (DatabaseServerAddressExists(serverCopy))
+        //        {
+        //            MessageBox.Show("SQL сервер " + serverCopyName + " уже сущестует.",
+        //                "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
+        //            return;
+        //        }
+        //    }
+
+        //    // persist server settings changes
+        //    serverCopy.CopyTo(server);
+        //    SaveMetadataSettings();
+
+        //    // show server name and address changes in UI
+        //    treeNode.NodeText = serverCopyName;
+        //}
+
+        #endregion
+
+        #region "Database Tree Node"
+
+        private TreeNodeViewModel CreateDatabaseTreeNode(TreeNodeViewModel serverNode, DatabaseInfo database)
+        {
+            TreeNodeViewModel databaseNode = new TreeNodeViewModel()
+            {
+                Parent = serverNode,
+                IsExpanded = false,
+                NodeIcon = DATABASE_ICON,
+                NodeText = database.Name,
+                NodeToolTip = database.Alias,
+                NodePayload = database
+            };
+            databaseNode.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Edit database settings",
+                MenuItemIcon = DATABASE_SETTINGS_ICON,
+                MenuItemCommand = new RelayCommand(EditDatabaseCommand),
+                MenuItemPayload = databaseNode
+            });
+            databaseNode.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Open database",
+                MenuItemIcon = ADD_DATABASE_ICON,
+                MenuItemCommand = new RelayCommand(OpenDatabaseCommand),
+                MenuItemPayload = databaseNode
+            });
+            databaseNode.ContextMenuItems.Add(new MenuItemViewModel() { IsSeparator = true });
+            databaseNode.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Remove database from the list",
+                MenuItemIcon = DELETE_DATABASE_ICON,
+                MenuItemCommand = new RelayCommand(DeleteDatabaseCommand),
+                MenuItemPayload = databaseNode
+            });
+
+            return databaseNode;
+        }
+        private bool DatabaseNameExists(DatabaseServer server, DatabaseInfo database)
+        {
+            foreach (DatabaseInfo existing in server.Databases)
+            {
+                if (existing.Name == database.Name)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
         private void EditDatabaseCommand(object parameter)
         {
@@ -669,23 +447,7 @@ namespace DaJet.Studio
 
             // persist database settings changes
             databaseCopy.CopyTo(database);
-            SaveMetadataSettings();
-
-            if (databaseNameChanged)
-            {
-                for (int i = treeNode.TreeNodes.Count - 1; i > 0; i--)
-                {
-                    if (treeNode.TreeNodes[i].NodeText != SCRIPTS_NODE_NAME)
-                    {
-                        treeNode.TreeNodes.RemoveAt(i);
-                    }
-                }
-                database.BaseObjects.Clear();
-
-                InitializeMetadata(server, database);
-                InitializeDatabaseTreeNodes(treeNode);
-                treeNode.IsSelected = true;
-            }
+            
             // show new database name and alias in UI
             treeNode.NodeText = databaseCopyName;
             treeNode.NodeToolTip = databaseCopyAlias;
@@ -701,141 +463,217 @@ namespace DaJet.Studio
                 "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
             if (result != MessageBoxResult.OK) return;
 
-            IFileInfo scriptsCatalog = FileProvider.GetFileInfo($"{SCRIPTS_CATALOG_NAME}/{server.Identity.ToString().ToLower()}/{database.Identity.ToString().ToLower()}");
-            if (scriptsCatalog.Exists)
-            {
-                Directory.Delete(scriptsCatalog.PhysicalPath);
-            }
             server.Databases.Remove(database);
             treeNode.Parent.TreeNodes.Remove(treeNode);
-            SaveMetadataSettings();
+        }
+        private void OpenDatabaseCommand(object parameter)
+        {
+            if (!(parameter is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is DatabaseInfo database)) return;
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+            if (server == null) return;
+
+            MessageBoxResult result = MessageBox.Show("Open database \"" + database.Name + "\" ?",
+                "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (result != MessageBoxResult.OK) return;
+
+            OpenDatabaseNode(treeNode);
         }
 
-
-
-        private void ReadDBNamesCommand(object node)
+        private void OpenDatabaseNode(TreeNodeViewModel databaseNode)
         {
-            if (!(node is TreeNodeViewModel treeNode)) return;
-            if (!(treeNode.NodePayload is DatabaseInfo database)) return;
-
-            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
-            if (server == null)
-            {
-                _ = MessageBox.Show("SQL Server is not found.", "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
-                return;
-            }
+            if (!(databaseNode.NodePayload is DatabaseInfo database)) return;
+            DatabaseServer server = databaseNode.GetAncestorPayload<DatabaseServer>();
+            if (server == null) return;
 
             IMetadataService metadata = Services.GetService<IMetadataService>();
-            IMetadataProvider provider = metadata.GetMetadataProvider(database);
-            provider.UseServer(server);
-            provider.UseDatabase(database);
-            string fileContent = provider.ReadDBNames();
-
-            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
-            ScriptEditorViewModel scriptEditor = Services.GetService<ScriptEditorViewModel>();
-            scriptEditor.Name = $"DBNames ({database.Name})";
-            scriptEditor.ScriptCode = fileContent;
-            ScriptEditorView editorView = new ScriptEditorView() { DataContext = scriptEditor };
-            mainWindow.AddNewTab(scriptEditor.Name, editorView);
-        }
-        private void SaveDBNamesCommand(object node)
-        {
-            if (!(node is TreeNodeViewModel treeNode)) return;
-            if (!(treeNode.NodePayload is DatabaseInfo database)) return;
-
-            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
-            if (server == null)
+            if (!metadata
+                .UseDatabaseProvider(DatabaseProvider.SQLServer)
+                .UseConnectionString(GetConnectionString(server, database))
+                .TryOpenInfoBase(out InfoBase infoBase, out string errorMessage))
             {
-                _ = MessageBox.Show("SQL Server is not found.", "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+                ShowErrorMessage(errorMessage);
                 return;
             }
 
-            SaveFileDialog dialog = new SaveFileDialog()
+            databaseNode.NodeToolTip = $"{infoBase.Name} ({infoBase.ConfigInfo.ConfigVersion})";
+
+            OpenMetaObjectNode(databaseNode, infoBase, "Справочники", infoBase.Catalogs, CATALOG_ICON);
+            OpenMetaObjectNode(databaseNode, infoBase, "Документы", infoBase.Documents, DOCUMENT_ICON);
+            OpenMetaObjectNode(databaseNode, infoBase, "Планы видов характеристик", infoBase.Characteristics, CHARACTERISTICS_REGISTER_ICON);
+            OpenMetaObjectNode(databaseNode, infoBase, "Регистры сведений", infoBase.InformationRegisters, INFO_REGISTER_ICON);
+            OpenMetaObjectNode(databaseNode, infoBase, "Регистры накопления", infoBase.AccumulationRegisters, ACCUM_REGISTER_ICON);
+
+            _ = MessageBox.Show(
+                $"База данных \"{infoBase.Name}\" открыта успешно.",
+                "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        private void OpenMetaObjectNode(TreeNodeViewModel databaseNode, InfoBase infoBase, string nodeName, Dictionary<Guid, ApplicationObject> collection, BitmapImage icon)
+        {
+            TreeNodeViewModel parentNode = new TreeNodeViewModel()
             {
-                Filter = "txt files (*.txt)|*.txt"
+                Parent = databaseNode,
+                IsExpanded = false,
+                NodeIcon = GetNamespaceIcon(nodeName),
+                NodeText = nodeName,
+                NodeToolTip = nodeName,
+                NodePayload = infoBase
             };
-            if (!dialog.ShowDialog().Value) return;
+            databaseNode.TreeNodes.Add(parentNode);
 
-            IMetadataService metadata = Services.GetService<IMetadataService>();
-            IMetadataProvider provider = metadata.GetMetadataProvider(database);
-            provider.UseServer(server);
-            provider.UseDatabase(database);
-            string fileContent = provider.ReadDBNames();
-
-            using (StreamWriter writer = new StreamWriter(dialog.FileName, false, Encoding.UTF8))
+            foreach (ApplicationObject item in collection.Values.OrderBy(i => i.Name))
             {
-                writer.Write(fileContent);
-            }
+                TreeNodeViewModel node = new TreeNodeViewModel()
+                {
+                    Parent = parentNode,
+                    IsExpanded = false,
+                    NodeIcon = icon,
+                    NodeText = item.Name,
+                    NodeToolTip = item.TableName,
+                    NodePayload = item
+                };
+                node.ContextMenuItems.Add(new MenuItemViewModel()
+                {
+                    MenuItemHeader = "Export data",
+                    MenuItemIcon = null,
+                    MenuItemCommand = new RelayCommand(ExportDataCommand),
+                    MenuItemPayload = node
+                });
+                parentNode.TreeNodes.Add(node);
 
-            _ = MessageBox.Show("Saving DBNames is Ok.", "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
+                OpenMetaPropertyNode(node, item);
+            }
         }
-        private void ReadConfigFileCommand(object node)
+        private void OpenMetaPropertyNode(TreeNodeViewModel parentNode, ApplicationObject metaObject)
         {
-            if (!(node is TreeNodeViewModel treeNode)) return;
-            if (!(treeNode.NodePayload is MetaObject metaObject)) return;
-
-            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
-            if (server == null)
+            foreach (MetadataProperty property in metaObject.Properties)
             {
-                _ = MessageBox.Show("SQL Server is not found.", "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
-                return;
+                TreeNodeViewModel node = new TreeNodeViewModel()
+                {
+                    Parent = parentNode,
+                    IsExpanded = false,
+                    NodeIcon = GetMetaPropertyIcon(property),
+                    NodeText = property.Name,
+                    NodeToolTip = GetMetaPropertyToolTip(property),
+                    NodePayload = property
+                };
+                parentNode.TreeNodes.Add(node);
             }
+        }
+
+        private void ExportDataCommand(object parameter)
+        {
+            if (!(parameter is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is ApplicationObject metaObject)) return;
+            InfoBase infoBase = treeNode.GetAncestorPayload<InfoBase>();
+            if (infoBase == null) return;
             DatabaseInfo database = treeNode.GetAncestorPayload<DatabaseInfo>();
-            if (database == null)
-            {
-                _ = MessageBox.Show("Database is not found.", "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
-                return;
-            }
-
-            IMetadataService metadata = Services.GetService<IMetadataService>();
-            IMetadataProvider provider = metadata.GetMetadataProvider(database);
-            provider.UseServer(server);
-            provider.UseDatabase(database);
-            string configFile = provider.ReadConfigFile(metaObject.UUID.ToString());
-
-            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
-            ScriptEditorViewModel scriptEditor = Services.GetService<ScriptEditorViewModel>();
-            scriptEditor.Name = $"{metaObject.Name} (metadata)";
-            scriptEditor.ScriptCode = configFile;
-            ScriptEditorView editorView = new ScriptEditorView() { DataContext = scriptEditor };
-            mainWindow.AddNewTab(scriptEditor.Name, editorView);
-        }
-        private void FindAndSaveMetaFileCommand(object node)
-        {
-            if (!(node is TreeNodeViewModel treeNode)) return;
-            if (!(treeNode.NodePayload is DatabaseInfo database)) return;
-
+            if (database == null) return;
             DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
-            if (server == null)
-            {
-                _ = MessageBox.Show("SQL Server is not found.", "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
-                return;
-            }
+            if (server == null) return;
 
-            SaveFileDialog dialog = new SaveFileDialog()
+            MessageBoxResult result = MessageBox.Show("Export data \"" + metaObject.Name + "\" ?",
+                "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (result != MessageBoxResult.OK) return;
+
+            string connectionString = GetConnectionString(server, database);
+
+            ShowExportDataView(connectionString, infoBase, metaObject);
+        }
+
+        #endregion
+
+        private List<DatabaseInfo> GetDatabases(DatabaseServer server)
+        {
+            SqlConnectionStringBuilder helper = new SqlConnectionStringBuilder()
             {
-                Filter = "txt files (*.txt)|*.txt"
+                DataSource = server.Name
             };
-            if (!dialog.ShowDialog().Value) return;
-
-            IMetadataService metadata = Services.GetService<IMetadataService>();
-            IMetadataProvider provider = metadata.GetMetadataProvider(database);
-            provider.UseServer(server);
-            provider.UseDatabase(database);
-            string fileContent = provider.ReadConfigFile(Path.GetFileNameWithoutExtension(dialog.FileName));
-
-            if (string.IsNullOrWhiteSpace(fileContent))
+            if (string.IsNullOrEmpty(server.UserName))
             {
-                _ = MessageBox.Show("The meta file is empty.", "DaJet", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
+                helper.IntegratedSecurity = true;
+            }
+            else
+            {
+                helper.UserID = server.UserName;
+                helper.Password = server.Password;
             }
 
-            using (StreamWriter writer = new StreamWriter(dialog.FileName, false, Encoding.UTF8))
+            List<DatabaseInfo> list = new List<DatabaseInfo>();
+
+            using (SqlConnection connection = new SqlConnection(helper.ToString()))
             {
-                writer.Write(fileContent);
+                connection.Open();
+
+                using (SqlCommand command = connection.CreateCommand())
+                { 
+                    command.CommandType = CommandType.Text;
+                    command.CommandText = "SELECT [name] FROM [sys].[databases] WHERE NOT [name] IN ('master', 'tempdb', 'msdb', 'model') ORDER BY [name] ASC;";
+
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            DatabaseInfo database = new DatabaseInfo()
+                            {
+                                Identity = Guid.NewGuid(),
+                                Name = reader.GetString(0)
+                            };
+                            list.Add(database);
+                        }
+                        reader.Close();
+                    }
+                }
             }
 
-            _ = MessageBox.Show("Saving meta file is Ok.", "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
+            return list;
+        }
+        private string GetConnectionString(DatabaseServer server, DatabaseInfo database)
+        {
+            SqlConnectionStringBuilder helper = new SqlConnectionStringBuilder()
+            {
+                DataSource = server.Name,
+                InitialCatalog = database.Name
+            };
+            if (string.IsNullOrEmpty(database.UserName))
+            {
+                helper.IntegratedSecurity = true;
+            }
+            else
+            {
+                helper.UserID = database.UserName;
+                helper.Password = database.Password;
+            }
+            return helper.ToString();
+        }
+
+        private void ShowErrorMessage(string message)
+        {
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            TextTabViewModel viewModel = Services.GetService<TextTabViewModel>();
+            viewModel.Text = message;
+            TextTabView view = new TextTabView() { DataContext = viewModel };
+            mainWindow.AddNewTab("Error", view);
+        }
+        private void ShowSuccessMessage(string message)
+        {
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            TextTabViewModel viewModel = Services.GetService<TextTabViewModel>();
+            viewModel.Text = message;
+            TextTabView view = new TextTabView() { DataContext = viewModel };
+            mainWindow.AddNewTab("Success", view);
+        }
+        private void ShowExportDataView(string connectionString, InfoBase infoBase, ApplicationObject metaObject)
+        {
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            ExportDataViewModel viewModel = Services.GetService<ExportDataViewModel>();
+
+            viewModel.InfoBase = infoBase;
+            viewModel.MetaObject = metaObject;
+            viewModel.ConnectionString = connectionString;
+
+            ExportDataView view = new ExportDataView() { DataContext = viewModel };
+            mainWindow.AddNewTab($"Export data [{metaObject.Name}]", view);
         }
     }
 }

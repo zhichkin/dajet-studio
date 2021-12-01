@@ -6,7 +6,7 @@
         xmlns:dajet="clr-namespace:DaJet.Studio"
         xmlns:mvvm="clr-namespace:DaJet.Studio.MVVM"
         mc:Ignorable="d" Height="600" Width="800"
-        WindowStartupLocation="CenterScreen" Title="DaJet © 2020" Icon="DaJet.ico">
+        WindowStartupLocation="CenterScreen" Title="DaJet Studio © 2020" Icon="DaJet.ico">
 
     <Window.Resources>
         <DataTemplate x:Key="TreeViewTemplate">

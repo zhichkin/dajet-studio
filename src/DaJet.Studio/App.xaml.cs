@@ -1,16 +1,11 @@
-﻿using DaJet.Messaging;
-using DaJet.Metadata;
-using DaJet.Scripting;
+﻿using DaJet.Metadata;
 using DaJet.Studio.MVVM;
+using DaJet.Studio.UI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using System;
 using System.IO;
-using System.Reflection;
-using System.Text;
-using System.Text.Json;
 using System.Windows;
 
 namespace DaJet.Studio
@@ -53,31 +48,35 @@ namespace DaJet.Studio
             services.AddOptions();
             services.Configure<AppSettings>(configuration.GetSection(nameof(AppSettings)));
 
-            IFileProvider fileProvider = ConfigureFileProvider(services);
-            WebSettings settings = ConfigureWebSettings(fileProvider, services);
-            MetadataSettings metadataSettings = ConfigureMetadataSettings(fileProvider, services);
+            //IFileProvider fileProvider = ConfigureFileProvider(services);
+            //WebSettings settings = ConfigureWebSettings(fileProvider, services);
+            //MetadataSettings metadataSettings = ConfigureMetadataSettings(fileProvider, services);
 
             services.AddTransient<TabViewModel>();
+            services.AddTransient<TextTabViewModel>();
             services.AddSingleton<MainWindowViewModel>();
             services.AddSingleton<MetadataController>();
-            services.AddSingleton<ScriptingController>();
-            services.AddTransient<ScriptEditorViewModel>();
-            services.AddSingleton<HttpServicesController>();
-            services.AddSingleton<MessagingController>();
+
+            services.AddTransient<ExportDataViewModel>();
+
+            //services.AddSingleton<ScriptingController>();
+            //services.AddTransient<ScriptEditorViewModel>();
+            //services.AddSingleton<HttpServicesController>();
+            //services.AddSingleton<MessagingController>();
 
             services.AddSingleton<IMetadataService, MetadataService>();
-            services.AddSingleton<IQueryExecutor, QueryExecutor>();
-            services.AddSingleton<IScriptingService, ScriptingService>();
-            services.AddSingleton<IMessagingService, MessagingService>();
+            //services.AddSingleton<IQueryExecutor, QueryExecutor>();
+            //services.AddSingleton<IScriptingService, ScriptingService>();
+            //services.AddSingleton<IMessagingService, MessagingService>();
 
-            services.AddHttpClient();
-            foreach (WebServer server in settings.WebServers)
-            {
-                services.AddHttpClient(server.Name, client =>
-                {
-                    client.BaseAddress = new Uri(server.Address);
-                });
-            }
+            //services.AddHttpClient();
+            //foreach (WebServer server in settings.WebServers)
+            //{
+            //    services.AddHttpClient(server.Name, client =>
+            //    {
+            //        client.BaseAddress = new Uri(server.Address);
+            //    });
+            //}
         }
         protected override async void OnStartup(StartupEventArgs e)
         {
@@ -94,100 +93,103 @@ namespace DaJet.Studio
             }
             base.OnExit(e);
         }
-        private IFileProvider ConfigureFileProvider(IServiceCollection services)
-        {
-            Assembly asm = Assembly.GetExecutingAssembly();
-            string _appCatalogPath = Path.GetDirectoryName(asm.Location);
+        
+        //private IFileProvider ConfigureFileProvider(IServiceCollection services)
+        //{
+        //    Assembly asm = Assembly.GetExecutingAssembly();
+        //    string _appCatalogPath = Path.GetDirectoryName(asm.Location);
 
-            string[] requiredCatalogs = new string[] { "web", "scripts", "metadata" };
+        //    string[] requiredCatalogs = new string[] { "web", "scripts", "metadata" };
 
-            foreach (string catalog in requiredCatalogs)
-            {
-                string _catalogPath = Path.Combine(_appCatalogPath, catalog);
-                if (!Directory.Exists(_catalogPath))
-                {
-                    _ = Directory.CreateDirectory(_catalogPath);
-                }
-            }
-            PhysicalFileProvider fileProvider = new PhysicalFileProvider(_appCatalogPath);
-            services.AddSingleton<IFileProvider>(fileProvider);
-            return fileProvider;
-        }
-        private WebSettings ConfigureWebSettings(IFileProvider fileProvider, IServiceCollection services)
-        {
-            string filePath = WebSettingsFilePath(fileProvider);
+        //    foreach (string catalog in requiredCatalogs)
+        //    {
+        //        string _catalogPath = Path.Combine(_appCatalogPath, catalog);
+        //        if (!Directory.Exists(_catalogPath))
+        //        {
+        //            _ = Directory.CreateDirectory(_catalogPath);
+        //        }
+        //    }
+        //    PhysicalFileProvider fileProvider = new PhysicalFileProvider(_appCatalogPath);
+        //    services.AddSingleton<IFileProvider>(fileProvider);
+        //    return fileProvider;
+        //}
+        
+        //private WebSettings ConfigureWebSettings(IFileProvider fileProvider, IServiceCollection services)
+        //{
+        //    string filePath = WebSettingsFilePath(fileProvider);
 
-            WebSettings settings = new WebSettings();
-            var config = new ConfigurationBuilder()
-                .AddJsonFile(filePath, optional: false)
-                .Build();
-            config.Bind(settings);
+        //    WebSettings settings = new WebSettings();
+        //    var config = new ConfigurationBuilder()
+        //        .AddJsonFile(filePath, optional: false)
+        //        .Build();
+        //    config.Bind(settings);
 
-            services.Configure<WebSettings>(config);
+        //    services.Configure<WebSettings>(config);
 
-            return settings;
-        }
-        private string WebSettingsFilePath(IFileProvider fileProvider)
-        {
-            string filePath = $"{WEB_SETTINGS_CATALOG_NAME}/{WEB_SETTINGS_FILE_NAME}";
+        //    return settings;
+        //}
+        //private string WebSettingsFilePath(IFileProvider fileProvider)
+        //{
+        //    string filePath = $"{WEB_SETTINGS_CATALOG_NAME}/{WEB_SETTINGS_FILE_NAME}";
 
-            IFileInfo fileInfo = fileProvider.GetFileInfo(WEB_SETTINGS_CATALOG_NAME);
-            if (!fileInfo.Exists)
-            {
-                Directory.CreateDirectory(fileInfo.PhysicalPath);
-            }
+        //    IFileInfo fileInfo = fileProvider.GetFileInfo(WEB_SETTINGS_CATALOG_NAME);
+        //    if (!fileInfo.Exists)
+        //    {
+        //        Directory.CreateDirectory(fileInfo.PhysicalPath);
+        //    }
 
-            fileInfo = fileProvider.GetFileInfo(filePath);
-            if (!fileInfo.Exists)
-            {
-                WebSettings settings = new WebSettings();
-                JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
-                string json = JsonSerializer.Serialize(settings, options);
-                using (StreamWriter writer = new StreamWriter(fileInfo.PhysicalPath, false, Encoding.UTF8))
-                {
-                    writer.Write(json);
-                }
-            }
+        //    fileInfo = fileProvider.GetFileInfo(filePath);
+        //    if (!fileInfo.Exists)
+        //    {
+        //        WebSettings settings = new WebSettings();
+        //        JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
+        //        string json = JsonSerializer.Serialize(settings, options);
+        //        using (StreamWriter writer = new StreamWriter(fileInfo.PhysicalPath, false, Encoding.UTF8))
+        //        {
+        //            writer.Write(json);
+        //        }
+        //    }
 
-            return filePath;
-        }
-        private MetadataSettings ConfigureMetadataSettings(IFileProvider fileProvider, IServiceCollection services)
-        {
-            string filePath = MetadataSettingsFilePath(fileProvider);
+        //    return filePath;
+        //}
+        
+        //private MetadataSettings ConfigureMetadataSettings(IFileProvider fileProvider, IServiceCollection services)
+        //{
+        //    string filePath = MetadataSettingsFilePath(fileProvider);
 
-            MetadataSettings settings = new MetadataSettings();
-            var config = new ConfigurationBuilder()
-                .AddJsonFile(filePath, optional: false)
-                .Build();
-            config.Bind(settings);
+        //    MetadataSettings settings = new MetadataSettings();
+        //    var config = new ConfigurationBuilder()
+        //        .AddJsonFile(filePath, optional: false)
+        //        .Build();
+        //    config.Bind(settings);
 
-            services.Configure<MetadataSettings>(config);
+        //    services.Configure<MetadataSettings>(config);
 
-            return settings;
-        }
-        private string MetadataSettingsFilePath(IFileProvider fileProvider)
-        {
-            string filePath = $"{METADATA_SETTINGS_CATALOG_NAME}/{METADATA_SETTINGS_FILE_NAME}";
+        //    return settings;
+        //}
+        //private string MetadataSettingsFilePath(IFileProvider fileProvider)
+        //{
+        //    string filePath = $"{METADATA_SETTINGS_CATALOG_NAME}/{METADATA_SETTINGS_FILE_NAME}";
 
-            IFileInfo fileInfo = fileProvider.GetFileInfo(METADATA_SETTINGS_CATALOG_NAME);
-            if (!fileInfo.Exists)
-            {
-                Directory.CreateDirectory(fileInfo.PhysicalPath);
-            }
+        //    IFileInfo fileInfo = fileProvider.GetFileInfo(METADATA_SETTINGS_CATALOG_NAME);
+        //    if (!fileInfo.Exists)
+        //    {
+        //        Directory.CreateDirectory(fileInfo.PhysicalPath);
+        //    }
 
-            fileInfo = fileProvider.GetFileInfo(filePath);
-            if (!fileInfo.Exists)
-            {
-                MetadataSettings settings = new MetadataSettings();
-                JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
-                string json = JsonSerializer.Serialize(settings, options);
-                using (StreamWriter writer = new StreamWriter(fileInfo.PhysicalPath, false, Encoding.UTF8))
-                {
-                    writer.Write(json);
-                }
-            }
+        //    fileInfo = fileProvider.GetFileInfo(filePath);
+        //    if (!fileInfo.Exists)
+        //    {
+        //        MetadataSettings settings = new MetadataSettings();
+        //        JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
+        //        string json = JsonSerializer.Serialize(settings, options);
+        //        using (StreamWriter writer = new StreamWriter(fileInfo.PhysicalPath, false, Encoding.UTF8))
+        //        {
+        //            writer.Write(json);
+        //        }
+        //    }
 
-            return filePath;
-        }
+        //    return filePath;
+        //}
     }
 }

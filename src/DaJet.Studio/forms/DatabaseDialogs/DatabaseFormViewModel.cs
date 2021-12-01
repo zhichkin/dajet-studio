@@ -1,5 +1,5 @@
-﻿using DaJet.Metadata;
-using DaJet.Studio.MVVM;
+﻿using DaJet.Studio.MVVM;
+using DaJet.UI.Model;
 using System;
 using System.Windows.Input;
 

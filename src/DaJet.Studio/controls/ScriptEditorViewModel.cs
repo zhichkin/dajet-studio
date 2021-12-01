@@ -1,5 +1,4 @@
 ﻿using DaJet.Metadata;
-using DaJet.Scripting;
 using DaJet.Studio.MVVM;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
@@ -7,9 +6,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Text.Json;
-using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
