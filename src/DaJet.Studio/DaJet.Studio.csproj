@@ -4,15 +4,16 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <UseWPF>true</UseWPF>
-    <Copyright>DaJet © 2020</Copyright>
-    <PackageId>DaJetStudio</PackageId>
+    <Copyright>Zhichkin © 2020</Copyright>
+    <PackageId>DaJet.Studio</PackageId>
     <Authors>Zhichkin</Authors>
     <Product>DaJet Studio</Product>
     <PackageProjectUrl>https://zhichkin.github.com</PackageProjectUrl>
-    <Description>DaJet - integration tools studio
-- SQL Server Service Broker
-- Data contracts transformation
-- 1C metadata explorer</Description>
+    <Description>DaJet Studio - 1C:Enterprise 8 integration tools
+- 1C metadata explorer
+- RabbitMQ data exporter</Description>
+    <RepositoryUrl>https://github.com/zhichkin/DaJet</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
@@ -72,6 +73,7 @@
     <None Remove="images\metadata.png" />
     <None Remove="images\nested-table.png" />
     <None Remove="images\new-script.png" />
+    <None Remove="images\rabbitmq.png" />
     <None Remove="images\route-service-error.png" />
     <None Remove="images\route-service-warning.png" />
     <None Remove="images\route-service.png" />
@@ -83,6 +85,7 @@
     <None Remove="images\server-warning.png" />
     <None Remove="images\server.png" />
     <None Remove="images\sql-query.png" />
+    <None Remove="images\sql-server.png" />
     <None Remove="images\status-ok.png" />
     <None Remove="images\status-warning.png" />
     <None Remove="images\stored-procedure.png" />
@@ -164,6 +167,7 @@
     <Resource Include="images\metadata.png" />
     <Resource Include="images\nested-table.png" />
     <Resource Include="images\new-script.png" />
+    <Resource Include="images\rabbitmq.png" />
     <Resource Include="images\route-service-error.png" />
     <Resource Include="images\route-service-warning.png" />
     <Resource Include="images\route-service.png" />
@@ -175,6 +179,7 @@
     <Resource Include="images\server-warning.png" />
     <Resource Include="images\server.png" />
     <Resource Include="images\sql-query.png" />
+    <Resource Include="images\sql-server.png" />
     <Resource Include="images\status-ok.png" />
     <Resource Include="images\status-warning.png" />
     <Resource Include="images\stored-procedure.png" />

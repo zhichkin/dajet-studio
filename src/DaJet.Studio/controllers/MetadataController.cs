@@ -20,6 +20,7 @@ namespace DaJet.Studio
     {
         #region " Icons "
 
+        private const string RABBITMQ_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/rabbitmq.png";
         private const string ADD_SERVER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/add-server.png";
         private const string SERVER_SETTINGS_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/server-settings.png";
         private const string SERVER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/server.png";
@@ -45,6 +46,7 @@ namespace DaJet.Studio
         private const string SAVE_FILE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/save-file.png";
         private const string KEY_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/key.png";
 
+        private readonly BitmapImage RABBITMQ_ICON = new BitmapImage(new Uri(RABBITMQ_ICON_PATH));
         private readonly BitmapImage ADD_SERVER_ICON = new BitmapImage(new Uri(ADD_SERVER_ICON_PATH));
         private readonly BitmapImage SERVER_SETTINGS_ICON = new BitmapImage(new Uri(SERVER_SETTINGS_ICON_PATH));
         private readonly BitmapImage SERVER_ICON = new BitmapImage(new Uri(SERVER_ICON_PATH));
@@ -81,61 +83,6 @@ namespace DaJet.Studio
             Services = serviceProvider;
         }
         public TreeNodeViewModel CreateTreeNode(TreeNodeViewModel parent) { throw new NotImplementedException(); }
-
-        //private void CreateDatabaseServersFromSettings()
-        //{
-        //    if (RootNode == null || MetadataSettings.Servers == null || MetadataSettings.Servers.Count == 0)
-        //    {
-        //        return;
-        //    }
-
-        //    TreeNodeViewModel serverNode;
-        //    foreach (DatabaseServer server in MetadataSettings.Servers)
-        //    {
-        //        serverNode = CreateServerTreeNode(server, false);
-
-        //        TreeNodeViewModel databaseNode;
-        //        foreach (DatabaseInfo database in server.Databases)
-        //        {
-        //            databaseNode = CreateDatabaseTreeNode(serverNode, database);
-        //            serverNode.TreeNodes.Add(databaseNode);
-        //        }
-
-        //        RootNode.TreeNodes.Add(serverNode);
-        //    }
-        //}
-        //private void InitializeDatabasesMetadata()
-        //{
-        //    foreach (DatabaseServer server in MetadataSettings.Servers)
-        //    {
-        //        //_ = Parallel.ForEach(server.Databases, InitializeMetadata);
-        //        foreach (DatabaseInfo database in server.Databases)
-        //        {
-        //            InitializeMetadata(server, database);
-        //        }
-        //    }
-        //}
-        //private async void InitializeMetadata(DatabaseServer server, DatabaseInfo database)
-        //{
-        //    IMetadataService metadata = Services.GetService<IMetadataService>();
-
-        //    IMetadataProvider provider = metadata.GetMetadataProvider(database);
-        //    provider.UseServer(server);
-        //    provider.UseDatabase(database);
-        //    if (!string.IsNullOrWhiteSpace(database.UserName))
-        //    {
-        //        provider.UseCredentials(database.UserName, database.Password);
-        //    }
-        //    provider.InitializeMetadata(database);
-
-        //    if (!metadata.Settings.Servers.Contains(server))
-        //    {
-        //        metadata.Settings.Servers.Add(server);
-        //    }
-
-        //    //await Task.Run(() => provider.InitializeMetadata(database));
-        //}
-
         private BitmapImage GetNamespaceIcon(string name)
         {
             if (string.IsNullOrWhiteSpace(name)) { return null; }
@@ -318,52 +265,6 @@ namespace DaJet.Studio
             RootNode.TreeNodes.Remove(treeNode);
         }
 
-        //private void EditDataServerCommand(object parameter)
-        //{
-        //    if (!(parameter is TreeNodeViewModel treeNode)) return;
-        //    if (!(treeNode.NodePayload is DatabaseServer server)) return;
-
-        //    // make copy of server settings to rollback changes if needed
-        //    DatabaseServer serverCopy = server.Copy();
-
-        //    // edit server settings
-        //    ConnectSQLServerDialogWindow dialog = new ConnectSQLServerDialogWindow(serverCopy);
-        //    _ = dialog.ShowDialog();
-        //    if (dialog.Result == null) return;
-
-        //    string serverCopyName = string.IsNullOrWhiteSpace(serverCopy.Address)
-        //                        ? serverCopy.Name
-        //                        : $"{serverCopy.Name} ({serverCopy.Address})";
-
-        //    // check if new server name already exists
-        //    if (serverCopy.Name != server.Name)
-        //    {
-        //        if (DatabaseServerNameExists(serverCopy))
-        //        {
-        //            MessageBox.Show("SQL сервер " + serverCopyName + " уже сущестует.",
-        //                "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
-        //            return;
-        //        }
-        //    }
-        //    // check if new server address already exists
-        //    if (serverCopy.Address != server.Address)
-        //    {
-        //        if (DatabaseServerAddressExists(serverCopy))
-        //        {
-        //            MessageBox.Show("SQL сервер " + serverCopyName + " уже сущестует.",
-        //                "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
-        //            return;
-        //        }
-        //    }
-
-        //    // persist server settings changes
-        //    serverCopy.CopyTo(server);
-        //    SaveMetadataSettings();
-
-        //    // show server name and address changes in UI
-        //    treeNode.NodeText = serverCopyName;
-        //}
-
         #endregion
 
         #region "Database Tree Node"
@@ -381,16 +282,16 @@ namespace DaJet.Studio
             };
             databaseNode.ContextMenuItems.Add(new MenuItemViewModel()
             {
-                MenuItemHeader = "Edit database settings",
-                MenuItemIcon = DATABASE_SETTINGS_ICON,
-                MenuItemCommand = new RelayCommand(EditDatabaseCommand),
+                MenuItemHeader = "Open database",
+                MenuItemIcon = ADD_DATABASE_ICON,
+                MenuItemCommand = new RelayCommand(OpenDatabaseCommand),
                 MenuItemPayload = databaseNode
             });
             databaseNode.ContextMenuItems.Add(new MenuItemViewModel()
             {
-                MenuItemHeader = "Open database",
-                MenuItemIcon = ADD_DATABASE_ICON,
-                MenuItemCommand = new RelayCommand(OpenDatabaseCommand),
+                MenuItemHeader = "Edit database settings",
+                MenuItemIcon = DATABASE_SETTINGS_ICON,
+                MenuItemCommand = new RelayCommand(EditDatabaseCommand),
                 MenuItemPayload = databaseNode
             });
             databaseNode.ContextMenuItems.Add(new MenuItemViewModel() { IsSeparator = true });
@@ -473,10 +374,6 @@ namespace DaJet.Studio
             DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
             if (server == null) return;
 
-            MessageBoxResult result = MessageBox.Show("Open database \"" + database.Name + "\" ?",
-                "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
-            if (result != MessageBoxResult.OK) return;
-
             OpenDatabaseNode(treeNode);
         }
 
@@ -503,10 +400,6 @@ namespace DaJet.Studio
             OpenMetaObjectNode(databaseNode, infoBase, "Планы видов характеристик", infoBase.Characteristics, CHARACTERISTICS_REGISTER_ICON);
             OpenMetaObjectNode(databaseNode, infoBase, "Регистры сведений", infoBase.InformationRegisters, INFO_REGISTER_ICON);
             OpenMetaObjectNode(databaseNode, infoBase, "Регистры накопления", infoBase.AccumulationRegisters, ACCUM_REGISTER_ICON);
-
-            _ = MessageBox.Show(
-                $"База данных \"{infoBase.Name}\" открыта успешно.",
-                "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         private void OpenMetaObjectNode(TreeNodeViewModel databaseNode, InfoBase infoBase, string nodeName, Dictionary<Guid, ApplicationObject> collection, BitmapImage icon)
         {
@@ -534,14 +427,30 @@ namespace DaJet.Studio
                 };
                 node.ContextMenuItems.Add(new MenuItemViewModel()
                 {
-                    MenuItemHeader = "Export data",
-                    MenuItemIcon = null,
-                    MenuItemCommand = new RelayCommand(ExportDataCommand),
+                    MenuItemHeader = "Export data to RabbitMQ",
+                    MenuItemIcon = RABBITMQ_ICON,
+                    MenuItemCommand = new RelayCommand(ExportDataRabbitMQCommand),
                     MenuItemPayload = node
                 });
                 parentNode.TreeNodes.Add(node);
 
                 OpenMetaPropertyNode(node, item);
+
+                foreach (TablePart tablePart in item.TableParts)
+                {
+                    TreeNodeViewModel tableNode = new TreeNodeViewModel()
+                    {
+                        Parent = node,
+                        IsExpanded = false,
+                        NodeIcon = NESTED_TABLE_ICON,
+                        NodeText = tablePart.Name,
+                        NodeToolTip = tablePart.TableName,
+                        NodePayload = tablePart
+                    };
+                    node.TreeNodes.Add(tableNode);
+
+                    OpenMetaPropertyNode(tableNode, tablePart);
+                }
             }
         }
         private void OpenMetaPropertyNode(TreeNodeViewModel parentNode, ApplicationObject metaObject)
@@ -561,7 +470,7 @@ namespace DaJet.Studio
             }
         }
 
-        private void ExportDataCommand(object parameter)
+        private void ExportDataRabbitMQCommand(object parameter)
         {
             if (!(parameter is TreeNodeViewModel treeNode)) return;
             if (!(treeNode.NodePayload is ApplicationObject metaObject)) return;
@@ -572,13 +481,9 @@ namespace DaJet.Studio
             DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
             if (server == null) return;
 
-            MessageBoxResult result = MessageBox.Show("Export data \"" + metaObject.Name + "\" ?",
-                "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
-            if (result != MessageBoxResult.OK) return;
-
             string connectionString = GetConnectionString(server, database);
 
-            ShowExportDataView(connectionString, infoBase, metaObject);
+            ShowExportDataRabbitMQView(connectionString, infoBase, metaObject);
         }
 
         #endregion
@@ -663,17 +568,17 @@ namespace DaJet.Studio
             TextTabView view = new TextTabView() { DataContext = viewModel };
             mainWindow.AddNewTab("Success", view);
         }
-        private void ShowExportDataView(string connectionString, InfoBase infoBase, ApplicationObject metaObject)
+        private void ShowExportDataRabbitMQView(string connectionString, InfoBase infoBase, ApplicationObject metaObject)
         {
             MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
-            ExportDataViewModel viewModel = Services.GetService<ExportDataViewModel>();
+            ExportDataRabbitMQViewModel viewModel = Services.GetService<ExportDataRabbitMQViewModel>();
 
             viewModel.InfoBase = infoBase;
             viewModel.MetaObject = metaObject;
-            viewModel.ConnectionString = connectionString;
+            viewModel.SourceConnectionString = connectionString;
 
-            ExportDataView view = new ExportDataView() { DataContext = viewModel };
-            mainWindow.AddNewTab($"Export data [{metaObject.Name}]", view);
+            ExportDataRabbitMQView view = new ExportDataRabbitMQView() { DataContext = viewModel };
+            mainWindow.AddNewTab($"Export data to RabbitMQ", view);
         }
     }
 }

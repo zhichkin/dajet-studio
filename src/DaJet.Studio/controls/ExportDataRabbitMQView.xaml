@@ -1,10 +1,16 @@
-﻿<UserControl x:Class="DaJet.Studio.UI.ExportDataView"
+﻿<UserControl x:Class="DaJet.Studio.UI.ExportDataRabbitMQView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignHeight="450" d:DesignWidth="800">
-    
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <BitmapImage x:Key="Icon_RabbitMQ" UriSource="pack://application:,,,/DaJet.Studio;component/images/rabbitmq.png"/>
+        <BitmapImage x:Key="Icon_Database" UriSource="pack://application:,,,/DaJet.Studio;component/images/database.png"/>
+    </UserControl.Resources>
+
     <Grid>
 
         <Grid.ColumnDefinitions>
@@ -28,21 +34,28 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Column="0" Grid.Row="0" Text="База данных:"
+        <TextBlock Grid.Column="0" Grid.Row="0" Text="Конфигурация:"
                    Margin="0,15,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
-        <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding InfoBase.Name}"
-                   Margin="0,15,0,0" FontFamily="Courier New" FontSize="14"/>
+        <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding InfoBasePresentation}"
+                   Margin="5,15,0,0" FontFamily="Courier New" FontSize="14"/>
 
         <TextBlock Grid.Column="0" Grid.Row="1" Text="Объект метаданных:"
                    Margin="0,5,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
-        <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding MetaObject.Name}"
-                   Margin="0,5,0,0" FontFamily="Courier New" FontSize="14"/>
+        <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding MetaObjectPresentation}"
+                   Margin="5,5,0,0" FontFamily="Courier New" FontSize="14"/>
 
-        <TextBlock Grid.Column="0" Grid.Row="2" Grid.ColumnSpan="2" Text="{Binding ConnectionString}"
-                   Margin="0,15,0,0" FontFamily="Courier New" FontSize="14"/>
+        <StackPanel Grid.Column="0" Grid.Row="2" Grid.ColumnSpan="2" Margin="0,15,0,0" Orientation="Horizontal">
+            <Image Source="{StaticResource Icon_Database}" Height="16" Width="16" VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding SourceConnectionString}" VerticalAlignment="Center"
+                       Margin="10,0,0,0" FontFamily="Courier New" FontSize="14"/>
+        </StackPanel>
 
-        <TextBlock Grid.Column="0" Grid.Row="3" Text="RabbitMQ URI"
-                   Margin="0,15,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
+        <StackPanel Grid.Column="0" Grid.Row="3" Grid.ColumnSpan="2" Margin="0,15,0,0" Orientation="Horizontal">
+            <Image Source="{StaticResource Icon_RabbitMQ}" Height="16" Width="16" VerticalAlignment="Center"/>
+            <TextBlock Text="RabbitMQ URI" VerticalAlignment="Center"
+                       Margin="10,0,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
+        </StackPanel>
+        
         <TextBox Grid.Column="0" Grid.Row="4" Grid.ColumnSpan="2"
                  Margin="0,5,0,0" FontFamily="Courier New" FontSize="14" Height="20"
                  Text="{Binding TargetConnectionString, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
@@ -50,45 +63,49 @@
         <TextBlock Grid.Column="0" Grid.Row="5" Text="Отправитель:"
                    Margin="0,10,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
         <TextBox Grid.Column="1" Grid.Row="5" MinWidth="250" HorizontalAlignment="Left"
-                 Margin="0,10,0,0" FontFamily="Courier New" FontSize="14" Height="20"
+                 Margin="5,10,0,0" FontFamily="Courier New" FontSize="14" Height="20"
                  Text="{Binding Sender, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
 
-        <TextBlock Grid.Column="0" Grid.Row="6" Text="Routing key:"
+        <TextBlock Grid.Column="0" Grid.Row="6" Text="Ключ маршрутизации:"
                    Margin="0,5,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
         <TextBox Grid.Column="1" Grid.Row="6" MinWidth="250" HorizontalAlignment="Left"
-                 Margin="0,5,0,0" FontFamily="Courier New" FontSize="14" Height="20"
+                 Margin="5,5,0,0" FontFamily="Courier New" FontSize="14" Height="20"
                  Text="{Binding RoutingKey, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
 
         <TextBlock Grid.Column="0" Grid.Row="7" Text="Тип сообщения:"
                    Margin="0,5,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
         <TextBox Grid.Column="1" Grid.Row="7" MinWidth="250" HorizontalAlignment="Left"
-                 Margin="0,5,0,0" FontFamily="Courier New" FontSize="14" Height="20"
+                 Margin="5,5,0,0" FontFamily="Courier New" FontSize="14" Height="20"
                  Text="{Binding MessageType, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
 
         <TextBlock Grid.Column="0" Grid.Row="8" Text="Количество записей:"
                    Margin="0,5,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
         <TextBlock Grid.Column="1" Grid.Row="8" Text="{Binding TotalRowCount}" Height="20"
-                   Margin="0,5,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
+                   Margin="5,5,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
 
         <TextBlock Grid.Column="0" Grid.Row="9" Text="Размер страницы:"
                    Margin="0,5,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
         <TextBox Grid.Column="1" Grid.Row="9" Width="100" HorizontalAlignment="Left"
-                 Margin="0,5,0,0" FontFamily="Courier New" FontSize="14" Height="20"
+                 Margin="5,5,0,0" FontFamily="Courier New" FontSize="14" Height="20"
                  Text="{Binding PageSize, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
 
         <TextBlock Grid.Column="0" Grid.Row="10" Text="Номера страниц:"
                    Margin="0,5,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
         <TextBox Grid.Column="1" Grid.Row="10" Width="100" HorizontalAlignment="Left"
-                 Margin="0,5,0,0" FontFamily="Courier New" FontSize="14" Height="20"
+                 Margin="5,5,0,0" FontFamily="Courier New" FontSize="14" Height="20"
                  Text="{Binding PageNumber, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
 
-        <StackPanel Grid.Column="0" Grid.Row="11" Grid.ColumnSpan="2" Margin="0,10,0,0" Orientation="Horizontal">
-            <Button HorizontalAlignment="Left" Content="Выгрузить" Height="30" Width="100"
-                    FontFamily="Courier New" FontSize="14" FontWeight="Bold"
-                    Command="{Binding ExportDataCommand}" ToolTip="Выгрузить данные объекта метаданных"/>
+        <StackPanel Grid.Column="0" Grid.Row="11" Grid.ColumnSpan="2" Margin="0,15,0,0" Orientation="Horizontal">
             <Button HorizontalAlignment="Left" Content="Показать количество записей" Height="30" Width="250"
-                    Margin="10,0,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"
+                    FontFamily="Courier New" FontSize="14" FontWeight="Bold"
                     Command="{Binding ShowTotalRowCountCommand}" ToolTip="Показать текущее общее количество записей"/>
+            <Button HorizontalAlignment="Left" Content="Выгрузить" Height="30" Width="100"
+                    Margin="10,0,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"
+                    Command="{Binding ExportDataCommand}" ToolTip="Выгрузить данные объекта метаданных"
+                    Visibility="{Binding CanExecuteExportCommand, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+            <ProgressBar HorizontalAlignment="Left" IsIndeterminate="True"
+                         Margin="10,0,0,0" Height="30" Width="100"
+                         Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
         </StackPanel>
 
         <TextBlock Grid.Column="0" Grid.Row="12" Grid.ColumnSpan="2"

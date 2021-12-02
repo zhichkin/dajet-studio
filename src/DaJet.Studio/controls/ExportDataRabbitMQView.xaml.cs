@@ -2,9 +2,9 @@
 
 namespace DaJet.Studio.UI
 {
-    public partial class ExportDataView : UserControl
+    public partial class ExportDataRabbitMQView : UserControl
     {
-        public ExportDataView()
+        public ExportDataRabbitMQView()
         {
             InitializeComponent();
         }

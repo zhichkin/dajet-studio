@@ -57,7 +57,7 @@ namespace DaJet.Studio
             services.AddSingleton<MainWindowViewModel>();
             services.AddSingleton<MetadataController>();
 
-            services.AddTransient<ExportDataViewModel>();
+            services.AddTransient<ExportDataRabbitMQViewModel>();
 
             //services.AddSingleton<ScriptingController>();
             //services.AddTransient<ScriptEditorViewModel>();
