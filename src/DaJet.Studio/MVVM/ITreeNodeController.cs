@@ -2,7 +2,8 @@
 {
     public interface ITreeNodeController
     {
-        TreeNodeViewModel CreateTreeNode();
+        void Search(string text);
+        TreeNodeViewModel CreateTreeNode(MainWindowViewModel parent);
         TreeNodeViewModel CreateTreeNode(TreeNodeViewModel parent);
     }
 }

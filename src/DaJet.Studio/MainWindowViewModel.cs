@@ -5,6 +5,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace DaJet.Studio
 {
@@ -18,6 +19,27 @@ namespace DaJet.Studio
             Services = serviceProvider;
             InitializeViewModel();
         }
+        private void InitializeViewModel()
+        {
+            SearchCommand = new RelayCommand(SearchCommandHandler);
+            ClearSearchCommand = new RelayCommand(ClearSearchCommandHandler);
+            SearchBoxKeyDownCommand = new RelayCommand(SearchBoxKeyDownCommandHandler);
+
+            ITreeNodeController controller = Services.GetService<MetadataController>();
+            if (controller != null)
+            {
+                try
+                {
+                    MainTreeRegion.TreeNodes.Add(controller.CreateTreeNode(this));
+                }
+                catch (Exception error)
+                {
+                    _ = MessageBox.Show(ExceptionHelper.GetErrorText(error),
+                        "DaJet", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
         private TabViewModel _selectedTab;
         public TabViewModel SelectedTab
         {
@@ -30,26 +52,52 @@ namespace DaJet.Studio
             get { return _StatusBarRegion; }
             set { _StatusBarRegion = value; OnPropertyChanged(); }
         }
+        
         public TreeNodeViewModel MainTreeRegion { get; } = new TreeNodeViewModel();
         public ObservableCollection<TabViewModel> Tabs { get; } = new ObservableCollection<TabViewModel>();
         public ObservableCollection<MenuItemViewModel> MainMenuRegion { get; } = new ObservableCollection<MenuItemViewModel>();
-        private void InitializeViewModel()
+
+        #region "Search box functionality"
+
+        private string _SearchText = string.Empty;
+        public ICommand SearchCommand { get; private set; }
+        public ICommand ClearSearchCommand { get; private set; }
+        public ICommand SearchBoxKeyDownCommand { get; private set; }
+        public string SearchText
+        {
+            get { return _SearchText; }
+            set { _SearchText = value; OnPropertyChanged(nameof(SearchText)); }
+        }
+        private void SearchCommandHandler(object parameter)
         {
             ITreeNodeController controller = Services.GetService<MetadataController>();
             if (controller != null)
             {
-                try
-                {
-                    MainTreeRegion.TreeNodes.Add(controller.CreateTreeNode());
-                }
-                catch (Exception error)
-                {
-                    _ = MessageBox.Show(ExceptionHelper.GetErrorText(error),
-                        "DaJet", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
+                controller.Search(SearchText);
             }
         }
-        
+        private void ClearSearchCommandHandler(object parameter)
+        {
+            SearchText = string.Empty;
+
+            ITreeNodeController controller = Services.GetService<MetadataController>();
+            if (controller != null)
+            {
+                controller.Search(SearchText);
+            }
+        }
+        private void SearchBoxKeyDownCommandHandler(object parameter)
+        {
+            if (!(parameter is KeyEventArgs args)) return;
+            
+            if (args.Key == Key.Enter)
+            {
+                SearchCommandHandler(null);
+            }
+        }
+
+        #endregion
+
         public object SelectedTabViewModel
         {
             get
@@ -94,7 +142,6 @@ namespace DaJet.Studio
                 }
             }
         }
-
 
         public TreeNodeViewModel GetTreeNodeByPayload(ObservableCollection<TreeNodeViewModel> treeNodes, object payload)
         {

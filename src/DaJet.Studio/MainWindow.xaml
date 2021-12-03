@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:dajet="clr-namespace:DaJet.Studio"
         xmlns:mvvm="clr-namespace:DaJet.Studio.MVVM"
+        xmlns:behaviors="http://schemas.microsoft.com/xaml/behaviors"
         mc:Ignorable="d" Height="600" Width="800"
         WindowStartupLocation="CenterScreen" Title="DaJet Studio © 2020" Icon="DaJet.ico">
 
@@ -14,18 +15,26 @@
         </DataTemplate>
         <dajet:ContentTemplateSelector x:Key="Selector" LeftRegionTemplate="{StaticResource TreeViewTemplate}"/>
         <BitmapImage x:Key="Icon_Close" UriSource="pack://application:,,,/DaJet.Studio;component/images/close.png"/>
+        <BitmapImage x:Key="Icon_Filter" UriSource="pack://application:,,,/DaJet.Studio;component/images/filter.png"/>
     </Window.Resources>
+
+    <behaviors:Interaction.Triggers>
+        <behaviors:EventTrigger EventName="KeyDown" SourceObject="{Binding ElementName=SearchBox}">
+            <behaviors:InvokeCommandAction Command="{Binding SearchBoxKeyDownCommand}" PassEventArgsToCommand="True"/>
+        </behaviors:EventTrigger>
+    </behaviors:Interaction.Triggers>
 
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="25" />
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="25"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="1*" MinWidth="200" />
+            <ColumnDefinition Width="1*" MinWidth="300" />
             <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="3*" MinWidth="200" />
+            <ColumnDefinition Width="3*" MinWidth="450" />
         </Grid.ColumnDefinitions>
 
         <Menu Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3"
@@ -42,13 +51,21 @@
             </Menu.ItemTemplate>
         </Menu>
 
-        <ContentControl Grid.Row="1" Grid.Column="0" Margin="5"
+        <StackPanel Grid.Row="1" Grid.Column="0" Margin="5,10,5,0" Orientation="Horizontal">
+            <Image Source="{StaticResource Icon_Filter}" Height="20" Width="20"/>
+            <TextBox x:Name="SearchBox" Height="20" MinWidth="200"
+                     Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+            <Button Content="O" Margin="1,0,0,0" Height="20" Width="20" Command="{Binding SearchCommand}" ToolTip="Применить фильтр"/>
+            <Button Content="X" Margin="1,0,0,0" Height="20" Width="20" Command="{Binding ClearSearchCommand}" ToolTip="Отменить фильтр"/>
+        </StackPanel>
+
+        <ContentControl Grid.Row="2" Grid.Column="0" Margin="5"
                         VerticalContentAlignment="Stretch" HorizontalContentAlignment="Stretch"
                         Content="{Binding MainTreeRegion}" ContentTemplateSelector="{StaticResource Selector}"/>
 
-        <GridSplitter Grid.Row="1" Grid.Column="1" Width="3" ResizeBehavior="PreviousAndNext" VerticalAlignment="Stretch"/>
+        <GridSplitter Grid.Row="1" Grid.Column="1" Grid.RowSpan="2" Width="3" ResizeBehavior="PreviousAndNext" VerticalAlignment="Stretch"/>
 
-        <TabControl Grid.Row="1" Grid.Column="2" Margin="5"
+        <TabControl Grid.Row="1" Grid.Column="2" Grid.RowSpan="2" Margin="5"
                     ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}">
             <TabControl.ItemTemplate>
                 <!-- this is the header template-->
@@ -71,7 +88,7 @@
             </TabControl.ContentTemplate>
         </TabControl>
 
-        <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Margin="5,0,0,0" Text="{Binding StatusBarRegion}"/>
+        <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3" Margin="5,0,0,0" Text="{Binding StatusBarRegion}"/>
         
     </Grid>
     

@@ -9,7 +9,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
+using System.Globalization;
 using System.Linq;
 using System.Windows;
 using System.Windows.Media.Imaging;
@@ -82,6 +84,7 @@ namespace DaJet.Studio
             Settings = options.Value;
             Services = serviceProvider;
         }
+        
         public TreeNodeViewModel CreateTreeNode(TreeNodeViewModel parent) { throw new NotImplementedException(); }
         private BitmapImage GetNamespaceIcon(string name)
         {
@@ -126,9 +129,79 @@ namespace DaJet.Studio
             return toolTip;
         }
 
+        public void Search(string filter)
+        {
+            CultureInfo culture;
+            try
+            {
+                culture = CultureInfo.GetCultureInfo("ru-RU");
+            }
+            catch (CultureNotFoundException)
+            {
+                culture = CultureInfo.CurrentUICulture;
+            }
+
+            if (string.IsNullOrWhiteSpace(filter))
+            {
+                ClearFilter(RootNode.TreeNodes);
+            }
+            else
+            {
+                FilterNodes(RootNode.TreeNodes, filter, culture);
+            }
+        }
+        private void FilterNodes(IEnumerable<TreeNodeViewModel> nodes, string filter, CultureInfo culture)
+        {
+            foreach (TreeNodeViewModel node in nodes)
+            {
+                FilterNodes(node.TreeNodes, filter, culture);
+
+                if (node.NodePayload is ApplicationObject item && !(node.NodePayload is TablePart))
+                {
+                    //node.IsVisible = item.Name.IndexOf(
+                    //    filter, StringComparison.OrdinalIgnoreCase) >= 0;
+
+                    node.IsVisible = culture.CompareInfo
+                        .IndexOf(item.Name, filter, CompareOptions.IgnoreCase) >= 0;
+                }
+
+                if (node.NodePayload == this ||
+                    node.NodePayload is DatabaseServer ||
+                    node.NodePayload is DatabaseInfo ||
+                    node.NodePayload is InfoBase)
+                {
+                    node.IsExpanded = true;
+                }
+                else
+                {
+                    node.IsExpanded = false;
+                }
+            }
+        }
+        private void ClearFilter(IEnumerable<TreeNodeViewModel> nodes)
+        {
+            foreach (TreeNodeViewModel node in nodes)
+            {
+                ClearFilter(node.TreeNodes);
+
+                node.IsVisible = true;
+
+                if (node.NodePayload == this ||
+                    node.NodePayload is DatabaseServer ||
+                    node.NodePayload is DatabaseInfo)
+                {
+                    node.IsExpanded = true;
+                }
+                else
+                {
+                    node.IsExpanded = false;
+                }
+            }
+        }
+
         #region "Metadata Explorer Root Tree Node"
 
-        public TreeNodeViewModel CreateTreeNode()
+        public TreeNodeViewModel CreateTreeNode(MainWindowViewModel parent)
         {
             RootNode = new TreeNodeViewModel()
             {
@@ -145,10 +218,6 @@ namespace DaJet.Studio
                 MenuItemCommand = new RelayCommand(AddServerNodeCommand),
                 MenuItemPayload = RootNode
             });
-
-            //CreateDatabaseServersFromSettings();
-            //InitializeDatabasesMetadata();
-            //CreateMetadataTreeNodes();
 
             return RootNode;
         }
@@ -250,6 +319,8 @@ namespace DaJet.Studio
             treeNode.TreeNodes.Add(databaseNode);
             treeNode.IsExpanded = true;
             databaseNode.IsSelected = true;
+
+            OpenDatabaseCommand(databaseNode);
         }
         private void DeleteServerNodeCommand(object parameter)
         {
@@ -376,12 +447,27 @@ namespace DaJet.Studio
 
             OpenDatabaseNode(treeNode);
         }
-
+        
         private void OpenDatabaseNode(TreeNodeViewModel databaseNode)
         {
             if (!(databaseNode.NodePayload is DatabaseInfo database)) return;
             DatabaseServer server = databaseNode.GetAncestorPayload<DatabaseServer>();
             if (server == null) return;
+
+            if (databaseNode.TreeNodes.Count > 0)
+            {
+                MessageBoxResult result = MessageBox.Show(
+                    "Database \"" + database.Name + "\" is opend.\nDo you want it to be re-opened ?",
+                    "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+
+                if (result != MessageBoxResult.OK)
+                {
+                    return;
+                }
+
+                databaseNode.TreeNodes.Clear();
+                databaseNode.IsExpanded = false;
+            }
 
             IMetadataService metadata = Services.GetService<IMetadataService>();
             if (!metadata

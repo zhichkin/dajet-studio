@@ -11,7 +11,7 @@
         <BitmapImage x:Key="Icon_Database" UriSource="pack://application:,,,/DaJet.Studio;component/images/database.png"/>
     </UserControl.Resources>
 
-    <Grid>
+    <Grid FocusManager.FocusedElement="{Binding ElementName=SenderTextBox}">
 
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
@@ -62,7 +62,8 @@
 
         <TextBlock Grid.Column="0" Grid.Row="5" Text="Отправитель:"
                    Margin="0,10,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
-        <TextBox Grid.Column="1" Grid.Row="5" MinWidth="250" HorizontalAlignment="Left"
+        <TextBox x:Name="SenderTextBox"
+                 Grid.Column="1" Grid.Row="5" MinWidth="250" HorizontalAlignment="Left"
                  Margin="5,10,0,0" FontFamily="Courier New" FontSize="14" Height="20"
                  Text="{Binding Sender, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
 
@@ -101,11 +102,15 @@
                     Command="{Binding ShowTotalRowCountCommand}" ToolTip="Показать текущее общее количество записей"/>
             <Button HorizontalAlignment="Left" Content="Выгрузить" Height="30" Width="100"
                     Margin="10,0,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"
-                    Command="{Binding ExportDataCommand}" ToolTip="Выгрузить данные объекта метаданных"
+                    Command="{Binding ExportDataCommand}" ToolTip="Выгрузить данные объекта"
                     Visibility="{Binding CanExecuteExportCommand, Converter={StaticResource BooleanToVisibilityConverter}}"/>
             <ProgressBar HorizontalAlignment="Left" IsIndeterminate="True"
                          Margin="10,0,0,0" Height="30" Width="100"
                          Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+            <Button HorizontalAlignment="Left" Content="Отменить" Height="30" Width="100"
+                    Margin="10,0,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"
+                    Command="{Binding CancelExportDataCommand}" ToolTip="Отменить выгрузку данных"
+                    Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
         </StackPanel>
 
         <TextBlock Grid.Column="0" Grid.Row="12" Grid.ColumnSpan="2"

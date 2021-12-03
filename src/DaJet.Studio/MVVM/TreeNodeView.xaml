@@ -7,16 +7,17 @@
              xmlns:behaviors="http://schemas.microsoft.com/xaml/behaviors"
              mc:Ignorable="d" d:DesignHeight="450" d:DesignWidth="800">
 
-    <TreeView x:Name="CONTROL_ROOT" ItemsSource="{Binding TreeNodes}"
+    <TreeView Grid.Row="1" x:Name="CONTROL_ROOT" ItemsSource="{Binding TreeNodes}"
               HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
               BorderThickness="0" BorderBrush="Transparent"
               MouseMove="TreeView_MouseMove">
-
+            
         <TreeView.Resources>
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
             <Style TargetType="{x:Type TreeViewItem}">
                 <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
                 <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
+                <Setter Property="Visibility" Value="{Binding IsVisible, Converter={StaticResource BooleanToVisibilityConverter}}"/>
             </Style>
         </TreeView.Resources>
         
@@ -72,6 +73,7 @@
             </HierarchicalDataTemplate>
             
         </TreeView.ItemTemplate>
+            
     </TreeView>
 
 </UserControl>

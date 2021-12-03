@@ -4,6 +4,7 @@ using DaJet.Metadata.Model;
 using DaJet.RabbitMQ;
 using DaJet.Studio.MVVM;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -36,6 +37,7 @@ namespace DaJet.Studio.UI
             Services = serviceProvider;
             ExportDataDelegate = new Action(ExportData);
             ExportDataCommand = new AsyncRelayCommand(ExportDataCommandHandler, this);
+            CancelExportDataCommand = new RelayCommand(CancelExportDataCommandHandler);
             ShowTotalRowCountCommand = new RelayCommand(ShowTotalRowCountCommandHandler);
         }
         public void HandleError(Exception error)
@@ -65,6 +67,7 @@ namespace DaJet.Studio.UI
         public string SourceConnectionString { get; set; }
         private Action ExportDataDelegate { get; set; }
         public ICommand ExportDataCommand { get; private set; }
+        public ICommand CancelExportDataCommand { get; private set; }
         public ICommand ShowTotalRowCountCommand { get; private set; }
         public string InfoBasePresentation
         {
@@ -186,6 +189,8 @@ namespace DaJet.Studio.UI
                 firstPage = int.Parse(pageNumber);
             }
         }
+
+        private CancellationTokenSource ExportDataCancellation;
         private async Task ExportDataCommandHandler()
         {
             MessageBoxResult result = MessageBox.Show("Export data \"" + MetaObject.Name + "\" to RabbitMQ ?",
@@ -196,12 +201,23 @@ namespace DaJet.Studio.UI
             {
                 CanExecuteExportCommand = false;
                 InitializeServices();
-                await Task.Run(ExportDataDelegate);
+                using (ExportDataCancellation = new CancellationTokenSource())
+                {
+                    await Task.Run(ExportDataDelegate, ExportDataCancellation.Token);
+                }
             }
             finally
             {
                 CanExecuteExportCommand = true;
             }
+        }
+        private void CancelExportDataCommandHandler(object parameter)
+        {
+            MessageBoxResult result = MessageBox.Show("Cancel export data \"" + MetaObject.Name + "\" to RabbitMQ ?",
+                "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (result != MessageBoxResult.OK) return;
+
+            ExportDataCancellation?.Cancel();
         }
         private void ExportData()
         {
@@ -225,6 +241,11 @@ namespace DaJet.Studio.UI
 
                 for (; pageNumber <= lastPage; pageNumber++)
                 {
+                    if (ExportDataCancellation.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
                     int messagesSent = producer.Publish(Serializer, pageSize, pageNumber);
 
                     totalCount += messagesSent;
@@ -233,7 +254,14 @@ namespace DaJet.Studio.UI
                 }
             }
 
-            ResultText = $"Totally {totalCount} messages sent";
+            if (ExportDataCancellation.IsCancellationRequested)
+            {
+                ResultText = $"Operation canceled: totally {totalCount} messages sent";
+            }
+            else
+            {
+                ResultText = $"Operation completed: totally {totalCount} messages sent";
+            }
         }
     }
 }

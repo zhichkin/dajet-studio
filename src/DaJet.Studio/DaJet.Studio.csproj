@@ -14,6 +14,7 @@
 - RabbitMQ data exporter</Description>
     <RepositoryUrl>https://github.com/zhichkin/DaJet</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Version>1.1.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -62,6 +63,7 @@
     <None Remove="images\delete-script.png" />
     <None Remove="images\disconnect.png" />
     <None Remove="images\edit-script.png" />
+    <None Remove="images\filter.png" />
     <None Remove="images\function.png" />
     <None Remove="images\http-connection.png" />
     <None Remove="images\key.png" />
@@ -156,6 +158,7 @@
     <Resource Include="images\delete-script.png" />
     <Resource Include="images\disconnect.png" />
     <Resource Include="images\edit-script.png" />
+    <Resource Include="images\filter.png" />
     <Resource Include="images\function.png" />
     <Resource Include="images\http-connection.png" />
     <Resource Include="images\key.png" />

@@ -26,6 +26,7 @@ namespace DaJet.Studio.MVVM
         private object _nodePayload;
         private bool _isExpanded;
         private bool _isSelected;
+        private bool _isVisible = true;
         public TreeNodeViewModel()
         {
             SelectedItemChanged = new RelayCommand(SelectedItemChangedHandler);
@@ -105,6 +106,18 @@ namespace DaJet.Studio.MVVM
             }
             // notify WPF standard binding mechanism
             OnPropertyChanged(nameof(NodeText));
+        }
+        public bool IsVisible
+        {
+            get { return _isVisible; }
+            set
+            {
+                if (_isVisible == value)
+                {
+                    return;
+                }
+                _isVisible = value; OnPropertyChanged();
+            }
         }
         public bool IsExpanded
         {
