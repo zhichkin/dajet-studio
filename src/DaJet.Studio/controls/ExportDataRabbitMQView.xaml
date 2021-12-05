@@ -3,12 +3,15 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ui="clr-namespace:DaJet.Studio.UI"
              mc:Ignorable="d" d:DesignHeight="450" d:DesignWidth="800">
 
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <BitmapImage x:Key="Icon_RabbitMQ" UriSource="pack://application:,,,/DaJet.Studio;component/images/rabbitmq.png"/>
         <BitmapImage x:Key="Icon_Database" UriSource="pack://application:,,,/DaJet.Studio;component/images/database.png"/>
+        <BitmapImage x:Key="Icon_SelectIndex" UriSource="pack://application:,,,/DaJet.Studio;component/images/clustered-index.png"/>
+        <BitmapImage x:Key="Icon_ClearIndex" UriSource="pack://application:,,,/DaJet.Studio;component/images/close.png"/>
     </UserControl.Resources>
 
     <Grid FocusManager.FocusedElement="{Binding ElementName=SenderTextBox}">
@@ -19,6 +22,8 @@
         </Grid.ColumnDefinitions>
 
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -116,7 +121,25 @@
         <TextBlock Grid.Column="0" Grid.Row="12" Grid.ColumnSpan="2"
                    Margin="0,10,0,0" FontFamily="Courier New" FontSize="14"
                    Text="{Binding ResultText}"/>
-        
+
+        <StackPanel Grid.Column="0" Grid.Row="13" Grid.ColumnSpan="2" Margin="0,15,0,0" Orientation="Horizontal">
+            <TextBlock Text="Индекс:" VerticalAlignment="Center"
+                       FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
+            <TextBlock Text="{Binding TableIndexName}" VerticalAlignment="Center"
+                       Margin="5,0,0,0" FontFamily="Courier New" FontSize="14"/>
+            <Button Command="{Binding SelectIndexCommand}" ToolTip="Выбрать индекс для отбора"
+                    Margin="5,0,0,0" HorizontalAlignment="Left">
+                <Image Source="{StaticResource Icon_SelectIndex}" Height="16" Width="16" VerticalAlignment="Center"/>
+            </Button>
+            <Button Command="{Binding ClearIndexCommand}" ToolTip="Очистить индекс для отбора"
+                    Margin="1,0,0,0" HorizontalAlignment="Left">
+                <Image Source="{StaticResource Icon_ClearIndex}" Height="16" Width="16" VerticalAlignment="Center"/>
+            </Button>
+        </StackPanel>
+
+        <ui:FilterTableView Grid.Column="0" Grid.Row="14" Grid.ColumnSpan="2" Margin="0,10,0,0" HorizontalAlignment="Left"
+                            Visibility="{Binding IsFilterTableVisible, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
     </Grid>
 
 </UserControl>

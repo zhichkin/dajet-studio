@@ -48,8 +48,10 @@
     <None Remove="images\add-query.png" />
     <None Remove="images\add-server.png" />
     <None Remove="images\add-web-service.png" />
+    <None Remove="images\ascending.png" />
     <None Remove="images\catalog.png" />
     <None Remove="images\close.png" />
+    <None Remove="images\clustered-index.png" />
     <None Remove="images\connect-database.png" />
     <None Remove="images\connection-offline.png" />
     <None Remove="images\connection-warning.png" />
@@ -61,6 +63,7 @@
     <None Remove="images\delete-catalog.png" />
     <None Remove="images\delete-database.png" />
     <None Remove="images\delete-script.png" />
+    <None Remove="images\descending.png" />
     <None Remove="images\disconnect.png" />
     <None Remove="images\edit-script.png" />
     <None Remove="images\filter.png" />
@@ -119,7 +122,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="DaJet.Data.Mapping" Version="1.0.0" />
+    <PackageReference Include="DaJet.Data.Mapping" Version="1.1.0" />
     <PackageReference Include="DaJet.Metadata" Version="3.1.7" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.0" />
@@ -144,8 +147,10 @@
     <Resource Include="images\add-query.png" />
     <Resource Include="images\add-server.png" />
     <Resource Include="images\add-web-service.png" />
+    <Resource Include="images\ascending.png" />
     <Resource Include="images\catalog.png" />
     <Resource Include="images\close.png" />
+    <Resource Include="images\clustered-index.png" />
     <Resource Include="images\connect-database.png" />
     <Resource Include="images\connection-offline.png" />
     <Resource Include="images\connection-warning.png" />
@@ -156,6 +161,7 @@
     <Resource Include="images\delete-catalog.png" />
     <Resource Include="images\delete-database.png" />
     <Resource Include="images\delete-script.png" />
+    <Resource Include="images\descending.png" />
     <Resource Include="images\disconnect.png" />
     <Resource Include="images\edit-script.png" />
     <Resource Include="images\filter.png" />

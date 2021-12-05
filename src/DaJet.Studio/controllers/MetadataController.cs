@@ -1,4 +1,5 @@
-﻿using DaJet.Metadata;
+﻿using DaJet.Data;
+using DaJet.Metadata;
 using DaJet.Metadata.Model;
 using DaJet.Studio.MVVM;
 using DaJet.Studio.UI;
@@ -21,6 +22,9 @@ namespace DaJet.Studio
     public sealed class MetadataController : ITreeNodeController
     {
         #region " Icons "
+
+        private readonly BitmapImage INDEX_ICON = new BitmapImage(new Uri(INDEX_ICON_PATH));
+        private const string INDEX_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/clustered-index.png";
 
         private const string RABBITMQ_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/rabbitmq.png";
         private const string ADD_SERVER_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/add-server.png";
@@ -513,6 +517,13 @@ namespace DaJet.Studio
                 };
                 node.ContextMenuItems.Add(new MenuItemViewModel()
                 {
+                    MenuItemHeader = "Show indexes",
+                    MenuItemIcon = INDEX_ICON,
+                    MenuItemCommand = new RelayCommand(ShowIndexesCommand),
+                    MenuItemPayload = node
+                });
+                node.ContextMenuItems.Add(new MenuItemViewModel()
+                {
                     MenuItemHeader = "Export data to RabbitMQ",
                     MenuItemIcon = RABBITMQ_ICON,
                     MenuItemCommand = new RelayCommand(ExportDataRabbitMQCommand),
@@ -556,6 +567,28 @@ namespace DaJet.Studio
             }
         }
 
+        private void ShowIndexesCommand(object parameter)
+        {
+            if (!(parameter is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is ApplicationObject metaObject)) return;
+            DatabaseInfo database = treeNode.GetAncestorPayload<DatabaseInfo>();
+            if (database == null) return;
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+            if (server == null) return;
+
+            string connectionString = GetConnectionString(server, database);
+
+            try
+            {
+                List<IndexInfo> indexes = SQLHelper.GetIndexes(connectionString, metaObject.TableName);
+                SelectIndexDialog dialog = new SelectIndexDialog(metaObject, indexes);
+                _ = dialog.ShowDialog();
+            }
+            catch (Exception error)
+            {
+                ShowErrorMessage(ExceptionHelper.GetErrorText(error));
+            }
+        }
         private void ExportDataRabbitMQCommand(object parameter)
         {
             if (!(parameter is TreeNodeViewModel treeNode)) return;

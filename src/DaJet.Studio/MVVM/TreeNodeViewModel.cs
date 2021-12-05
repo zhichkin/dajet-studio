@@ -1,4 +1,6 @@
-﻿using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
@@ -265,6 +267,42 @@ namespace DaJet.Studio.MVVM
                 ancestor = ancestor.Parent;
             }
             return default;
+        }
+
+        public TreeNodeViewModel GetDescendant(object payload)
+        {
+            if (payload == null)
+            {
+                throw new ArgumentNullException(nameof(payload));
+            }
+
+            if (this.NodePayload == payload)
+            {
+                return this;
+            }
+
+            Queue<TreeNodeViewModel> queue = new Queue<TreeNodeViewModel>();
+
+            queue.Enqueue(this);
+
+            while (queue.Count > 0)
+            {
+                TreeNodeViewModel ancestor = queue.Dequeue();
+
+                foreach (TreeNodeViewModel descendant in ancestor.TreeNodes)
+                {
+                    if (descendant.NodePayload == payload)
+                    {
+                        return descendant;
+                    }
+                    else if (descendant.TreeNodes.Count > 0)
+                    {
+                        queue.Enqueue(descendant);
+                    }
+                }
+            }
+
+            return null;
         }
     }
 }

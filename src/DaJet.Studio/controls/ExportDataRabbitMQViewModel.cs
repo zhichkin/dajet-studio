@@ -1,9 +1,12 @@
-﻿using DaJet.Data.Mapping;
+﻿using DaJet.Data;
+using DaJet.Data.Mapping;
 using DaJet.Json;
 using DaJet.Metadata.Model;
 using DaJet.RabbitMQ;
 using DaJet.Studio.MVVM;
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -35,6 +38,8 @@ namespace DaJet.Studio.UI
         public ExportDataRabbitMQViewModel(IServiceProvider serviceProvider)
         {
             Services = serviceProvider;
+            SelectIndexCommand = new RelayCommand(SelectIndexCommandHandler);
+            ClearIndexCommand = new RelayCommand(ClearIndexCommandHandler);
             ExportDataDelegate = new Action(ExportData);
             ExportDataCommand = new AsyncRelayCommand(ExportDataCommandHandler, this);
             CancelExportDataCommand = new RelayCommand(CancelExportDataCommandHandler);
@@ -69,6 +74,7 @@ namespace DaJet.Studio.UI
         public ICommand ExportDataCommand { get; private set; }
         public ICommand CancelExportDataCommand { get; private set; }
         public ICommand ShowTotalRowCountCommand { get; private set; }
+        
         public string InfoBasePresentation
         {
             get { return _InfoBasePresentation; }
@@ -130,6 +136,44 @@ namespace DaJet.Studio.UI
                 OnPropertyChanged(nameof(IsBusy));
                 OnPropertyChanged(nameof(CanExecuteExportCommand));
             }
+        }
+
+        private IndexInfo TableIndex { get; set; }
+        public string TableIndexName { get; private set; }
+        public ICommand SelectIndexCommand { get; private set; }
+        public ICommand ClearIndexCommand { get; private set; }
+        private void SelectIndexCommandHandler(object parameter)
+        {
+            try
+            {
+                List<IndexInfo> indexes = SQLHelper.GetIndexes(SourceConnectionString, MetaObject.TableName);
+                SelectIndexDialog dialog = new SelectIndexDialog(MetaObject, indexes);
+                _ = dialog.ShowDialog();
+                if (dialog.Result != null)
+                {
+                    TableIndex = dialog.Result;
+                    TableIndexName = TableIndex.Name;
+                    OnPropertyChanged(nameof(TableIndexName));
+                    ConfigureFilterTable();
+                    OnPropertyChanged(nameof(IsFilterTableVisible));
+                }
+            }
+            catch (Exception error)
+            {
+                HandleError(error);
+            }
+        }
+        private void ClearIndexCommandHandler(object parameter)
+        {
+            TableIndex = null;
+            TableIndexName = null;
+            OnPropertyChanged(nameof(TableIndexName));
+            ConfigureFilterTable();
+            OnPropertyChanged(nameof(IsFilterTableVisible));
+        }
+        public bool IsFilterTableVisible
+        {
+            get { return !string.IsNullOrEmpty(TableIndexName); }
         }
 
         private void InitializeServices()
@@ -263,5 +307,31 @@ namespace DaJet.Studio.UI
                 ResultText = $"Operation completed: totally {totalCount} messages sent";
             }
         }
+
+
+
+        private void ConfigureFilterTable()
+        {
+            FilterParameters.Clear();
+
+            if (TableIndex == null)
+            {
+                return;
+            }
+
+            foreach (IndexColumnInfo column in TableIndex.Columns)
+            {
+                FilterParameterViewModel parameter = new FilterParameterViewModel()
+                {
+                    UseMe = true,
+                    Name = column.Name,
+                    FilterOperator = FilterOperator.Equal,
+                    Value = DateTime.Now
+                };
+
+                FilterParameters.Add(parameter);
+            }
+        }
+        public ObservableCollection<FilterParameterViewModel> FilterParameters { get; set; } = new ObservableCollection<FilterParameterViewModel>();
     }
 }
