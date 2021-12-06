@@ -150,7 +150,7 @@ namespace DaJet.Studio.UI
         }
         private string GetColumnToolTip(IndexColumnInfo column)
         {
-            return $"{column.KeyOrdinal}. {column.Name} ({(column.IsDescending ? "DESC" : "ASC")}, {(column.IsNullable ? "NULL" : "NOT NULL")})";
+            return $"{column.KeyOrdinal}. {column.Name} {column.TypeName} ({(column.IsDescending ? "DESC" : "ASC")}, {(column.IsNullable ? "NULL" : "NOT NULL")})";
         }
         
         

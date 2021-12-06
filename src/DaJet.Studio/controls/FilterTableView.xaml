@@ -3,18 +3,44 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ui="clr-namespace:DaJet.Studio.UI"
              mc:Ignorable="d" d:DesignHeight="450" d:DesignWidth="800">
 
     <UserControl.Resources>
-        <!-- DateTime column - view mode -->
-        <DataTemplate x:Key="ViewDateTemplate" >
+
+        <!-- null - view & edit mode -->
+        <DataTemplate x:Key="NullValueTemplate">
+            <TextBlock Text="Неопределено" Foreground="Red" Margin="5" VerticalAlignment="Center"/>
+        </DataTemplate>
+        
+        <!-- string - view mode -->
+        <DataTemplate x:Key="StringViewTemplate">
+            <TextBlock Text="{Binding Value}" Margin="5" VerticalAlignment="Center"/>
+        </DataTemplate>
+
+        <!-- string - edit mode -->
+        <DataTemplate x:Key="StringEditTemplate">
+            <TextBox Text="{Binding Value}" MinWidth="100" Margin="5" VerticalContentAlignment="Center"/>
+        </DataTemplate>
+
+        <!-- DateTime - view mode -->
+        <DataTemplate x:Key="DateTimeViewTemplate" >
             <TextBlock Text="{Binding Value, StringFormat={}{0:dd.MM.yyyy}}"
                        Margin="5" VerticalAlignment="Center" HorizontalAlignment="Center"/>
         </DataTemplate>
-        <!-- DateTime column - edit mode -->
-        <DataTemplate x:Key="EditDateTemplate">
+
+        <!-- DateTime - edit mode -->
+        <DataTemplate x:Key="DateTimeEditTemplate">
             <DatePicker SelectedDate="{Binding Value}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
         </DataTemplate>
+
+        <!-- Value column data template selector -->
+        <ui:FilterTableDataTemplateSelector x:Key="ValueColumnTemplateSelector"
+                                            NullValueTemplate="{StaticResource NullValueTemplate}"
+                                            StringViewTemplate="{StaticResource StringViewTemplate}"
+                                            StringEditTemplate="{StaticResource StringEditTemplate}"
+                                            DateTimeViewTemplate="{StaticResource DateTimeViewTemplate}"
+                                            DateTimeEditTemplate="{StaticResource DateTimeEditTemplate}"/>
     </UserControl.Resources>
 
     <DataGrid ItemsSource="{Binding FilterParameters}"
@@ -61,9 +87,12 @@
 
             <!-- Value -->
             <DataGridTemplateColumn
-                CellTemplate="{StaticResource ViewDateTemplate}"
-                CellEditingTemplate="{StaticResource EditDateTemplate}"/>
-            
+                CellTemplateSelector="{StaticResource ValueColumnTemplateSelector}"
+                CellEditingTemplateSelector="{StaticResource ValueColumnTemplateSelector}"/>
+
+            <!--CellTemplate="{StaticResource ViewDateTemplate}"
+            CellEditingTemplate="{StaticResource EditDateTemplate}"-->
+
         </DataGrid.Columns>
     </DataGrid>
 

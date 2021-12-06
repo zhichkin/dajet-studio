@@ -14,7 +14,9 @@
 - RabbitMQ data exporter</Description>
     <RepositoryUrl>https://github.com/zhichkin/DaJet</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
+    <PackageReleaseNotes>1. Добавлена возможность выбора альтернативного индекса, а не только кластерного, используемого по умолчанию.
+2. Добавлена возможность отбора данных по значениям свойств индексов, имеющих примитивные типы данных "Дата" и "Строка".</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -122,7 +124,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="DaJet.Data.Mapping" Version="1.1.0" />
+    <PackageReference Include="DaJet.Data.Mapping" Version="2.0.0" />
     <PackageReference Include="DaJet.Metadata" Version="3.1.7" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.0" />

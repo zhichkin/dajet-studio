@@ -7,6 +7,7 @@ using DaJet.Studio.MVVM;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -27,8 +28,8 @@ namespace DaJet.Studio.UI
         private string _RoutingKey = string.Empty;
         private string _MessageType = string.Empty;
         private string _TotalRowCount = string.Empty;
-        private string _PageSize = string.Empty;
-        private string _PageNumber = string.Empty;
+        private int _PageSize = 1000;
+        private string _PageNumber = "1-100";
         private string _ResultText = string.Empty;
         private bool _CanExecuteExportCommand = true;
 
@@ -108,10 +109,21 @@ namespace DaJet.Studio.UI
             get { return _TotalRowCount; }
             set { _TotalRowCount = value; OnPropertyChanged(nameof(TotalRowCount)); }
         }
-        public string PageSize
+        public int PageSize
         {
             get { return _PageSize; }
-            set { _PageSize = value; OnPropertyChanged(nameof(PageSize)); }
+            set
+            {
+                if (value == 0)
+                {
+                    _PageSize = 1000;
+                }
+                else
+                {
+                    _PageSize = value > 10000 ? 10000 : value;
+                }
+                OnPropertyChanged(nameof(PageSize));
+            }
         }
         public string PageNumber
         {
@@ -192,6 +204,32 @@ namespace DaJet.Studio.UI
                 });
             Serializer = new EntityJsonSerializer(DataMapper);
         }
+        private void ConfigureDataMapper()
+        {
+            DataMapper.Options.Index = TableIndex;
+            DataMapper.Options.Filter = null;
+            if (TableIndex != null)
+            {
+                List<FilterParameter> filter = new List<FilterParameter>();
+                foreach (FilterParameterViewModel parameter in FilterParameters)
+                {
+                    if (parameter.UseMe && parameter.Value != null)
+                    {
+                        filter.Add(new FilterParameter()
+                        {
+                            Path = parameter.Name,
+                            Operator = parameter.FilterOperator,
+                            Value = parameter.Value
+                        });
+                    }
+                }
+                if (filter.Count > 0)
+                {
+                    DataMapper.Options.Filter = filter;
+                }
+            }
+            DataMapper.ResetScripts();
+        }
         private string GetMetaObjectFullName(ApplicationObject metaObject)
         {
             string type = string.Empty;
@@ -207,18 +245,54 @@ namespace DaJet.Studio.UI
 
             return $"{type}.{metaObject.Name}";
         }
+        
         private void ShowTotalRowCountCommandHandler(object parameter)
         {
             try
             {
                 InitializeServices();
-                TotalRowCount = DataMapper.GetTotalRowCount().ToString();
+                ConfigureDataMapper();
+
+                int pageSize = PageSize;
+
+                int totalRowCount = DataMapper.GetTotalRowCount();
+
+                int numberOfPages = totalRowCount / pageSize;
+                if (totalRowCount % pageSize > 0)
+                {
+                    numberOfPages++;
+                }
+
+                int firstPage = 1;
+                int lastPage = numberOfPages;
+
+                int firstPageSize = pageSize < totalRowCount ? pageSize : totalRowCount;
+                int lastPageSize = pageSize > totalRowCount ? totalRowCount : pageSize - (numberOfPages * pageSize - totalRowCount);
+
+                long firstPageTiming = 0L;
+                long lastPageTiming = 0L;
+                if (totalRowCount > 0)
+                {
+                    firstPageTiming = DataMapper.TestGetEntityDataRows(pageSize, firstPage);
+                    lastPageTiming = DataMapper.TestGetEntityDataRows(pageSize, lastPage);
+                }
+
+                NumberFormatInfo format = new NumberFormatInfo();
+                format.NumberDecimalDigits = 0;
+                format.NumberGroupSeparator = " ";
+
+                TotalRowCount = $"{totalRowCount.ToString("N", format)} rows on [{numberOfPages.ToString("N", format)}] pages"
+                    + Environment.NewLine
+                    + $"Size: [1] = {firstPageSize.ToString("N", format)} rows, [{lastPage}] = {lastPageSize.ToString("N", format)} rows"
+                    + Environment.NewLine
+                    + $"Time: [1] = {firstPageTiming.ToString("N", format)} ms, [{lastPage}] = {lastPageTiming.ToString("N", format)} ms";
             }
             catch (Exception error)
             {
                 HandleError(error);
             }
         }
+        
         private static void ParsePageNumber(string pageNumber, out int firstPage, out int lastPage)
         {
             if (pageNumber.Contains('-'))
@@ -245,6 +319,7 @@ namespace DaJet.Studio.UI
             {
                 CanExecuteExportCommand = false;
                 InitializeServices();
+                ConfigureDataMapper();
                 using (ExportDataCancellation = new CancellationTokenSource())
                 {
                     await Task.Run(ExportDataDelegate, ExportDataCancellation.Token);
@@ -265,7 +340,7 @@ namespace DaJet.Studio.UI
         }
         private void ExportData()
         {
-            int pageSize = int.Parse(PageSize);
+            int pageSize = PageSize;
 
             ParsePageNumber(PageNumber, out int firstPage, out int lastPage);
             
@@ -308,8 +383,7 @@ namespace DaJet.Studio.UI
             }
         }
 
-
-
+        public ObservableCollection<FilterParameterViewModel> FilterParameters { get; set; } = new ObservableCollection<FilterParameterViewModel>();
         private void ConfigureFilterTable()
         {
             FilterParameters.Clear();
@@ -321,17 +395,39 @@ namespace DaJet.Studio.UI
 
             foreach (IndexColumnInfo column in TableIndex.Columns)
             {
+                MetadataProperty property = GetPropertyByColumn(column);
+
                 FilterParameterViewModel parameter = new FilterParameterViewModel()
                 {
-                    UseMe = true,
-                    Name = column.Name,
-                    FilterOperator = FilterOperator.Equal,
-                    Value = DateTime.Now
+                    UseMe = false,
+                    Name = property == null ? "Свойство не найдено" : property.Name,
+                    FilterOperator = ComparisonOperator.Equal,
+                    Value = property == null ? null : GetDefaultPropertyValue(property)
                 };
 
                 FilterParameters.Add(parameter);
             }
         }
-        public ObservableCollection<FilterParameterViewModel> FilterParameters { get; set; } = new ObservableCollection<FilterParameterViewModel>();
+        private MetadataProperty GetPropertyByColumn(IndexColumnInfo column)
+        {
+            foreach (MetadataProperty property in MetaObject.Properties)
+            {
+                foreach (DatabaseField field in property.Fields)
+                {
+                    if (field.Name == column.Name)
+                    {
+                        return property;
+                    }
+                }
+            }
+            return null;
+        }
+        private object GetDefaultPropertyValue(MetadataProperty property)
+        {
+            if (property.PropertyType.IsMultipleType) return null;
+            else if (property.PropertyType.CanBeString) return string.Empty;
+            else if (property.PropertyType.CanBeDateTime) return new DateTime(DateTime.Now.Year, 1, 1);
+            return null;
+        }
     }
 }

@@ -56,89 +56,89 @@
         </StackPanel>
 
         <StackPanel Grid.Column="0" Grid.Row="3" Grid.ColumnSpan="2" Margin="0,15,0,0" Orientation="Horizontal">
+            <TextBlock Text="Индекс:" VerticalAlignment="Center"
+                       FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
+            <TextBlock Text="{Binding TableIndexName}" VerticalAlignment="Center"
+                       Margin="5,0,0,0" FontFamily="Courier New" FontSize="14"/>
+            <Button Command="{Binding SelectIndexCommand}" ToolTip="Выбрать индекс для отбора"
+                    Margin="5,0,0,0" HorizontalAlignment="Left" Cursor="Hand">
+                <Image Source="{StaticResource Icon_SelectIndex}" Height="16" Width="16" VerticalAlignment="Center"/>
+            </Button>
+            <Button Command="{Binding ClearIndexCommand}" ToolTip="Очистить индекс для отбора"
+                    Margin="1,0,0,0" HorizontalAlignment="Left" Cursor="Hand">
+                <Image Source="{StaticResource Icon_ClearIndex}" Height="16" Width="16" VerticalAlignment="Center"/>
+            </Button>
+        </StackPanel>
+
+        <ui:FilterTableView Grid.Column="0" Grid.Row="4" Grid.ColumnSpan="2" Margin="0,10,0,0" HorizontalAlignment="Left"
+                            Visibility="{Binding IsFilterTableVisible, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+        <StackPanel Grid.Column="0" Grid.Row="5" Grid.ColumnSpan="2" Margin="0,15,0,0" Orientation="Horizontal">
             <Image Source="{StaticResource Icon_RabbitMQ}" Height="16" Width="16" VerticalAlignment="Center"/>
             <TextBlock Text="RabbitMQ URI" VerticalAlignment="Center"
                        Margin="10,0,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
         </StackPanel>
         
-        <TextBox Grid.Column="0" Grid.Row="4" Grid.ColumnSpan="2"
+        <TextBox Grid.Column="0" Grid.Row="6" Grid.ColumnSpan="2"
                  Margin="0,5,0,0" FontFamily="Courier New" FontSize="14" Height="20"
                  Text="{Binding TargetConnectionString, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
 
-        <TextBlock Grid.Column="0" Grid.Row="5" Text="Отправитель:"
+        <TextBlock Grid.Column="0" Grid.Row="7" Text="Отправитель:"
                    Margin="0,10,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
         <TextBox x:Name="SenderTextBox"
-                 Grid.Column="1" Grid.Row="5" MinWidth="250" HorizontalAlignment="Left"
+                 Grid.Column="1" Grid.Row="7" MinWidth="250" HorizontalAlignment="Left"
                  Margin="5,10,0,0" FontFamily="Courier New" FontSize="14" Height="20"
                  Text="{Binding Sender, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
 
-        <TextBlock Grid.Column="0" Grid.Row="6" Text="Ключ маршрутизации:"
+        <TextBlock Grid.Column="0" Grid.Row="8" Text="Ключ маршрутизации:"
                    Margin="0,5,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
-        <TextBox Grid.Column="1" Grid.Row="6" MinWidth="250" HorizontalAlignment="Left"
+        <TextBox Grid.Column="1" Grid.Row="8" MinWidth="250" HorizontalAlignment="Left"
                  Margin="5,5,0,0" FontFamily="Courier New" FontSize="14" Height="20"
                  Text="{Binding RoutingKey, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
 
-        <TextBlock Grid.Column="0" Grid.Row="7" Text="Тип сообщения:"
+        <TextBlock Grid.Column="0" Grid.Row="9" Text="Тип сообщения:"
                    Margin="0,5,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
-        <TextBox Grid.Column="1" Grid.Row="7" MinWidth="250" HorizontalAlignment="Left"
+        <TextBox Grid.Column="1" Grid.Row="9" MinWidth="250" HorizontalAlignment="Left"
                  Margin="5,5,0,0" FontFamily="Courier New" FontSize="14" Height="20"
                  Text="{Binding MessageType, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
 
-        <TextBlock Grid.Column="0" Grid.Row="8" Text="Количество записей:"
+        <TextBlock Grid.Column="0" Grid.Row="10" Text="Количество записей:"
                    Margin="0,5,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
-        <TextBlock Grid.Column="1" Grid.Row="8" Text="{Binding TotalRowCount}" Height="20"
+        <TextBlock Grid.Column="1" Grid.Row="10" Text="{Binding TotalRowCount}"
                    Margin="5,5,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
 
-        <TextBlock Grid.Column="0" Grid.Row="9" Text="Размер страницы:"
+        <TextBlock Grid.Column="0" Grid.Row="11" Text="Размер страницы:"
                    Margin="0,5,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
-        <TextBox Grid.Column="1" Grid.Row="9" Width="100" HorizontalAlignment="Left"
+        <TextBox Grid.Column="1" Grid.Row="11" Width="100" HorizontalAlignment="Left"
                  Margin="5,5,0,0" FontFamily="Courier New" FontSize="14" Height="20"
                  Text="{Binding PageSize, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
 
-        <TextBlock Grid.Column="0" Grid.Row="10" Text="Номера страниц:"
+        <TextBlock Grid.Column="0" Grid.Row="12" Text="Номера страниц:"
                    Margin="0,5,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
-        <TextBox Grid.Column="1" Grid.Row="10" Width="100" HorizontalAlignment="Left"
+        <TextBox Grid.Column="1" Grid.Row="12" Width="100" HorizontalAlignment="Left"
                  Margin="5,5,0,0" FontFamily="Courier New" FontSize="14" Height="20"
                  Text="{Binding PageNumber, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
 
-        <StackPanel Grid.Column="0" Grid.Row="11" Grid.ColumnSpan="2" Margin="0,15,0,0" Orientation="Horizontal">
+        <StackPanel Grid.Column="0" Grid.Row="13" Grid.ColumnSpan="2" Margin="0,15,0,0" Orientation="Horizontal">
             <Button HorizontalAlignment="Left" Content="Показать количество записей" Height="30" Width="250"
-                    FontFamily="Courier New" FontSize="14" FontWeight="Bold"
+                    FontFamily="Courier New" FontSize="14" FontWeight="Bold" Cursor="Hand"
                     Command="{Binding ShowTotalRowCountCommand}" ToolTip="Показать текущее общее количество записей"/>
             <Button HorizontalAlignment="Left" Content="Выгрузить" Height="30" Width="100"
-                    Margin="10,0,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"
+                    Margin="10,0,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold" Cursor="Hand"
                     Command="{Binding ExportDataCommand}" ToolTip="Выгрузить данные объекта"
                     Visibility="{Binding CanExecuteExportCommand, Converter={StaticResource BooleanToVisibilityConverter}}"/>
             <ProgressBar HorizontalAlignment="Left" IsIndeterminate="True"
                          Margin="10,0,0,0" Height="30" Width="100"
                          Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
             <Button HorizontalAlignment="Left" Content="Отменить" Height="30" Width="100"
-                    Margin="10,0,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold"
+                    Margin="10,0,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold" Cursor="Hand"
                     Command="{Binding CancelExportDataCommand}" ToolTip="Отменить выгрузку данных"
                     Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
         </StackPanel>
 
-        <TextBlock Grid.Column="0" Grid.Row="12" Grid.ColumnSpan="2"
+        <TextBlock Grid.Column="0" Grid.Row="14" Grid.ColumnSpan="2"
                    Margin="0,10,0,0" FontFamily="Courier New" FontSize="14"
                    Text="{Binding ResultText}"/>
-
-        <StackPanel Grid.Column="0" Grid.Row="13" Grid.ColumnSpan="2" Margin="0,15,0,0" Orientation="Horizontal">
-            <TextBlock Text="Индекс:" VerticalAlignment="Center"
-                       FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
-            <TextBlock Text="{Binding TableIndexName}" VerticalAlignment="Center"
-                       Margin="5,0,0,0" FontFamily="Courier New" FontSize="14"/>
-            <Button Command="{Binding SelectIndexCommand}" ToolTip="Выбрать индекс для отбора"
-                    Margin="5,0,0,0" HorizontalAlignment="Left">
-                <Image Source="{StaticResource Icon_SelectIndex}" Height="16" Width="16" VerticalAlignment="Center"/>
-            </Button>
-            <Button Command="{Binding ClearIndexCommand}" ToolTip="Очистить индекс для отбора"
-                    Margin="1,0,0,0" HorizontalAlignment="Left">
-                <Image Source="{StaticResource Icon_ClearIndex}" Height="16" Width="16" VerticalAlignment="Center"/>
-            </Button>
-        </StackPanel>
-
-        <ui:FilterTableView Grid.Column="0" Grid.Row="14" Grid.ColumnSpan="2" Margin="0,10,0,0" HorizontalAlignment="Left"
-                            Visibility="{Binding IsFilterTableVisible, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
     </Grid>
 

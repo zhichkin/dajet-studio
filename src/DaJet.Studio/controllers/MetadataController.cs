@@ -128,9 +128,30 @@ namespace DaJet.Studio
             string toolTip = string.Empty;
             foreach (DatabaseField field in property.Fields)
             {
-                toolTip += (string.IsNullOrEmpty(toolTip) ? string.Empty : Environment.NewLine) + field.Name;
+                toolTip += (string.IsNullOrEmpty(toolTip) ? string.Empty : Environment.NewLine) + GetDbFieldDescription(field);
             }
             return toolTip;
+        }
+        private string GetDbFieldDescription(DatabaseField field)
+        {
+            if (field.TypeName == "numeric")
+            {
+                return $"{field.Name} numeric({field.Scale}, {field.Precision}) {(field.IsNullable ? "NULL" : "NOT NULL")}";
+            }
+            else if (field.TypeName == "binary")
+            {
+                return $"{field.Name} binary({field.Length}) {(field.IsNullable ? "NULL" : "NOT NULL")}";
+            }
+            else if (field.TypeName == "char"
+                || field.TypeName == "nchar"
+                || field.TypeName == "varchar"
+                || field.TypeName == "nvarchar"
+                || field.TypeName == "text")
+            {
+                return $"{field.Name} {field.TypeName}({(field.Length > 0 ? field.Length.ToString() : "max")}) {(field.IsNullable ? "NULL" : "NOT NULL")}";
+            }
+            
+            return $"{field.Name} {field.TypeName} {(field.IsNullable ? "NULL" : "NOT NULL")}";
         }
 
         public void Search(string filter)
