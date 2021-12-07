@@ -14,9 +14,8 @@
 - RabbitMQ data exporter</Description>
     <RepositoryUrl>https://github.com/zhichkin/DaJet</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>1.3.0</Version>
-    <PackageReleaseNotes>Добавлена возможность копирования параметров фильтра.
-Это нужно для создания отборов, например, по периоду - между двумя датами.</PackageReleaseNotes>
+    <Version>1.3.1</Version>
+    <PackageReleaseNotes>Таймаут выполнения SqlCommand увеличен до 60 секунд.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -125,7 +124,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="DaJet.Data.Mapping" Version="2.0.1" />
+    <PackageReference Include="DaJet.Data.Mapping" Version="2.0.2" />
     <PackageReference Include="DaJet.Metadata" Version="3.1.7" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.0" />
