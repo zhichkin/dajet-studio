@@ -1,6 +1,7 @@
 ﻿using DaJet.Data.Mapping;
 using DaJet.Studio.MVVM;
 using System.Collections.Generic;
+using System.Windows.Input;
 
 namespace DaJet.Studio.UI
 {
@@ -17,6 +18,15 @@ namespace DaJet.Studio.UI
             //"Между"
             //"Содержит"
         };
+
+        private IListViewModelController Parent { get; set; }
+
+        public FilterParameterViewModel(IListViewModelController parent)
+        {
+            Parent = parent;
+            CopyParameterCommand = new RelayCommand(CopyParameterCommandHandler);
+            RemoveParameterCommand = new RelayCommand(RemoveParameterCommandHandler);
+        }
 
         public bool UseMe { get; set; }
         public string Name { set; get; }
@@ -45,6 +55,17 @@ namespace DaJet.Studio.UI
         {
             get { return _value; }
             set { _value = value; OnPropertyChanged(nameof(Value)); }
+        }
+
+        public ICommand CopyParameterCommand { get; private set; }
+        private void CopyParameterCommandHandler(object parameter)
+        {
+            Parent.CopyItem(parameter);
+        }
+        public ICommand RemoveParameterCommand { get; private set; }
+        private void RemoveParameterCommandHandler(object parameter)
+        {
+            Parent.RemoveItem(parameter);
         }
     }
 }

@@ -15,7 +15,7 @@ using System.Windows.Input;
 
 namespace DaJet.Studio.UI
 {
-    public sealed class ExportDataRabbitMQViewModel : ViewModelBase, IErrorHandler
+    public sealed class ExportDataRabbitMQViewModel : ViewModelBase, IErrorHandler, IListViewModelController
     {
         private IServiceProvider Services { get; }
 
@@ -397,7 +397,7 @@ namespace DaJet.Studio.UI
             {
                 MetadataProperty property = GetPropertyByColumn(column);
 
-                FilterParameterViewModel parameter = new FilterParameterViewModel()
+                FilterParameterViewModel parameter = new FilterParameterViewModel(this)
                 {
                     UseMe = false,
                     Name = property == null ? "Свойство не найдено" : property.Name,
@@ -428,6 +428,32 @@ namespace DaJet.Studio.UI
             else if (property.PropertyType.CanBeString) return string.Empty;
             else if (property.PropertyType.CanBeDateTime) return new DateTime(DateTime.Now.Year, 1, 1);
             return null;
+        }
+        
+        public void AddNewItem() { throw new NotImplementedException(); }
+        public void EditItem(object item) { throw new NotImplementedException(); }
+        public void CopyItem(object item)
+        {
+            if (!(item is FilterParameterViewModel model)) return;
+
+            int index = FilterParameters.IndexOf(model);
+            if (index == -1) return;
+
+            FilterParameterViewModel parameter = new FilterParameterViewModel(this)
+            {
+                UseMe = model.UseMe,
+                Name = model.Name,
+                FilterOperator = model.FilterOperator,
+                Value = model.Value
+            };
+
+            FilterParameters.Insert(index, parameter);
+        }
+        public void RemoveItem(object item)
+        {
+            if (!(item is FilterParameterViewModel model)) return;
+
+            FilterParameters.Remove(model);
         }
     }
 }

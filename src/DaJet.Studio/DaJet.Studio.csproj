@@ -14,9 +14,9 @@
 - RabbitMQ data exporter</Description>
     <RepositoryUrl>https://github.com/zhichkin/DaJet</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>1.2.0</Version>
-    <PackageReleaseNotes>1. Добавлена возможность выбора альтернативного индекса, а не только кластерного, используемого по умолчанию.
-2. Добавлена возможность отбора данных по значениям свойств индексов, имеющих примитивные типы данных "Дата" и "Строка".</PackageReleaseNotes>
+    <Version>1.3.0</Version>
+    <PackageReleaseNotes>Добавлена возможность копирования параметров фильтра.
+Это нужно для создания отборов, например, по периоду - между двумя датами.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -57,6 +57,7 @@
     <None Remove="images\connect-database.png" />
     <None Remove="images\connection-offline.png" />
     <None Remove="images\connection-warning.png" />
+    <None Remove="images\copy.png" />
     <None Remove="images\data-server.png" />
     <None Remove="images\database-script.png" />
     <None Remove="images\database-settings.png" />
@@ -124,7 +125,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="DaJet.Data.Mapping" Version="2.0.0" />
+    <PackageReference Include="DaJet.Data.Mapping" Version="2.0.1" />
     <PackageReference Include="DaJet.Metadata" Version="3.1.7" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.0" />
@@ -156,6 +157,7 @@
     <Resource Include="images\connect-database.png" />
     <Resource Include="images\connection-offline.png" />
     <Resource Include="images\connection-warning.png" />
+    <Resource Include="images\copy.png" />
     <Resource Include="images\data-server.png" />
     <Resource Include="images\database-script.png" />
     <Resource Include="images\database-settings.png" />

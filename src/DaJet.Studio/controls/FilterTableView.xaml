@@ -8,6 +8,9 @@
 
     <UserControl.Resources>
 
+        <BitmapImage x:Key="Icon_CopyItem" UriSource="pack://application:,,,/DaJet.Studio;component/images/copy.png"/>
+        <BitmapImage x:Key="Icon_RemoveItem" UriSource="pack://application:,,,/DaJet.Studio;component/images/close.png"/>
+        
         <!-- null - view & edit mode -->
         <DataTemplate x:Key="NullValueTemplate">
             <TextBlock Text="Неопределено" Foreground="Red" Margin="5" VerticalAlignment="Center"/>
@@ -90,9 +93,27 @@
                 CellTemplateSelector="{StaticResource ValueColumnTemplateSelector}"
                 CellEditingTemplateSelector="{StaticResource ValueColumnTemplateSelector}"/>
 
-            <!--CellTemplate="{StaticResource ViewDateTemplate}"
-            CellEditingTemplate="{StaticResource EditDateTemplate}"-->
+            <!-- UI commands -->
+            <DataGridTemplateColumn>
+                <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="5">
+                            
+                            <Button Command="{Binding CopyParameterCommand}" CommandParameter="{Binding}"
+                                    ToolTip="Скопировать параметр" HorizontalAlignment="Left" Cursor="Hand">
+                                <Image Source="{StaticResource Icon_CopyItem}" Height="16" Width="16" VerticalAlignment="Center"/>
+                            </Button>
 
+                            <Button Command="{Binding RemoveParameterCommand}" CommandParameter="{Binding}"
+                                    Margin="1,0,0,0"  ToolTip="Удалить параметр" HorizontalAlignment="Left" Cursor="Hand">
+                                <Image Source="{StaticResource Icon_RemoveItem}" Height="16" Width="16" VerticalAlignment="Center"/>
+                            </Button>
+
+                        </StackPanel>
+                    </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            
         </DataGrid.Columns>
     </DataGrid>
 
