@@ -14,8 +14,8 @@
 - RabbitMQ data exporter</Description>
     <RepositoryUrl>https://github.com/zhichkin/DaJet</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>1.3.1</Version>
-    <PackageReleaseNotes>Таймаут выполнения SqlCommand увеличен до 60 секунд.</PackageReleaseNotes>
+    <Version>1.4.0</Version>
+    <PackageReleaseNotes>Добавлена возможность выгрузки данных независимых периодических регистров сведений в RabbitMQ.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
