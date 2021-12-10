@@ -1,4 +1,6 @@
 ﻿using DaJet.Data;
+using DaJet.Data.Mapping;
+using DaJet.Json;
 using DaJet.Metadata;
 using DaJet.Metadata.Model;
 using DaJet.Studio.MVVM;
@@ -621,9 +623,23 @@ namespace DaJet.Studio
             DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
             if (server == null) return;
 
+            if (!(metaObject is Catalog || metaObject is Document || metaObject is InformationRegister || metaObject is AccumulationRegister))
+            {
+                _ = MessageBox.Show($"Metadata type \"{metaObject.Name}\" is not supported.",
+                    "DaJet", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             string connectionString = GetConnectionString(server, database);
 
-            ShowExportDataRabbitMQView(connectionString, infoBase, metaObject);
+            try
+            {
+                ShowExportDataRabbitMQView(connectionString, infoBase, metaObject);
+            }
+            catch (Exception error)
+            {
+                ShowErrorMessage(ExceptionHelper.GetErrorText(error));
+            }
         }
 
         #endregion
@@ -708,6 +724,9 @@ namespace DaJet.Studio
             TextTabView view = new TextTabView() { DataContext = viewModel };
             mainWindow.AddNewTab("Success", view);
         }
+        
+        
+
         private void ShowExportDataRabbitMQView(string connectionString, InfoBase infoBase, ApplicationObject metaObject)
         {
             MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
@@ -717,8 +736,46 @@ namespace DaJet.Studio
             viewModel.MetaObject = metaObject;
             viewModel.SourceConnectionString = connectionString;
 
+            if (metaObject is Catalog || metaObject is Document)
+            {
+                // do nothing - will be configured by view model itself
+            }
+            else if (metaObject is InformationRegister register)
+            {
+                if (register.UseRecorder || register.Periodicity == RegisterPeriodicity.None)
+                {
+                    _ = MessageBox.Show($"Support of metadata type \"{metaObject.Name}\" is under development.",
+                        "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+                ConfigureExportToPeriodicRegister(viewModel);
+            }
+            else if (metaObject is AccumulationRegister)
+            {
+                _ = MessageBox.Show($"Support of metadata type \"{metaObject.Name}\" is under development.",
+                    "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             ExportDataRabbitMQView view = new ExportDataRabbitMQView() { DataContext = viewModel };
             mainWindow.AddNewTab($"Export data to RabbitMQ", view);
+        }
+        private void ConfigureExportToPeriodicRegister(ExportDataRabbitMQViewModel viewModel)
+        {
+            RegisterDataMapper mapper = new RegisterDataMapper();
+
+            viewModel.DataMapper = mapper;
+            viewModel.DataMapper.Configure(new DataMapperOptions()
+            {
+                InfoBase = viewModel.InfoBase,
+                MetaObject = viewModel.MetaObject,
+                ConnectionString = viewModel.SourceConnectionString
+            });
+            viewModel.JsonSerializer = new RegisterJsonSerializer((RegisterDataMapper)viewModel.DataMapper);
+
+            viewModel.TableIndex = mapper.GetPagingIndex();
+            viewModel.TableIndexName = viewModel.TableIndex.Name;
+            viewModel.ConfigureFilterTable();
         }
     }
 }

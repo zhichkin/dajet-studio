@@ -70,9 +70,10 @@
             </Button>
         </StackPanel>
 
-        <ui:FilterTableView Grid.Column="0" Grid.Row="4" Grid.ColumnSpan="2" Margin="0,10,0,0" HorizontalAlignment="Left"
+        <ui:FilterTableView Grid.Column="0" Grid.Row="4" Grid.ColumnSpan="2"
+                            Margin="0,10,0,0" HorizontalAlignment="Left" MaxHeight="150" Width="Auto"
                             Visibility="{Binding IsFilterTableVisible, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-
+        
         <StackPanel Grid.Column="0" Grid.Row="5" Grid.ColumnSpan="2" Margin="0,15,0,0" Orientation="Horizontal">
             <Image Source="{StaticResource Icon_RabbitMQ}" Height="16" Width="16" VerticalAlignment="Center"/>
             <TextBlock Text="RabbitMQ URI" VerticalAlignment="Center"

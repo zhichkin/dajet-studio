@@ -33,8 +33,8 @@ namespace DaJet.Studio.UI
         private string _ResultText = string.Empty;
         private bool _CanExecuteExportCommand = true;
 
-        private EntityDataMapper DataMapper { get; set; }
-        private EntityJsonSerializer Serializer { get; set; }
+        public IDaJetDataMapper DataMapper { get; set; }
+        public IDaJetJsonSerializer JsonSerializer { get; set; }
 
         public ExportDataRabbitMQViewModel(IServiceProvider serviceProvider)
         {
@@ -150,8 +150,8 @@ namespace DaJet.Studio.UI
             }
         }
 
-        private IndexInfo TableIndex { get; set; }
-        public string TableIndexName { get; private set; }
+        public IndexInfo TableIndex { get; set; }
+        public string TableIndexName { get; set; }
         public ICommand SelectIndexCommand { get; private set; }
         public ICommand ClearIndexCommand { get; private set; }
         private void SelectIndexCommandHandler(object parameter)
@@ -195,14 +195,34 @@ namespace DaJet.Studio.UI
                 return;
             }
 
-            DataMapper = new EntityDataMapper()
-                .Configure(new DataMapperOptions()
-                {
-                    InfoBase = InfoBase,
-                    MetaObject = MetaObject,
-                    ConnectionString = SourceConnectionString
-                });
-            Serializer = new EntityJsonSerializer(DataMapper);
+            if (MetaObject is Catalog || MetaObject is Document)
+            {
+                DataMapper = new EntityDataMapper();
+            }
+            else if (MetaObject is InformationRegister || MetaObject is AccumulationRegister)
+            {
+                DataMapper = new RegisterDataMapper();
+            }
+            else
+            {
+                throw new InvalidOperationException($"Metadata type \"{_MessageType}\" is not supported.");
+            }
+
+            DataMapper.Configure(new DataMapperOptions()
+            {
+                InfoBase = InfoBase,
+                MetaObject = MetaObject,
+                ConnectionString = SourceConnectionString
+            });
+
+            if (MetaObject is Catalog || MetaObject is Document)
+            {
+                JsonSerializer = new EntityJsonSerializer((EntityDataMapper)DataMapper);
+            }
+            else
+            {
+                JsonSerializer = new RegisterJsonSerializer((RegisterDataMapper)DataMapper);
+            }
         }
         private void ConfigureDataMapper()
         {
@@ -228,7 +248,7 @@ namespace DaJet.Studio.UI
                     DataMapper.Options.Filter = filter;
                 }
             }
-            DataMapper.ResetScripts();
+            DataMapper.Reconfigure();
         }
         private string GetMetaObjectFullName(ApplicationObject metaObject)
         {
@@ -273,8 +293,8 @@ namespace DaJet.Studio.UI
                 long lastPageTiming = 0L;
                 if (totalRowCount > 0)
                 {
-                    firstPageTiming = DataMapper.TestGetEntityDataRows(pageSize, firstPage);
-                    lastPageTiming = DataMapper.TestGetEntityDataRows(pageSize, lastPage);
+                    firstPageTiming = DataMapper.TestGetPageDataRows(pageSize, firstPage);
+                    lastPageTiming = DataMapper.TestGetPageDataRows(pageSize, lastPage);
                 }
 
                 NumberFormatInfo format = new NumberFormatInfo();
@@ -365,7 +385,7 @@ namespace DaJet.Studio.UI
                         break;
                     }
 
-                    int messagesSent = producer.Publish(Serializer, pageSize, pageNumber);
+                    int messagesSent = producer.Publish(JsonSerializer, pageSize, pageNumber);
 
                     totalCount += messagesSent;
 
@@ -384,7 +404,7 @@ namespace DaJet.Studio.UI
         }
 
         public ObservableCollection<FilterParameterViewModel> FilterParameters { get; set; } = new ObservableCollection<FilterParameterViewModel>();
-        private void ConfigureFilterTable()
+        public void ConfigureFilterTable()
         {
             FilterParameters.Clear();
 
