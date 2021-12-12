@@ -4,7 +4,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:ui="clr-namespace:DaJet.Studio.UI"
-             mc:Ignorable="d" d:DesignHeight="450" d:DesignWidth="800">
+             mc:Ignorable="d" d:DesignHeight="600" d:DesignWidth="800">
 
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
@@ -12,6 +12,7 @@
         <BitmapImage x:Key="Icon_Database" UriSource="pack://application:,,,/DaJet.Studio;component/images/database.png"/>
         <BitmapImage x:Key="Icon_SelectIndex" UriSource="pack://application:,,,/DaJet.Studio;component/images/clustered-index.png"/>
         <BitmapImage x:Key="Icon_ClearIndex" UriSource="pack://application:,,,/DaJet.Studio;component/images/close.png"/>
+        <BitmapImage x:Key="Icon_SaveToFile" UriSource="pack://application:,,,/DaJet.Studio;component/images/save-file.png"/>
     </UserControl.Resources>
 
     <Grid FocusManager.FocusedElement="{Binding ElementName=SenderTextBox}">
@@ -128,6 +129,11 @@
                     Margin="10,0,0,0" FontFamily="Courier New" FontSize="14" FontWeight="Bold" Cursor="Hand"
                     Command="{Binding ExportDataCommand}" ToolTip="Выгрузить данные объекта"
                     Visibility="{Binding CanExecuteExportCommand, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+            <Button HorizontalAlignment="Left" Height="30" Width="30" Margin="10,0,0,0" Cursor="Hand"
+                    Command="{Binding ExportDataToFileCommand}" ToolTip="Выгрузить данные объекта в файл на диске"
+                    Visibility="{Binding CanExecuteExportCommand, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Image Source="{StaticResource Icon_SaveToFile}" Height="30" Width="30" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+            </Button>
             <ProgressBar HorizontalAlignment="Left" IsIndeterminate="True"
                          Margin="10,0,0,0" Height="30" Width="100"
                          Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
@@ -137,9 +143,10 @@
                     Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
         </StackPanel>
 
-        <TextBlock Grid.Column="0" Grid.Row="14" Grid.ColumnSpan="2"
-                   Margin="0,10,0,0" FontFamily="Courier New" FontSize="14"
-                   Text="{Binding ResultText}"/>
+        <TextBox Grid.Column="0" Grid.Row="14" Grid.ColumnSpan="2" Text="{Binding ResultText}"
+                 Margin="0,10,0,0" FontFamily="Courier New" FontSize="14"
+                 Width="600" Height="100" HorizontalAlignment="Left"
+                 TextWrapping="Wrap" AcceptsTab="True" AcceptsReturn="True"/>
 
     </Grid>
 

@@ -4,10 +4,16 @@ using DaJet.Json;
 using DaJet.Metadata.Model;
 using DaJet.RabbitMQ;
 using DaJet.Studio.MVVM;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Globalization;
+using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -32,6 +38,7 @@ namespace DaJet.Studio.UI
         private string _PageNumber = "1-100";
         private string _ResultText = string.Empty;
         private bool _CanExecuteExportCommand = true;
+        private string _exportJsonFilePath = string.Empty;
 
         public IDaJetDataMapper DataMapper { get; set; }
         public IDaJetJsonSerializer JsonSerializer { get; set; }
@@ -43,6 +50,8 @@ namespace DaJet.Studio.UI
             ClearIndexCommand = new RelayCommand(ClearIndexCommandHandler);
             ExportDataDelegate = new Action(ExportData);
             ExportDataCommand = new AsyncRelayCommand(ExportDataCommandHandler, this);
+            ExportDataToFileDelegate = new Action(ExportDataToFile);
+            ExportDataToFileCommand = new AsyncRelayCommand(ExportDataToFileCommandHandler, this);
             CancelExportDataCommand = new RelayCommand(CancelExportDataCommandHandler);
             ShowTotalRowCountCommand = new RelayCommand(ShowTotalRowCountCommandHandler);
         }
@@ -73,6 +82,8 @@ namespace DaJet.Studio.UI
         public string SourceConnectionString { get; set; }
         private Action ExportDataDelegate { get; set; }
         public ICommand ExportDataCommand { get; private set; }
+        private Action ExportDataToFileDelegate { get; set; }
+        public ICommand ExportDataToFileCommand { get; private set; }
         public ICommand CancelExportDataCommand { get; private set; }
         public ICommand ShowTotalRowCountCommand { get; private set; }
         
@@ -350,6 +361,54 @@ namespace DaJet.Studio.UI
                 CanExecuteExportCommand = true;
             }
         }
+        private async Task ExportDataToFileCommandHandler()
+        {
+            MessageBoxResult result = MessageBox.Show("Export data \"" + MetaObject.Name + "\" to file ?",
+                "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.OK)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(_exportJsonFilePath))
+            {
+                IFileProvider fileProvider = Services.GetService<IFileProvider>();
+                if (fileProvider is PhysicalFileProvider provider)
+                {
+                    _exportJsonFilePath = provider.Root;
+                }
+            }
+
+            SaveFileDialog dialog = new SaveFileDialog()
+            {
+                Filter = "json files (*.json)|*.json",
+                FileName = MetaObject.Name,
+                InitialDirectory = Path.GetDirectoryName(_exportJsonFilePath)
+            };
+
+            if (!dialog.ShowDialog().Value)
+            {
+                return;
+            }
+
+            _exportJsonFilePath = dialog.FileName;
+
+            try
+            {
+                CanExecuteExportCommand = false;
+                InitializeServices();
+                ConfigureDataMapper();
+                using (ExportDataCancellation = new CancellationTokenSource())
+                {
+                    await Task.Run(ExportDataToFileDelegate, ExportDataCancellation.Token);
+                }
+            }
+            finally
+            {
+                CanExecuteExportCommand = true;
+            }
+        }
         private void CancelExportDataCommandHandler(object parameter)
         {
             MessageBoxResult result = MessageBox.Show("Cancel export data \"" + MetaObject.Name + "\" to RabbitMQ ?",
@@ -360,6 +419,9 @@ namespace DaJet.Studio.UI
         }
         private void ExportData()
         {
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+
             int pageSize = PageSize;
 
             ParsePageNumber(PageNumber, out int firstPage, out int lastPage);
@@ -393,6 +455,12 @@ namespace DaJet.Studio.UI
                 }
             }
 
+            stopwatch.Stop();
+
+            NumberFormatInfo format = new NumberFormatInfo();
+            format.NumberDecimalDigits = 0;
+            format.NumberGroupSeparator = " ";
+
             if (ExportDataCancellation.IsCancellationRequested)
             {
                 ResultText = $"Operation canceled: totally {totalCount} messages sent";
@@ -401,6 +469,73 @@ namespace DaJet.Studio.UI
             {
                 ResultText = $"Operation completed: totally {totalCount} messages sent";
             }
+
+            ResultText += Environment.NewLine + $"Time elapsed: {stopwatch.ElapsedMilliseconds.ToString("N", format)} ms";
+        }
+        private void ExportDataToFile()
+        {
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+
+            int pageSize = PageSize;
+
+            ParsePageNumber(PageNumber, out int firstPage, out int lastPage);
+
+            int pageNumber = firstPage;
+            if (lastPage == 0)
+            {
+                lastPage = pageNumber;
+            }
+
+            int totalCount = 0;
+            using (StreamWriter writer = new StreamWriter(_exportJsonFilePath, false, Encoding.UTF8))
+            {
+                writer.Write("[");
+
+                for (; pageNumber <= lastPage; pageNumber++)
+                {
+                    if (ExportDataCancellation.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
+                    int messagesSent = 0;
+                    foreach (ReadOnlyMemory<byte> messageBody in JsonSerializer.Serialize(pageSize, pageNumber))
+                    {
+                        if (messagesSent > 0 || totalCount > 0)
+                        {
+                            writer.Write(",");
+                        }
+                        writer.Write(Encoding.UTF8.GetString(messageBody.Span));
+
+                        messagesSent++;
+                    }
+                    totalCount += messagesSent;
+
+                    ResultText = _exportJsonFilePath + Environment.NewLine + $"Page [{pageNumber}] = {totalCount} messages saved to file";
+                }
+
+                writer.Write("]");
+            }
+
+            stopwatch.Stop();
+
+            NumberFormatInfo format = new NumberFormatInfo();
+            format.NumberDecimalDigits = 0;
+            format.NumberGroupSeparator = " ";
+
+            ResultText = _exportJsonFilePath + Environment.NewLine;
+
+            if (ExportDataCancellation.IsCancellationRequested)
+            {
+                ResultText += $"Operation canceled: totally {totalCount} messages saved to file";
+            }
+            else
+            {
+                ResultText += $"Operation completed: totally {totalCount} messages saved to file";
+            }
+
+            ResultText += Environment.NewLine + $"Time elapsed: {stopwatch.ElapsedMilliseconds.ToString("N", format)} ms";
         }
 
         public ObservableCollection<FilterParameterViewModel> FilterParameters { get; set; } = new ObservableCollection<FilterParameterViewModel>();

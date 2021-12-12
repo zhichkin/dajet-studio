@@ -12,7 +12,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data;
 using System.Globalization;
 using System.Linq;
@@ -156,6 +155,8 @@ namespace DaJet.Studio
             return $"{field.Name} {field.TypeName} {(field.IsNullable ? "NULL" : "NOT NULL")}";
         }
 
+        #region "Filter Tree View"
+
         public void Search(string filter)
         {
             CultureInfo culture;
@@ -185,17 +186,17 @@ namespace DaJet.Studio
 
                 if (node.NodePayload is ApplicationObject item && !(node.NodePayload is TablePart))
                 {
-                    //node.IsVisible = item.Name.IndexOf(
-                    //    filter, StringComparison.OrdinalIgnoreCase) >= 0;
-
-                    node.IsVisible = culture.CompareInfo
-                        .IndexOf(item.Name, filter, CompareOptions.IgnoreCase) >= 0;
+                    node.IsVisible = culture.CompareInfo.IndexOf(item.Name, filter, CompareOptions.IgnoreCase) >= 0;
+                }
+                else if (node.NodePayload is ScriptEditorViewModel script)
+                {
+                    node.IsVisible = culture.CompareInfo.IndexOf(script.Name, filter, CompareOptions.IgnoreCase) >= 0;
                 }
 
                 if (node.NodePayload == this ||
                     node.NodePayload is DatabaseServer ||
                     node.NodePayload is DatabaseInfo ||
-                    node.NodePayload is InfoBase)
+                    node.NodePayload is string) // Пространства имён 1С: Справочники, Документы и т.д.
                 {
                     node.IsExpanded = true;
                 }
@@ -225,6 +226,8 @@ namespace DaJet.Studio
                 }
             }
         }
+
+        #endregion
 
         #region "Metadata Explorer Root Tree Node"
 
@@ -481,7 +484,7 @@ namespace DaJet.Studio
             DatabaseServer server = databaseNode.GetAncestorPayload<DatabaseServer>();
             if (server == null) return;
 
-            if (databaseNode.TreeNodes.Count > 0)
+            if (database.InfoBase != null)
             {
                 MessageBoxResult result = MessageBox.Show(
                     "Database \"" + database.Name + "\" is opend.\nDo you want it to be re-opened ?",
@@ -492,6 +495,7 @@ namespace DaJet.Studio
                     return;
                 }
 
+                database.InfoBase = null;
                 databaseNode.TreeNodes.Clear();
                 databaseNode.IsExpanded = false;
             }
@@ -506,15 +510,22 @@ namespace DaJet.Studio
                 return;
             }
 
+            database.InfoBase = infoBase;
             databaseNode.NodeToolTip = $"{infoBase.Name} ({infoBase.ConfigInfo.ConfigVersion})";
 
-            OpenMetaObjectNode(databaseNode, infoBase, "Справочники", infoBase.Catalogs, CATALOG_ICON);
-            OpenMetaObjectNode(databaseNode, infoBase, "Документы", infoBase.Documents, DOCUMENT_ICON);
-            OpenMetaObjectNode(databaseNode, infoBase, "Планы видов характеристик", infoBase.Characteristics, CHARACTERISTICS_REGISTER_ICON);
-            OpenMetaObjectNode(databaseNode, infoBase, "Регистры сведений", infoBase.InformationRegisters, INFO_REGISTER_ICON);
-            OpenMetaObjectNode(databaseNode, infoBase, "Регистры накопления", infoBase.AccumulationRegisters, ACCUM_REGISTER_ICON);
+            TreeNodeViewModel scripts = CreateScriptsTreeNode(databaseNode);
+            if (scripts != null)
+            {
+                databaseNode.TreeNodes.Add(scripts);
+            }
+
+            OpenMetaObjectNode(databaseNode, "Справочники", infoBase.Catalogs, CATALOG_ICON);
+            OpenMetaObjectNode(databaseNode, "Документы", infoBase.Documents, DOCUMENT_ICON);
+            OpenMetaObjectNode(databaseNode, "Планы видов характеристик", infoBase.Characteristics, CHARACTERISTICS_REGISTER_ICON);
+            OpenMetaObjectNode(databaseNode, "Регистры сведений", infoBase.InformationRegisters, INFO_REGISTER_ICON);
+            OpenMetaObjectNode(databaseNode, "Регистры накопления", infoBase.AccumulationRegisters, ACCUM_REGISTER_ICON);
         }
-        private void OpenMetaObjectNode(TreeNodeViewModel databaseNode, InfoBase infoBase, string nodeName, Dictionary<Guid, ApplicationObject> collection, BitmapImage icon)
+        private void OpenMetaObjectNode(TreeNodeViewModel databaseNode, string nodeName, Dictionary<Guid, ApplicationObject> collection, BitmapImage icon)
         {
             TreeNodeViewModel parentNode = new TreeNodeViewModel()
             {
@@ -523,7 +534,7 @@ namespace DaJet.Studio
                 NodeIcon = GetNamespaceIcon(nodeName),
                 NodeText = nodeName,
                 NodeToolTip = nodeName,
-                NodePayload = infoBase
+                NodePayload = nodeName
             };
             databaseNode.TreeNodes.Add(parentNode);
 
@@ -616,12 +627,22 @@ namespace DaJet.Studio
         {
             if (!(parameter is TreeNodeViewModel treeNode)) return;
             if (!(treeNode.NodePayload is ApplicationObject metaObject)) return;
-            InfoBase infoBase = treeNode.GetAncestorPayload<InfoBase>();
-            if (infoBase == null) return;
-            DatabaseInfo database = treeNode.GetAncestorPayload<DatabaseInfo>();
-            if (database == null) return;
+
             DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
-            if (server == null) return;
+            if (server == null)
+            {
+                _ = MessageBox.Show($"Ошибка инициализации соединения СУБД.",
+                    "DaJet", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            DatabaseInfo database = treeNode.GetAncestorPayload<DatabaseInfo>();
+            if (database == null || database.InfoBase == null)
+            {
+                _ = MessageBox.Show($"Ошибка инициализации \"{metaObject.Name}\" метаданных.",
+                    "DaJet", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
 
             if (!(metaObject is Catalog || metaObject is Document || metaObject is InformationRegister || metaObject is AccumulationRegister))
             {
@@ -634,12 +655,26 @@ namespace DaJet.Studio
 
             try
             {
-                ShowExportDataRabbitMQView(connectionString, infoBase, metaObject);
+                ShowExportDataRabbitMQView(connectionString, database.InfoBase, metaObject);
             }
             catch (Exception error)
             {
                 ShowErrorMessage(ExceptionHelper.GetErrorText(error));
             }
+        }
+
+        #endregion
+
+        #region "Scripts Tree Node"
+
+        private TreeNodeViewModel CreateScriptsTreeNode(TreeNodeViewModel databaseNode)
+        {
+            ITreeNodeController controller = Services.GetService<ScriptingController>();
+            if (controller == null)
+            {
+                return null;
+            }
+            return controller.CreateTreeNode(databaseNode);
         }
 
         #endregion
@@ -677,7 +712,6 @@ namespace DaJet.Studio
                         {
                             DatabaseInfo database = new DatabaseInfo()
                             {
-                                Identity = Guid.NewGuid(),
                                 Name = reader.GetString(0)
                             };
                             list.Add(database);

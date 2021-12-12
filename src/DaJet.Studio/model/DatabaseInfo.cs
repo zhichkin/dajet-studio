@@ -1,11 +1,11 @@
-﻿using System;
+﻿using DaJet.Metadata.Model;
 using System.Reflection;
 
 namespace DaJet.UI.Model
 {
     public sealed class DatabaseInfo
     {
-        public Guid Identity { get; set; } = Guid.NewGuid();
+        public InfoBase InfoBase { get; set; }
         public string Name { get; set; }
         public string Alias { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
@@ -21,7 +21,10 @@ namespace DaJet.UI.Model
         {
             foreach (PropertyInfo property in typeof(DatabaseInfo).GetProperties())
             {
-                if (!property.CanWrite) continue;
+                if (!property.CanWrite && property.Name == "InfoBase")
+                {
+                    continue;
+                }
                 property.SetValue(database, property.GetValue(this));
             }
         }

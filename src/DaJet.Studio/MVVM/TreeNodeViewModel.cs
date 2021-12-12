@@ -152,11 +152,7 @@ namespace DaJet.Studio.MVVM
         public ObservableCollection<TreeNodeViewModel> TreeNodes { get; } = new ObservableCollection<TreeNodeViewModel>();
         public ObservableCollection<MenuItemViewModel> ContextMenuItems { get; } = new ObservableCollection<MenuItemViewModel>();
 
-
-
         private enum NodeTextEditMode { None, Editing, Confirmed, Canceled }
-
-
 
         private bool _isEditable = false;
         public bool IsEditable
@@ -268,7 +264,6 @@ namespace DaJet.Studio.MVVM
             }
             return default;
         }
-
         public TreeNodeViewModel GetDescendant(object payload)
         {
             if (payload == null)

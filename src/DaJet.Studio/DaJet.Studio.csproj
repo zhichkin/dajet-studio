@@ -9,13 +9,16 @@
     <Authors>Zhichkin</Authors>
     <Product>DaJet Studio</Product>
     <PackageProjectUrl>https://zhichkin.github.com</PackageProjectUrl>
-    <Description>DaJet Studio - 1C:Enterprise 8 integration tools
-- 1C metadata explorer
-- RabbitMQ data exporter</Description>
+    <Description>DaJet Studio - 1C:Enterprise 8 integration tools:
+- metadata explorer;
+- query language extension;
+- export data to RabbitMQ;
+- export user data to JSON file.</Description>
     <RepositoryUrl>https://github.com/zhichkin/DaJet</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>1.4.0</Version>
-    <PackageReleaseNotes>Добавлена возможность выгрузки данных независимых периодических регистров сведений в RabbitMQ.</PackageReleaseNotes>
+    <Version>1.5.0</Version>
+    <PackageReleaseNotes>1. Добавлена возможность выгружать данные в файл на диске в формате 1С JSON.
+2. Добавлен экспериментальный модуль скриптинга - расширение языка запросов 1С:Предприятие 8.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -32,10 +35,7 @@
   <ItemGroup>
     <Compile Remove="controllers\HttpServicesController.cs" />
     <Compile Remove="controllers\MessagingController.cs" />
-    <Compile Remove="controllers\ScriptingController.cs" />
     <Compile Remove="controllers\WebSettings.cs" />
-    <Compile Remove="controls\ScriptEditorView.xaml.cs" />
-    <Compile Remove="controls\ScriptEditorViewModel.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -120,11 +120,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Page Remove="controls\ScriptEditorView.xaml" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="DaJet.Data.Mapping" Version="3.0.0" />
+    <PackageReference Include="DaJet.Data.Scripting" Version="1.0.0" />
     <PackageReference Include="DaJet.Metadata" Version="3.1.7" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.0" />
@@ -222,10 +219,6 @@
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="model\" />
   </ItemGroup>
 
 </Project>

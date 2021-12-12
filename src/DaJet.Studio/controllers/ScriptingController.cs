@@ -1,16 +1,14 @@
-﻿using DaJet.Metadata;
-using DaJet.Scripting;
+﻿using DaJet.Data.Scripting;
 using DaJet.Studio.MVVM;
+using DaJet.UI.Model;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Options;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
@@ -21,7 +19,7 @@ namespace DaJet.Studio
 {
     public sealed class ScriptingController : ITreeNodeController
     {
-        #region "Icons and constants"
+        #region "Constants"
 
         private const string ROOT_NODE_NAME = "Scripts";
         private const string SCRIPTS_NODE_NAME = "Scripts";
@@ -36,6 +34,10 @@ namespace DaJet.Studio
         private const string SCALAR_FUNCTION_NODE_NAME = "Scalar functions";
         private const string STORED_PROCEDURES_NODE_NAME = "Procedures";
 
+        #endregion
+
+        #region "Icons and constants"
+
         private const string TREE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/tree.png";
         private const string SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/database-script.png";
         private const string NEW_SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/new-script.png";
@@ -49,6 +51,7 @@ namespace DaJet.Studio
         private const string TABLE_FUNCTION_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/table-function.png";
         private const string SCALAR_FUNCTION_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/scalar-function.png";
         private const string STORED_PROCEDURE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/stored-procedure.png";
+        private const string DELETE_SCRIPT_FROM_DATABASE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/delete-database.png";
 
         private readonly BitmapImage TREE_ICON = new BitmapImage(new Uri(TREE_ICON_PATH));
         private readonly BitmapImage SCRIPT_ICON = new BitmapImage(new Uri(SCRIPT_ICON_PATH));
@@ -63,25 +66,25 @@ namespace DaJet.Studio
         private readonly BitmapImage TABLE_FUNCTION_ICON = new BitmapImage(new Uri(TABLE_FUNCTION_ICON_PATH));
         private readonly BitmapImage SCALAR_FUNCTION_ICON = new BitmapImage(new Uri(SCALAR_FUNCTION_ICON_PATH));
         private readonly BitmapImage STORED_PROCEDURE_ICON = new BitmapImage(new Uri(STORED_PROCEDURE_ICON_PATH));
+        private readonly BitmapImage DELETE_SCRIPT_FROM_DATABASE_ICON = new BitmapImage(new Uri(DELETE_SCRIPT_FROM_DATABASE_ICON_PATH));
 
         #endregion
 
-        private MetadataSettings Settings { get; }
         private IServiceProvider Services { get; }
         private IFileProvider FileProvider { get; }
-        public ScriptingController(IServiceProvider serviceProvider, IFileProvider fileProvider, IOptions<MetadataSettings> options)
+        public ScriptingController(IServiceProvider serviceProvider, IFileProvider fileProvider)
         {
-            Settings = options.Value;
             Services = serviceProvider;
             FileProvider = fileProvider;
         }
 
-
-
         private void CreateCatalogIfNotExists(string catalogName)
         {
             IFileInfo catalog = FileProvider.GetFileInfo(catalogName);
-            if (!catalog.Exists) { Directory.CreateDirectory(catalog.PhysicalPath); }
+            if (!catalog.Exists)
+            {
+                _ = Directory.CreateDirectory(catalog.PhysicalPath);
+            }
         }
         public string GetDatabaseCatalog(DatabaseServer server, DatabaseInfo database)
         {
@@ -89,11 +92,11 @@ namespace DaJet.Studio
 
             CreateCatalogIfNotExists(catalogName);
 
-            catalogName += $"/{server.Identity.ToString().ToLower()}";
+            catalogName += $"/{server.Name.ToLower()}";
             
             CreateCatalogIfNotExists(catalogName);
             
-            catalogName += $"/{database.Identity.ToString().ToLower()}";
+            catalogName += $"/{database.Name.ToLower()}";
             
             CreateCatalogIfNotExists(catalogName);
 
@@ -123,22 +126,22 @@ namespace DaJet.Studio
             CreateCatalogIfNotExists(catalogName);
             return catalogName;
         }
-        public string GetScriptsCatalogName(DatabaseServer server, DatabaseInfo database, MetaScriptType scriptType)
+        public string GetScriptsCatalogName(DatabaseServer server, DatabaseInfo database, ScriptType scriptType)
         {
             string catalogName;
-            if (scriptType == MetaScriptType.Script)
+            if (scriptType == ScriptType.Script)
             {
                 catalogName = GetScriptsCatalog(server, database);
             }
-            else if (scriptType == MetaScriptType.TableFunction)
+            else if (scriptType == ScriptType.TableFunction)
             {
                 catalogName = GetTableFunctionsCatalog(server, database);
             }
-            else if (scriptType == MetaScriptType.ScalarFunction)
+            else if (scriptType == ScriptType.ScalarFunction)
             {
                 catalogName = GetScalarFunctionsCatalog(server, database);
             }
-            else if (scriptType == MetaScriptType.StoredProcedure)
+            else if (scriptType == ScriptType.StoredProcedure)
             {
                 catalogName = GetStoredProceduresCatalog(server, database);
             }
@@ -150,9 +153,7 @@ namespace DaJet.Studio
         }
         public bool ScriptFileExists(string catalogName, string scriptName)
         {
-            return FileProvider
-                .GetFileInfo($"{catalogName}/{scriptName}{SCRIPT_FILE_EXTENSION}")
-                .Exists;
+            return FileProvider.GetFileInfo($"{catalogName}/{scriptName}{SCRIPT_FILE_EXTENSION}").Exists;
         }
         public void SaveScriptFile(string catalogName, string scriptName, string sourceCode)
         {
@@ -180,24 +181,24 @@ namespace DaJet.Studio
                 File.Delete(file.PhysicalPath);
             }
         }
-        public string ReadScriptSourceCode(DatabaseServer server, DatabaseInfo database, MetaScriptType scriptType, string scriptName)
+        public string ReadScriptSourceCode(DatabaseServer server, DatabaseInfo database, ScriptType scriptType, string scriptName)
         {
             string sourceCode;
             
             string catalogName;
-            if (scriptType == MetaScriptType.Script)
+            if (scriptType == ScriptType.Script)
             {
                 catalogName = GetScriptsCatalog(server, database);
             }
-            else if (scriptType == MetaScriptType.TableFunction)
+            else if (scriptType == ScriptType.TableFunction)
             {
                 catalogName = GetTableFunctionsCatalog(server, database);
             }
-            else if (scriptType == MetaScriptType.ScalarFunction)
+            else if (scriptType == ScriptType.ScalarFunction)
             {
                 catalogName = GetScalarFunctionsCatalog(server, database);
             }
-            else if (scriptType == MetaScriptType.StoredProcedure)
+            else if (scriptType == ScriptType.StoredProcedure)
             {
                 catalogName = GetStoredProceduresCatalog(server, database);
             }
@@ -207,7 +208,10 @@ namespace DaJet.Studio
             }
 
             IFileInfo file = FileProvider.GetFileInfo($"{catalogName}/{scriptName}{SCRIPT_FILE_EXTENSION}");
-            if (!file.Exists) { throw new FileNotFoundException(scriptName); }
+            if (!file.Exists)
+            {
+                throw new FileNotFoundException(scriptName);
+            }
 
             using (StreamReader reader = new StreamReader(file.PhysicalPath, Encoding.UTF8))
             {
@@ -216,22 +220,22 @@ namespace DaJet.Studio
 
             return sourceCode;
         }
-        public byte[] ReadScriptAsBytes(DatabaseServer server, DatabaseInfo database, MetaScriptType scriptType, string scriptName)
+        public byte[] ReadScriptAsBytes(DatabaseServer server, DatabaseInfo database, ScriptType scriptType, string scriptName)
         {
             string catalogName;
-            if (scriptType == MetaScriptType.Script)
+            if (scriptType == ScriptType.Script)
             {
                 catalogName = GetScriptsCatalog(server, database);
             }
-            else if (scriptType == MetaScriptType.TableFunction)
+            else if (scriptType == ScriptType.TableFunction)
             {
                 catalogName = GetTableFunctionsCatalog(server, database);
             }
-            else if (scriptType == MetaScriptType.ScalarFunction)
+            else if (scriptType == ScriptType.ScalarFunction)
             {
                 catalogName = GetScalarFunctionsCatalog(server, database);
             }
-            else if (scriptType == MetaScriptType.StoredProcedure)
+            else if (scriptType == ScriptType.StoredProcedure)
             {
                 catalogName = GetStoredProceduresCatalog(server, database);
             }
@@ -241,7 +245,10 @@ namespace DaJet.Studio
             }
 
             IFileInfo file = FileProvider.GetFileInfo($"{catalogName}/{scriptName}{SCRIPT_FILE_EXTENSION}");
-            if (!file.Exists) { throw new FileNotFoundException(scriptName); }
+            if (!file.Exists)
+            {
+                throw new FileNotFoundException(scriptName);
+            }
 
             return File.ReadAllBytes(file.PhysicalPath);
         }
@@ -256,18 +263,27 @@ namespace DaJet.Studio
 
             return parentNode.TreeNodes.Where(n => n.NodePayload == scriptEditor).FirstOrDefault();
         }
-        public TreeNodeViewModel GetScriptTreeNodeByName(DatabaseServer server, DatabaseInfo database, MetaScriptType scriptType, string scriptName)
+        public TreeNodeViewModel GetScriptTreeNodeByName(DatabaseServer server, DatabaseInfo database, ScriptType scriptType, string scriptName)
         {
             MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
 
             TreeNodeViewModel serverNode = mainWindow.GetTreeNodeByPayload(mainWindow.MainTreeRegion.TreeNodes, server);
-            if (serverNode == null) { return null; }
+            if (serverNode == null)
+            {
+                return null;
+            }
 
             TreeNodeViewModel databaseNode = mainWindow.GetTreeNodeByPayload(serverNode.TreeNodes, database);
-            if (databaseNode == null) { return null; }
+            if (databaseNode == null)
+            {
+                return null;
+            }
 
             TreeNodeViewModel parentNode = GetParentTreeNode(databaseNode, scriptType);
-            if (parentNode == null) { return null; }
+            if (parentNode == null)
+            {
+                return null;
+            }
 
             return parentNode.TreeNodes.Where(n => n.NodeText == scriptName).FirstOrDefault();
         }
@@ -284,7 +300,7 @@ namespace DaJet.Studio
                 NodeIcon = SCRIPT_ICON,
                 NodeText = ROOT_NODE_NAME,
                 NodeToolTip = "SQL scripts, functions and procedures",
-                NodePayload = null
+                NodePayload = ROOT_NODE_NAME // Аналогично пространствам имён 1С: Справочники, документы и т.д.
             };
             
             CreateScriptsNode(node);
@@ -311,7 +327,8 @@ namespace DaJet.Studio
                 MenuItemPayload = node
             });
             parentNode.TreeNodes.Add(node);
-            CreateScriptNodesFromSettings(node, MetaScriptType.Script);
+
+            CreateScriptNodesFromFileSystem(node, ScriptType.Script);
         }
         private void CreateFunctionsNode(TreeNodeViewModel parentNode)
         {
@@ -324,6 +341,7 @@ namespace DaJet.Studio
                 NodePayload = null
             };
             parentNode.TreeNodes.Add(node);
+
             CreateTableFunctionsNode(node);
             CreateScalarFunctionsNode(node);
         }
@@ -345,7 +363,8 @@ namespace DaJet.Studio
                 MenuItemPayload = node
             });
             parentNode.TreeNodes.Add(node);
-            CreateScriptNodesFromSettings(node, MetaScriptType.TableFunction);
+
+            CreateScriptNodesFromFileSystem(node, ScriptType.TableFunction);
         }
         private void CreateScalarFunctionsNode(TreeNodeViewModel parentNode)
         {
@@ -365,7 +384,8 @@ namespace DaJet.Studio
                 MenuItemPayload = node
             });
             parentNode.TreeNodes.Add(node);
-            CreateScriptNodesFromSettings(node, MetaScriptType.ScalarFunction);
+
+            CreateScriptNodesFromFileSystem(node, ScriptType.ScalarFunction);
         }
         private void CreateStoredProceduresNode(TreeNodeViewModel parentNode)
         {
@@ -385,14 +405,15 @@ namespace DaJet.Studio
                 MenuItemPayload = node
             });
             parentNode.TreeNodes.Add(node);
-            CreateScriptNodesFromSettings(node, MetaScriptType.StoredProcedure);
+
+            CreateScriptNodesFromFileSystem(node, ScriptType.StoredProcedure);
         }
-        private BitmapImage GetScriptNodeIcon(MetaScriptType scriptType)
+        private BitmapImage GetScriptNodeIcon(ScriptType scriptType)
         {
-            if (scriptType == MetaScriptType.Script) { return SCRIPT_ICON; }
-            else if (scriptType == MetaScriptType.TableFunction) { return TABLE_FUNCTION_ICON; }
-            else if (scriptType == MetaScriptType.ScalarFunction) { return SCALAR_FUNCTION_ICON; }
-            else if (scriptType == MetaScriptType.StoredProcedure) { return STORED_PROCEDURE_ICON; }
+            if (scriptType == ScriptType.Script) { return SCRIPT_ICON; }
+            else if (scriptType == ScriptType.TableFunction) { return TABLE_FUNCTION_ICON; }
+            else if (scriptType == ScriptType.ScalarFunction) { return SCALAR_FUNCTION_ICON; }
+            else if (scriptType == ScriptType.StoredProcedure) { return STORED_PROCEDURE_ICON; }
             else { return SCRIPT_ICON; }
         }
         private TreeNodeViewModel CreateScriptTreeNode(TreeNodeViewModel parentNode, ScriptEditorViewModel scriptEditor)
@@ -446,10 +467,12 @@ namespace DaJet.Studio
                 MenuItemCommand = new RelayCommand(DeleteScriptCommand),
                 MenuItemPayload = node
             });
-            if (scriptEditor.ScriptType == MetaScriptType.TableFunction
-                || scriptEditor.ScriptType == MetaScriptType.ScalarFunction
-                || scriptEditor.ScriptType == MetaScriptType.StoredProcedure)
+
+            if (scriptEditor.ScriptType == ScriptType.TableFunction
+                || scriptEditor.ScriptType == ScriptType.ScalarFunction
+                || scriptEditor.ScriptType == ScriptType.StoredProcedure)
             {
+                node.ContextMenuItems.Add(new MenuItemViewModel() { IsSeparator = true });
                 node.ContextMenuItems.Add(new MenuItemViewModel()
                 {
                     MenuItemHeader = "Create script in database",
@@ -460,18 +483,8 @@ namespace DaJet.Studio
                 node.ContextMenuItems.Add(new MenuItemViewModel()
                 {
                     MenuItemHeader = "Delete script in database",
-                    MenuItemIcon = DELETE_SCRIPT_ICON,
+                    MenuItemIcon = DELETE_SCRIPT_FROM_DATABASE_ICON,
                     MenuItemCommand = new RelayCommand(DeleteScriptInDatabaseCommand),
-                    MenuItemPayload = node
-                });
-            }
-            if (scriptEditor.ScriptType == MetaScriptType.Script)
-            {
-                node.ContextMenuItems.Add(new MenuItemViewModel()
-                {
-                    MenuItemHeader = "Deploy script to web server",
-                    MenuItemIcon = UPLOAD_SCRIPT_ICON,
-                    MenuItemCommand = new RelayCommand(DeployScriptToWebServerCommand),
                     MenuItemPayload = node
                 });
             }
@@ -507,7 +520,7 @@ namespace DaJet.Studio
             scriptNode.IsSelected = true;
         }
 
-        private void CreateScriptNodesFromSettings(TreeNodeViewModel rootNode, MetaScriptType scriptType)
+        private void CreateScriptNodesFromFileSystem(TreeNodeViewModel rootNode, ScriptType scriptType)
         {
             DatabaseInfo database = rootNode.GetAncestorPayload<DatabaseInfo>();
             DatabaseServer server = rootNode.GetAncestorPayload<DatabaseServer>();
@@ -529,42 +542,61 @@ namespace DaJet.Studio
             }
         }
 
-        private TreeNodeViewModel GetParentTreeNode(TreeNodeViewModel databaseNode, MetaScriptType scriptType)
+        private TreeNodeViewModel GetParentTreeNode(TreeNodeViewModel databaseNode, ScriptType scriptType)
         {
             TreeNodeViewModel parentNode = databaseNode.TreeNodes.Where(n => n.NodeText == ROOT_NODE_NAME).FirstOrDefault();
             if (parentNode == null) { return null; }
 
-            if (scriptType == MetaScriptType.Script)
+            if (scriptType == ScriptType.Script)
             {
                 return parentNode.TreeNodes.Where(n => n.NodeText == SCRIPTS_NODE_NAME).FirstOrDefault();
             }
-            else if (scriptType == MetaScriptType.TableFunction)
+            else if (scriptType == ScriptType.TableFunction)
             {
                 parentNode = parentNode.TreeNodes.Where(n => n.NodeText == FUNCTIONS_NODE_NAME).FirstOrDefault();
             }
-            else if (scriptType == MetaScriptType.ScalarFunction)
+            else if (scriptType == ScriptType.ScalarFunction)
             {
                 parentNode = parentNode.TreeNodes.Where(n => n.NodeText == FUNCTIONS_NODE_NAME).FirstOrDefault();
             }
-            else if (scriptType == MetaScriptType.StoredProcedure)
+            else if (scriptType == ScriptType.StoredProcedure)
             {
                 return parentNode.TreeNodes.Where(n => n.NodeText == STORED_PROCEDURES_NODE_NAME).FirstOrDefault();
             }
 
             if (parentNode == null) { return null; }
 
-            if (scriptType == MetaScriptType.TableFunction)
+            if (scriptType == ScriptType.TableFunction)
             {
                 parentNode = parentNode.TreeNodes.Where(n => n.NodeText == TABLE_FUNCTION_NODE_NAME).FirstOrDefault();
             }
-            else if (scriptType == MetaScriptType.ScalarFunction)
+            else if (scriptType == ScriptType.ScalarFunction)
             {
                 parentNode = parentNode.TreeNodes.Where(n => n.NodeText == SCALAR_FUNCTION_NODE_NAME).FirstOrDefault();
             }
 
             return parentNode;
         }
-                
+
+        private string GetConnectionString(DatabaseServer server, DatabaseInfo database)
+        {
+            SqlConnectionStringBuilder helper = new SqlConnectionStringBuilder()
+            {
+                DataSource = server.Name,
+                InitialCatalog = database.Name
+            };
+            if (string.IsNullOrEmpty(database.UserName))
+            {
+                helper.IntegratedSecurity = true;
+            }
+            else
+            {
+                helper.UserID = database.UserName;
+                helper.Password = database.Password;
+            }
+            return helper.ToString();
+        }
+
         private void ExecuteScriptCommand(object node)
         {
             if (!(node is TreeNodeViewModel treeNode)) return;
@@ -578,15 +610,15 @@ namespace DaJet.Studio
                 scriptEditor.ScriptCode = ReadScriptSourceCode(server, database, scriptEditor.ScriptType, scriptEditor.Name);
             }
 
-            if (scriptEditor.ScriptType == MetaScriptType.Script)
+            if (scriptEditor.ScriptType == ScriptType.Script)
             {
                 ExecuteScript(server, database, scriptEditor);
             }
-            else if (scriptEditor.ScriptType == MetaScriptType.TableFunction || scriptEditor.ScriptType == MetaScriptType.ScalarFunction)
+            else if (scriptEditor.ScriptType == ScriptType.TableFunction || scriptEditor.ScriptType == ScriptType.ScalarFunction)
             {
                 ExecuteFunction(server, database, scriptEditor.ScriptCode);
             }
-            else if (scriptEditor.ScriptType == MetaScriptType.StoredProcedure)
+            else if (scriptEditor.ScriptType == ScriptType.StoredProcedure)
             {
                 ExecuteStoredProcedure(server, database, scriptEditor.ScriptCode);
             }
@@ -595,11 +627,13 @@ namespace DaJet.Studio
         {
             MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
 
-            IMetadataService metadata = Services.GetService<IMetadataService>();
-            metadata.AttachDatabase(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address, database);
-            metadata.UseCredentials(database.UserName, database.Password);
+            string connectionString = GetConnectionString(server, database);
 
             IScriptingService scripting = Services.GetService<IScriptingService>();
+            scripting.UseConnectionString(connectionString);
+            scripting.MainInfoBase = database.InfoBase;
+            scripting.Databases.Clear();
+
             string sql = scripting.PrepareScript(scriptEditor.ScriptCode, out IList<ParseError> errors);
             string errorMessage = string.Empty;
             foreach (ParseError error in errors)
@@ -647,11 +681,13 @@ namespace DaJet.Studio
         }
         private void ExecuteFunction(DatabaseServer server, DatabaseInfo database, string sourceCode)
         {
-            IMetadataService metadata = Services.GetService<IMetadataService>();
-            metadata.AttachDatabase(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address, database);
-            metadata.UseCredentials(database.UserName, database.Password);
+            string connectionString = GetConnectionString(server, database);
 
             IScriptingService scripting = Services.GetService<IScriptingService>();
+            scripting.UseConnectionString(connectionString);
+            scripting.MainInfoBase = database.InfoBase;
+            scripting.Databases.Clear();
+
             TSqlFragment syntaxTree = scripting.ParseScript(sourceCode, out IList<ParseError> errors);
             if (errors.Count > 0) { ShowParseErrors(errors); return; }
 
@@ -666,7 +702,7 @@ namespace DaJet.Studio
             viewModel.Name = visitor.FunctionName;
             viewModel.MyServer = server;
             viewModel.MyDatabase = database;
-            viewModel.ScriptType = MetaScriptType.Script;
+            viewModel.ScriptType = ScriptType.Script;
             viewModel.ScriptCode = scriptCode;
             viewModel.IsScriptChanged = true;
             ScriptEditorView view = new ScriptEditorView() { DataContext = viewModel };
@@ -674,11 +710,13 @@ namespace DaJet.Studio
         }
         private void ExecuteStoredProcedure(DatabaseServer server, DatabaseInfo database, string sourceCode)
         {
-            IMetadataService metadata = Services.GetService<IMetadataService>();
-            metadata.AttachDatabase(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address, database);
-            metadata.UseCredentials(database.UserName, database.Password);
+            string connectionString = GetConnectionString(server, database);
 
             IScriptingService scripting = Services.GetService<IScriptingService>();
+            scripting.UseConnectionString(connectionString);
+            scripting.MainInfoBase = database.InfoBase;
+            scripting.Databases.Clear();
+
             TSqlFragment syntaxTree = scripting.ParseScript(sourceCode, out IList<ParseError> errors);
             if (errors.Count > 0) { ShowParseErrors(errors); return; }
 
@@ -693,12 +731,13 @@ namespace DaJet.Studio
             viewModel.Name = visitor.ProcedureName;
             viewModel.MyServer = server;
             viewModel.MyDatabase = database;
-            viewModel.ScriptType = MetaScriptType.Script;
+            viewModel.ScriptType = ScriptType.Script;
             viewModel.ScriptCode = scriptCode;
             viewModel.IsScriptChanged = true;
             ScriptEditorView view = new ScriptEditorView() { DataContext = viewModel };
             mainWindow.AddNewTab(viewModel.Name, view);
         }
+
         private void ShowSqlCodeCommand(object node)
         {
             if (!(node is TreeNodeViewModel treeNode)) return;
@@ -712,11 +751,13 @@ namespace DaJet.Studio
                 scriptEditor.ScriptCode = ReadScriptSourceCode(server, database, scriptEditor.ScriptType, scriptEditor.Name);
             }
 
-            IMetadataService metadata = Services.GetService<IMetadataService>();
-            metadata.AttachDatabase(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address, database);
-            metadata.UseCredentials(database.UserName, database.Password);
+            string connectionString = GetConnectionString(server, database);
 
             IScriptingService scripting = Services.GetService<IScriptingService>();
+            scripting.UseConnectionString(connectionString);
+            scripting.MainInfoBase = database.InfoBase;
+            scripting.Databases.Clear();
+
             string sql = scripting.PrepareScript(scriptEditor.ScriptCode, out IList<ParseError> errors);
             string errorMessage = string.Empty;
             foreach (ParseError error in errors)
@@ -848,6 +889,7 @@ namespace DaJet.Studio
                 _ = MessageBox.Show(ex.Message, "DaJet", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+        
         private void ShowSyntaxTreeCommand(object node)
         {
             if (!(node is TreeNodeViewModel treeNode)) return;
@@ -902,7 +944,7 @@ namespace DaJet.Studio
             scriptEditor.Name = SCRIPT_DEFAULT_NAME;
             scriptEditor.MyServer = server;
             scriptEditor.MyDatabase = database;
-            scriptEditor.ScriptType = MetaScriptType.Script;
+            scriptEditor.ScriptType = ScriptType.Script;
             scriptEditor.ScriptCode = string.Empty;
             scriptEditor.IsScriptChanged = true;
 
@@ -922,7 +964,7 @@ namespace DaJet.Studio
             scriptEditor.Name = TABLE_FUNCTION_DEFAULT_NAME;
             scriptEditor.MyServer = server;
             scriptEditor.MyDatabase = database;
-            scriptEditor.ScriptType = MetaScriptType.TableFunction;
+            scriptEditor.ScriptType = ScriptType.TableFunction;
             scriptEditor.ScriptCode = "CREATE OR ALTER FUNCTION [fn_NewFunction]\n(\n\t@param nvarchar(36)\n)\nRETURNS TABLE\nAS\nRETURN\n\tSELECT * FROM [table];";
             scriptEditor.IsScriptChanged = true;
 
@@ -942,7 +984,7 @@ namespace DaJet.Studio
             scriptEditor.Name = SCALAR_FUNCTION_DEFAULT_NAME;
             scriptEditor.MyServer = server;
             scriptEditor.MyDatabase = database;
-            scriptEditor.ScriptType = MetaScriptType.ScalarFunction;
+            scriptEditor.ScriptType = ScriptType.ScalarFunction;
             scriptEditor.ScriptCode = "CREATE OR ALTER FUNCTION [fn_NewFunction]\n(\n\t@param nvarchar(36)\n)\nRETURNS int\nAS\nBEGIN\n\n\tRETURN 1;\n\nEND;";
             scriptEditor.IsScriptChanged = true;
 
@@ -962,7 +1004,7 @@ namespace DaJet.Studio
             scriptEditor.Name = STORED_PROCEDURE_DEFAULT_NAME;
             scriptEditor.MyServer = server;
             scriptEditor.MyDatabase = database;
-            scriptEditor.ScriptType = MetaScriptType.StoredProcedure;
+            scriptEditor.ScriptType = ScriptType.StoredProcedure;
             scriptEditor.ScriptCode = "CREATE OR ALTER PROCEDURE [sp_NewProcedure]\n\t@param nvarchar(36)\nAS\nBEGIN\n\nEND;";
             scriptEditor.IsScriptChanged = true;
 
@@ -970,8 +1012,6 @@ namespace DaJet.Studio
             ScriptEditorView editorView = new ScriptEditorView() { DataContext = scriptEditor };
             mainWindow.AddNewTab(scriptEditor.Name, editorView);
         }
-
-
 
         private void DeployScriptToDatabaseCommand(object node)
         {
@@ -994,12 +1034,15 @@ namespace DaJet.Studio
                 return;
             }
 
-            IMetadataService metadata = Services.GetService<IMetadataService>();
-            metadata.AttachDatabase(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address, database);
-
             string sourceCode = ReadScriptSourceCode(server, database, scriptEditor.ScriptType, scriptEditor.Name);
-            
+
+            string connectionString = GetConnectionString(server, database);
+
             IScriptingService scripting = Services.GetService<IScriptingService>();
+            scripting.UseConnectionString(connectionString);
+            scripting.MainInfoBase = database.InfoBase;
+            scripting.Databases.Clear();
+
             string sql = scripting.PrepareScript(sourceCode, out IList<ParseError> errors);
             if (errors.Count > 0) { ShowParseErrors(errors); return; }
 
@@ -1035,12 +1078,15 @@ namespace DaJet.Studio
                 return;
             }
 
-            IMetadataService metadata = Services.GetService<IMetadataService>();
-            metadata.AttachDatabase(string.IsNullOrWhiteSpace(server.Address) ? server.Name : server.Address, database);
-
             string sourceCode = ReadScriptSourceCode(server, database, scriptEditor.ScriptType, scriptEditor.Name);
 
+            string connectionString = GetConnectionString(server, database);
+
             IScriptingService scripting = Services.GetService<IScriptingService>();
+            scripting.UseConnectionString(connectionString);
+            scripting.MainInfoBase = database.InfoBase;
+            scripting.Databases.Clear();
+
             TSqlFragment syntaxTree = scripting.ParseScript(sourceCode, out IList<ParseError> errors);
             if (errors.Count > 0) { ShowParseErrors(errors); return; }
 
@@ -1056,14 +1102,14 @@ namespace DaJet.Studio
 
             string sql = string.Empty;
             string scriptName = scriptEditor.Name;
-            if (scriptEditor.ScriptType == MetaScriptType.TableFunction || scriptEditor.ScriptType == MetaScriptType.ScalarFunction)
+            if (scriptEditor.ScriptType == ScriptType.TableFunction || scriptEditor.ScriptType == ScriptType.ScalarFunction)
             {
                 CreateFunctionStatementVisitor visitor = new CreateFunctionStatementVisitor();
                 syntaxTree.Accept(visitor);
                 scriptName = visitor.FunctionName;
                 sql = $"DROP FUNCTION [{scriptName}];";
             }
-            else if (scriptEditor.ScriptType == MetaScriptType.StoredProcedure)
+            else if (scriptEditor.ScriptType == ScriptType.StoredProcedure)
             {
                 CreateProcedureStatementVisitor visitor = new CreateProcedureStatementVisitor();
                 syntaxTree.Accept(visitor);
@@ -1082,99 +1128,7 @@ namespace DaJet.Studio
             MessageBox.Show($"Script \"{scriptEditor.Name}\" has been deleted successfully.",
                 "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Information);
         }
-        private void DeployScriptToWebServerCommand(object node)
-        {
-            if (!(node is TreeNodeViewModel treeNode)) return;
-            if (!(treeNode.NodePayload is ScriptEditorViewModel scriptEditor)) return;
-
-            MessageBoxResult result = MessageBox.Show("Deploy script \"" + scriptEditor.Name + "\" ?",
-                "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
-            if (result != MessageBoxResult.OK) { return; }
-
-            if (scriptEditor.IsScriptChanged)
-            {
-                MessageBox.Show("The script has unsaved changes. Save them first.",
-                    "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Information);
-                return;
-            }
-
-            HttpServicesController HttpServices = Services.GetService<HttpServicesController>();
-            WebServer webServer = HttpServices.SelectWebServer();
-            if (webServer == null) return;
-
-            DatabaseInfo database = treeNode.GetAncestorPayload<DatabaseInfo>();
-            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
-
-            MetaScript script = new MetaScript() { Name = scriptEditor.Name };
-
-            byte[] bytes = ReadScriptAsBytes(server, database, scriptEditor.ScriptType, scriptEditor.Name);
-            script.SourceCode = Convert.ToBase64String(bytes);
-            
-            JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
-            string requestJson = JsonSerializer.Serialize(script, options);
-            StringContent body = new StringContent(requestJson, Encoding.UTF8, "application/json");
-
-            IHttpClientFactory http = Services.GetService<IHttpClientFactory>();
-            HttpClient client = http.CreateClient(webServer.Name);
-            if (client.BaseAddress == null) { client.BaseAddress = new Uri(webServer.Address); }
-            string url = GetScriptUrl(client, server, database, script);
-
-            try
-            {
-                var response = client.PostAsync(url, body).Result;
-
-                if (response.StatusCode == HttpStatusCode.Created)
-                {
-                    HttpServicesController controller = Services.GetService<HttpServicesController>();
-                    script.SourceCode = string.Empty; // we do not need it any more in the web-settings.json file
-                    controller.CreateScriptNode(webServer, server, database, script);
-                    _ = MessageBox.Show("Script has been deployed successfully.", script.Name, MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-                else
-                {
-                    _ = MessageBox.Show(((int)response.StatusCode).ToString() + " (" + response.StatusCode.ToString() + "): " + response.ReasonPhrase, script.Name);
-                }
-            }
-            catch (Exception ex)
-            {
-                _ = MessageBox.Show(ex.Message, script.Name);
-            }
-        }
-        private string GetScriptUrl(HttpClient client, DatabaseServer server, DatabaseInfo database, MetaScript script)
-        {
-            string url = $"server/{server.Identity.ToString().ToLower()}";
-            var response = client.GetAsync(url).Result;
-            if (response.StatusCode == HttpStatusCode.NotFound)
-            {
-                string json = JsonSerializer.Serialize(server.Copy());
-                StringContent body = new StringContent(json, Encoding.UTF8, "application/json");
-                response = client.PostAsync(url, body).Result;
-                if (response.StatusCode != HttpStatusCode.Created)
-                {
-                    string errorMessage = ((int)response.StatusCode).ToString() + " (" + response.StatusCode.ToString() + "): " + response.ReasonPhrase;
-                    throw new Exception(errorMessage);
-                }
-            }
-
-            url = $"{server.Identity.ToString().ToLower()}/database/{database.Identity.ToString().ToLower()}";
-            response = client.GetAsync(url).Result;
-            if (response.StatusCode == HttpStatusCode.NotFound)
-            {
-                string json = JsonSerializer.Serialize(database.Copy());
-                StringContent body = new StringContent(json, Encoding.UTF8, "application/json");
-                response = client.PostAsync(url, body).Result;
-                if (response.StatusCode != HttpStatusCode.Created)
-                {
-                    string errorMessage = ((int)response.StatusCode).ToString() + " (" + response.StatusCode.ToString() + "): " + response.ReasonPhrase;
-                    throw new Exception(errorMessage);
-                }
-            }
-
-            return $"{server.Identity.ToString().ToLower()}/{database.Identity.ToString().ToLower()}/script/{script.Identity.ToString().ToLower()}";
-        }
-        
-
-        
+                
         private void ShowException(string errorMessage)
         {
             MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
@@ -1202,6 +1156,15 @@ namespace DaJet.Studio
             errorsViewModel.ScriptCode = errorMessage;
             ScriptEditorView errorsView = new ScriptEditorView() { DataContext = errorsViewModel };
             mainWindow.AddNewTab(errorsViewModel.Name, errorsView);
+        }
+
+        public void Search(string text)
+        {
+            throw new NotImplementedException();
+        }
+        public TreeNodeViewModel CreateTreeNode(MainWindowViewModel parent)
+        {
+            throw new NotImplementedException();
         }
     }
 }
