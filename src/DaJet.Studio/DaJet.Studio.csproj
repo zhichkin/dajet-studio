@@ -13,12 +13,11 @@
 - metadata explorer;
 - query language extension;
 - export data to RabbitMQ;
-- export user data to JSON file.</Description>
+- export data to JSON file.</Description>
     <RepositoryUrl>https://github.com/zhichkin/DaJet</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>1.5.0</Version>
-    <PackageReleaseNotes>1. Добавлена возможность выгружать данные в файл на диске в формате 1С JSON.
-2. Добавлен экспериментальный модуль скриптинга - расширение языка запросов 1С:Предприятие 8.</PackageReleaseNotes>
+    <Version>1.7.1</Version>
+    <PackageReleaseNotes>Добавлен журнал выгрузки данных с возможностью повторения выгрузки по запомненным параметрам: ключ маршрутизации, размер страницы, номера страниц.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -81,6 +80,7 @@
     <None Remove="images\nested-table.png" />
     <None Remove="images\new-script.png" />
     <None Remove="images\rabbitmq.png" />
+    <None Remove="images\refresh.png" />
     <None Remove="images\route-service-error.png" />
     <None Remove="images\route-service-warning.png" />
     <None Remove="images\route-service.png" />
@@ -120,7 +120,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="DaJet.Data.Mapping" Version="3.0.0" />
+    <PackageReference Include="DaJet.Data.Mapping" Version="3.2.0" />
     <PackageReference Include="DaJet.Data.Scripting" Version="1.0.0" />
     <PackageReference Include="DaJet.Metadata" Version="3.1.7" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
@@ -177,6 +177,7 @@
     <Resource Include="images\nested-table.png" />
     <Resource Include="images\new-script.png" />
     <Resource Include="images\rabbitmq.png" />
+    <Resource Include="images\refresh.png" />
     <Resource Include="images\route-service-error.png" />
     <Resource Include="images\route-service-warning.png" />
     <Resource Include="images\route-service.png" />

@@ -774,40 +774,47 @@ namespace DaJet.Studio
             {
                 // do nothing - will be configured by view model itself
             }
-            else if (metaObject is InformationRegister register)
+            else if (metaObject is InformationRegister || metaObject is AccumulationRegister)
             {
-                if (register.UseRecorder || register.Periodicity == RegisterPeriodicity.None)
-                {
-                    _ = MessageBox.Show($"Support of metadata type \"{metaObject.Name}\" is under development.",
-                        "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
-                    return;
-                }
-                ConfigureExportToPeriodicRegister(viewModel);
-            }
-            else if (metaObject is AccumulationRegister)
-            {
-                _ = MessageBox.Show($"Support of metadata type \"{metaObject.Name}\" is under development.",
-                    "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
+                ConfigureExportOfRegister(viewModel);
             }
 
             ExportDataRabbitMQView view = new ExportDataRabbitMQView() { DataContext = viewModel };
             mainWindow.AddNewTab($"Export data to RabbitMQ", view);
         }
-        private void ConfigureExportToPeriodicRegister(ExportDataRabbitMQViewModel viewModel)
+        private void ConfigureExportOfRegister(ExportDataRabbitMQViewModel viewModel)
         {
-            RegisterDataMapper mapper = new RegisterDataMapper();
+            bool is_recorder_register =
+                viewModel.MetaObject is AccumulationRegister ||
+                (viewModel.MetaObject is InformationRegister register && register.UseRecorder);
 
-            viewModel.DataMapper = mapper;
+            if (is_recorder_register)
+            {
+                viewModel.DataMapper = new RecorderDataMapper();
+            }
+            else
+            {
+                viewModel.DataMapper = new RegisterDataMapper();
+            }
+            
             viewModel.DataMapper.Configure(new DataMapperOptions()
             {
                 InfoBase = viewModel.InfoBase,
                 MetaObject = viewModel.MetaObject,
                 ConnectionString = viewModel.SourceConnectionString
             });
-            viewModel.JsonSerializer = new RegisterJsonSerializer((RegisterDataMapper)viewModel.DataMapper);
 
-            viewModel.TableIndex = mapper.GetPagingIndex();
+            if (is_recorder_register)
+            {
+                viewModel.JsonSerializer = new RecorderJsonSerializer((RecorderDataMapper)viewModel.DataMapper);
+                viewModel.TableIndex = ((RecorderDataMapper)viewModel.DataMapper).GetPagingIndex();
+            }
+            else
+            {
+                viewModel.JsonSerializer = new RegisterJsonSerializer((RegisterDataMapper)viewModel.DataMapper);
+                viewModel.TableIndex = ((RegisterDataMapper)viewModel.DataMapper).GetPagingIndex();
+            }
+
             viewModel.TableIndexName = viewModel.TableIndex.Name;
             viewModel.ConfigureFilterTable();
         }

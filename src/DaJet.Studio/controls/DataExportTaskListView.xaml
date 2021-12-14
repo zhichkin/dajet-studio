@@ -1,0 +1,64 @@
+﻿<ListView x:Class="DaJet.Studio.UI.DataExportTaskListView"
+          xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+          xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+          xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+          xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+          xmlns:ui="clr-namespace:DaJet.Studio.UI"
+          mc:Ignorable="d" d:DesignHeight="200" d:DesignWidth="600"
+          d:DataContext="{d:DesignInstance ui:DataExportTaskListViewModel}"
+          ItemsSource="{Binding TaskLog}">
+
+    <ListView.Resources>
+
+        <BitmapImage x:Key="Icon_RepeatTask" UriSource="pack://application:,,,/DaJet.Studio;component/images/refresh.png"/>
+        <BitmapImage x:Key="Icon_RemoveTask" UriSource="pack://application:,,,/DaJet.Studio;component/images/close.png"/>
+        
+    </ListView.Resources>
+
+    <ListView.View>
+        <GridView>
+            
+            <GridViewColumn Header="">
+                <GridViewColumn.CellTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            
+                            <Button Command="{Binding RepeatTaskCommand}" CommandParameter="{Binding}"
+                                    ToolTip="Повторить выгрузку" HorizontalAlignment="Left" Cursor="Hand">
+                                <Image Source="{StaticResource Icon_RepeatTask}" Height="16" Width="16" VerticalAlignment="Center"/>
+                            </Button>
+                            
+                            <Button Command="{Binding RemoveTaskCommand}" CommandParameter="{Binding}" Margin="1,0,0,0"
+                                    ToolTip="Удалить запись из журнала" HorizontalAlignment="Left" Cursor="Hand">
+                                <Image Source="{StaticResource Icon_RemoveTask}" Height="16" Width="16" VerticalAlignment="Center"/>
+                            </Button>
+                        
+                        </StackPanel>
+                    </DataTemplate>
+                </GridViewColumn.CellTemplate>
+            </GridViewColumn>
+            
+            <GridViewColumn Header="Получатель" DisplayMemberBinding="{Binding Path=RoutingKey}"/>
+            <GridViewColumn Header="Выгружено" DisplayMemberBinding="{Binding Path=ExportResult}"/>
+            <GridViewColumn Header="Описание" DisplayMemberBinding="{Binding Path=Description}"/>
+
+            <GridViewColumn DisplayMemberBinding="{Binding Path=PageNumber}">
+                <GridViewColumn.HeaderTemplate>
+                    <DataTemplate>
+                        <TextBlock>Номера<LineBreak/>страниц</TextBlock>
+                    </DataTemplate>
+                </GridViewColumn.HeaderTemplate>
+            </GridViewColumn>
+
+            <GridViewColumn DisplayMemberBinding="{Binding Path=PageSize}">
+                <GridViewColumn.HeaderTemplate>
+                    <DataTemplate>
+                        <TextBlock>Размер<LineBreak/>страницы</TextBlock>
+                    </DataTemplate>
+                </GridViewColumn.HeaderTemplate>
+            </GridViewColumn>
+        
+        </GridView>
+    </ListView.View>
+
+</ListView>

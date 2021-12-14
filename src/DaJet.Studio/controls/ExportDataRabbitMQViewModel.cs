@@ -23,7 +23,7 @@ namespace DaJet.Studio.UI
 {
     public sealed class ExportDataRabbitMQViewModel : ViewModelBase, IErrorHandler, IListViewModelController
     {
-        private IServiceProvider Services { get; }
+        #region "PRIVATE FIELDS"
 
         private InfoBase _InfoBase;
         private ApplicationObject _MetaObject;
@@ -40,25 +40,30 @@ namespace DaJet.Studio.UI
         private bool _CanExecuteExportCommand = true;
         private string _exportJsonFilePath = string.Empty;
 
+        #endregion
+
+        private IServiceProvider Services { get; }
+
         public IDaJetDataMapper DataMapper { get; set; }
         public IDaJetJsonSerializer JsonSerializer { get; set; }
-
         public ExportDataRabbitMQViewModel(IServiceProvider serviceProvider)
         {
             Services = serviceProvider;
+
+            DataExportTaskLog = new DataExportTaskListViewModel(this);
+
             SelectIndexCommand = new RelayCommand(SelectIndexCommandHandler);
             ClearIndexCommand = new RelayCommand(ClearIndexCommandHandler);
-            ExportDataDelegate = new Action(ExportData);
+            ExportDataDelegate = new Func<int>(ExportData);
             ExportDataCommand = new AsyncRelayCommand(ExportDataCommandHandler, this);
             ExportDataToFileDelegate = new Action(ExportDataToFile);
             ExportDataToFileCommand = new AsyncRelayCommand(ExportDataToFileCommandHandler, this);
             CancelExportDataCommand = new RelayCommand(CancelExportDataCommandHandler);
             ShowTotalRowCountCommand = new RelayCommand(ShowTotalRowCountCommandHandler);
         }
-        public void HandleError(Exception error)
-        {
-            ResultText = ExceptionHelper.GetErrorText(error);
-        }
+        
+        #region "PROPERTIES AND COMMANDS"
+
         public InfoBase InfoBase
         {
             get { return _InfoBase; }
@@ -80,7 +85,7 @@ namespace DaJet.Studio.UI
             }
         }
         public string SourceConnectionString { get; set; }
-        private Action ExportDataDelegate { get; set; }
+        private Func<int> ExportDataDelegate { get; set; }
         public ICommand ExportDataCommand { get; private set; }
         private Action ExportDataToFileDelegate { get; set; }
         public ICommand ExportDataToFileCommand { get; private set; }
@@ -161,6 +166,10 @@ namespace DaJet.Studio.UI
             }
         }
 
+        #endregion
+
+        #region "TABLE INDEX"
+
         public IndexInfo TableIndex { get; set; }
         public string TableIndexName { get; set; }
         public ICommand SelectIndexCommand { get; private set; }
@@ -198,6 +207,8 @@ namespace DaJet.Studio.UI
         {
             get { return !string.IsNullOrEmpty(TableIndexName); }
         }
+
+        #endregion
 
         private void InitializeServices()
         {
@@ -339,6 +350,8 @@ namespace DaJet.Studio.UI
             }
         }
 
+        #region "EXPORT DATA TO RabbitMQ"
+
         private CancellationTokenSource ExportDataCancellation;
         private async Task ExportDataCommandHandler()
         {
@@ -348,13 +361,24 @@ namespace DaJet.Studio.UI
 
             try
             {
+                int messagesSent = 0;
+                bool exportCanceled = false;
                 CanExecuteExportCommand = false;
+
+                Stopwatch stopwatch = new Stopwatch();
+                stopwatch.Start();
+
                 InitializeServices();
                 ConfigureDataMapper();
                 using (ExportDataCancellation = new CancellationTokenSource())
                 {
-                    await Task.Run(ExportDataDelegate, ExportDataCancellation.Token);
+                    messagesSent = await Task.Run(ExportDataDelegate, ExportDataCancellation.Token);
+                    exportCanceled = ExportDataCancellation.IsCancellationRequested;
                 }
+
+                stopwatch.Stop();
+
+                LogDataExportResult(messagesSent, stopwatch.ElapsedMilliseconds, exportCanceled);
             }
             finally
             {
@@ -415,13 +439,14 @@ namespace DaJet.Studio.UI
                 "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
             if (result != MessageBoxResult.OK) return;
 
-            ExportDataCancellation?.Cancel();
+            try
+            {
+                ExportDataCancellation?.Cancel();
+            }
+            catch { /* The CancellationTokenSource has been disposed */ }
         }
-        private void ExportData()
+        private int ExportData()
         {
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
-
             int pageSize = PageSize;
 
             ParsePageNumber(PageNumber, out int firstPage, out int lastPage);
@@ -455,22 +480,7 @@ namespace DaJet.Studio.UI
                 }
             }
 
-            stopwatch.Stop();
-
-            NumberFormatInfo format = new NumberFormatInfo();
-            format.NumberDecimalDigits = 0;
-            format.NumberGroupSeparator = " ";
-
-            if (ExportDataCancellation.IsCancellationRequested)
-            {
-                ResultText = $"Operation canceled: totally {totalCount} messages sent";
-            }
-            else
-            {
-                ResultText = $"Operation completed: totally {totalCount} messages sent";
-            }
-
-            ResultText += Environment.NewLine + $"Time elapsed: {stopwatch.ElapsedMilliseconds.ToString("N", format)} ms";
+            return totalCount;
         }
         private void ExportDataToFile()
         {
@@ -538,6 +548,15 @@ namespace DaJet.Studio.UI
             ResultText += Environment.NewLine + $"Time elapsed: {stopwatch.ElapsedMilliseconds.ToString("N", format)} ms";
         }
 
+        #endregion
+
+        public void HandleError(Exception error)
+        {
+            ResultText = ExceptionHelper.GetErrorText(error);
+        }
+
+        #region "FILTER PARAMETERS TABLE"
+
         public ObservableCollection<FilterParameterViewModel> FilterParameters { get; set; } = new ObservableCollection<FilterParameterViewModel>();
         public void ConfigureFilterTable()
         {
@@ -584,9 +603,52 @@ namespace DaJet.Studio.UI
             else if (property.PropertyType.CanBeDateTime) return new DateTime(DateTime.Now.Year, 1, 1);
             return null;
         }
-        
+
+        #endregion
+
+        #region "DATA EXPORT TASK LIST"
+
+        public DataExportTaskListViewModel DataExportTaskLog { get; private set; }
+        private void LogDataExportResult(int messagesSent, long timeElapsed, bool exportCanceled)
+        {
+            NumberFormatInfo format = new NumberFormatInfo();
+            format.NumberDecimalDigits = 0;
+            format.NumberGroupSeparator = " ";
+
+            if (exportCanceled)
+            {
+                ResultText = $"Operation canceled: totally {messagesSent} messages sent";
+            }
+            else
+            {
+                ResultText = $"Operation completed: totally {messagesSent} messages sent";
+            }
+            ResultText += Environment.NewLine + $"Time elapsed: {timeElapsed.ToString("N", format)} ms";
+
+            DataExportTaskViewModel entry = DataExportTaskLog.CreateNewEntry();
+            entry.PageSize = PageSize;
+            entry.PageNumber = PageNumber;
+            entry.RoutingKey = RoutingKey;
+            entry.Description = ResultText;
+            entry.ExportResult = messagesSent;
+            DataExportTaskLog.TaskLog.Add(entry);
+        }
+
+        #endregion
+
+        #region "Interface IListViewModelController implementation"
+
         public void AddNewItem() { throw new NotImplementedException(); }
-        public void EditItem(object item) { throw new NotImplementedException(); }
+        public void EditItem(object item)
+        {
+            if (item is DataExportTaskViewModel task)
+            {
+                PageSize = task.PageSize;
+                PageNumber = task.PageNumber;
+                RoutingKey = task.RoutingKey;
+                ResultText = string.Empty;
+            }
+        }
         public void CopyItem(object item)
         {
             if (!(item is FilterParameterViewModel model)) return;
@@ -610,5 +672,7 @@ namespace DaJet.Studio.UI
 
             FilterParameters.Remove(model);
         }
+
+        #endregion
     }
 }

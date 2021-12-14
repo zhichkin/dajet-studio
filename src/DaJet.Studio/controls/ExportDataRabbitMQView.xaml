@@ -143,11 +143,27 @@
                     Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
         </StackPanel>
 
-        <TextBox Grid.Column="0" Grid.Row="14" Grid.ColumnSpan="2" Text="{Binding ResultText}"
-                 Margin="0,10,0,0" FontFamily="Courier New" FontSize="14"
-                 Width="600" Height="100" HorizontalAlignment="Left"
-                 TextWrapping="Wrap" AcceptsTab="True" AcceptsReturn="True"/>
+        <TabControl Grid.Column="0" Grid.Row="14" Grid.ColumnSpan="2"
+                    Margin="0,10,0,0" FontFamily="Courier New" FontSize="14">
 
+            <TabItem Header="Результат">
+                <TabItem.Content>
+                    <TextBox Text="{Binding ResultText}"
+                             Margin="5" FontFamily="Courier New" FontSize="14"
+                             Width="600" Height="150" HorizontalAlignment="Left"
+                             TextWrapping="Wrap" AcceptsTab="True" AcceptsReturn="True"/>
+                </TabItem.Content>
+            </TabItem>
+
+            <TabItem Header="Журнал">
+                <TabItem.Content>
+                    <ui:DataExportTaskListView DataContext="{Binding DataExportTaskLog}"
+                                               Margin="5" MinWidth="600" MaxWidth="800" Height="250" HorizontalAlignment="Left"/>
+                </TabItem.Content>
+            </TabItem>
+
+        </TabControl>
+        
     </Grid>
 
 </UserControl>
