@@ -11,13 +11,14 @@
     <PackageProjectUrl>https://zhichkin.github.com</PackageProjectUrl>
     <Description>DaJet Studio - 1C:Enterprise 8 integration tools:
 - metadata explorer;
+- RabbitMQ server management;
 - query language extension;
 - export data to RabbitMQ;
 - export data to JSON file.</Description>
     <RepositoryUrl>https://github.com/zhichkin/DaJet</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>1.7.1</Version>
-    <PackageReleaseNotes>Добавлен журнал выгрузки данных с возможностью повторения выгрузки по запомненным параметрам: ключ маршрутизации, размер страницы, номера страниц.</PackageReleaseNotes>
+    <Version>2.0.0</Version>
+    <PackageReleaseNotes>Добавлена возможность управлять серверами RabbitMQ</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -56,6 +57,7 @@
     <None Remove="images\connection-offline.png" />
     <None Remove="images\connection-warning.png" />
     <None Remove="images\copy.png" />
+    <None Remove="images\create-virtual-host.png" />
     <None Remove="images\data-server.png" />
     <None Remove="images\database-script.png" />
     <None Remove="images\database-settings.png" />
@@ -79,8 +81,11 @@
     <None Remove="images\metadata.png" />
     <None Remove="images\nested-table.png" />
     <None Remove="images\new-script.png" />
+    <None Remove="images\open-catalog.png" />
     <None Remove="images\rabbitmq.png" />
     <None Remove="images\refresh.png" />
+    <None Remove="images\remove.png" />
+    <None Remove="images\rmq-exchange.png" />
     <None Remove="images\route-service-error.png" />
     <None Remove="images\route-service-warning.png" />
     <None Remove="images\route-service.png" />
@@ -101,6 +106,7 @@
     <None Remove="images\tree.png" />
     <None Remove="images\update-script.png" />
     <None Remove="images\upload-script.png" />
+    <None Remove="images\virtual-host.png" />
     <None Remove="images\web-server.png" />
     <None Remove="images\ВложеннаяТаблица.png" />
     <None Remove="images\Документ.png" />
@@ -117,12 +123,14 @@
     <None Remove="images\Ресурс.png" />
     <None Remove="images\Справочник.png" />
     <None Remove="images\УстановитьИнтервал.png" />
+    <None Remove="RabbitMQ.ico" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="DaJet.Data.Mapping" Version="3.2.0" />
     <PackageReference Include="DaJet.Data.Scripting" Version="1.0.0" />
     <PackageReference Include="DaJet.Metadata" Version="3.1.7" />
+    <PackageReference Include="DaJet.RabbitMQ.HttpApi" Version="1.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="6.0.0" />
@@ -154,6 +162,7 @@
     <Resource Include="images\connection-offline.png" />
     <Resource Include="images\connection-warning.png" />
     <Resource Include="images\copy.png" />
+    <Resource Include="images\create-virtual-host.png" />
     <Resource Include="images\data-server.png" />
     <Resource Include="images\database-script.png" />
     <Resource Include="images\database-settings.png" />
@@ -176,8 +185,11 @@
     <Resource Include="images\metadata.png" />
     <Resource Include="images\nested-table.png" />
     <Resource Include="images\new-script.png" />
+    <Resource Include="images\open-catalog.png" />
     <Resource Include="images\rabbitmq.png" />
     <Resource Include="images\refresh.png" />
+    <Resource Include="images\remove.png" />
+    <Resource Include="images\rmq-exchange.png" />
     <Resource Include="images\route-service-error.png" />
     <Resource Include="images\route-service-warning.png" />
     <Resource Include="images\route-service.png" />
@@ -198,6 +210,7 @@
     <Resource Include="images\tree.png" />
     <Resource Include="images\update-script.png" />
     <Resource Include="images\upload-script.png" />
+    <Resource Include="images\virtual-host.png" />
     <Resource Include="images\web-server.png" />
     <Resource Include="images\ВложеннаяТаблица.png" />
     <Resource Include="images\Документ.png" />
@@ -214,6 +227,7 @@
     <Resource Include="images\Ресурс.png" />
     <Resource Include="images\Справочник.png" />
     <Resource Include="images\УстановитьИнтервал.png" />
+    <Resource Include="forms\RabbitMQServerDialog\RabbitMQ.ico" />
   </ItemGroup>
 
   <ItemGroup>

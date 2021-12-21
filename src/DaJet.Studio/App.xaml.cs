@@ -1,5 +1,6 @@
 ﻿using DaJet.Data.Scripting;
 using DaJet.Metadata;
+using DaJet.RabbitMQ.HttpApi;
 using DaJet.Studio.MVVM;
 using DaJet.Studio.UI;
 using Microsoft.Extensions.Configuration;
@@ -46,6 +47,7 @@ namespace DaJet.Studio
             services.AddTransient<TextTabViewModel>();
             services.AddSingleton<MainWindowViewModel>();
             services.AddSingleton<MetadataController>();
+            services.AddSingleton<RabbitMQController>();
 
             services.AddTransient<ExportDataRabbitMQViewModel>();
 
@@ -54,6 +56,7 @@ namespace DaJet.Studio
 
             services.AddSingleton<IMetadataService, MetadataService>();
             services.AddSingleton<IScriptingService, ScriptingService>();
+            services.AddTransient<IRabbitMQHttpManager, RabbitMQHttpManager>();
 
             //services.AddHttpClient();
             //foreach (WebServer server in settings.WebServers)

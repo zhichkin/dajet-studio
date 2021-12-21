@@ -25,7 +25,21 @@ namespace DaJet.Studio
             ClearSearchCommand = new RelayCommand(ClearSearchCommandHandler);
             SearchBoxKeyDownCommand = new RelayCommand(SearchBoxKeyDownCommandHandler);
 
-            ITreeNodeController controller = Services.GetService<MetadataController>();
+            ITreeNodeController controller = Services.GetService<RabbitMQController>();
+            if (controller != null)
+            {
+                try
+                {
+                    MainTreeRegion.TreeNodes.Add(controller.CreateTreeNode(this));
+                }
+                catch (Exception error)
+                {
+                    _ = MessageBox.Show(ExceptionHelper.GetErrorText(error),
+                        "DaJet", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+
+            controller = Services.GetService<MetadataController>();
             if (controller != null)
             {
                 try
