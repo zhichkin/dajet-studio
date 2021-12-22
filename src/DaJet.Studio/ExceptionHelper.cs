@@ -19,6 +19,22 @@ namespace DaJet.Studio
             }
             return errorText;
         }
+        public static string GetErrorTextAndStackTrace(Exception ex)
+        {
+            string errorText = string.Empty;
+
+            string stackTrace = string.IsNullOrEmpty(ex.StackTrace)
+                ? string.Empty
+                : ex.StackTrace;
+
+            Exception error = ex;
+            while (error != null)
+            {
+                errorText += (errorText == string.Empty) ? error.Message : Environment.NewLine + error.Message;
+                error = error.InnerException;
+            }
+            return errorText + Environment.NewLine + stackTrace;
+        }
         public static string GetParseErrorsText(IList<ParseError> errors)
         {
             string errorMessage = string.Empty;

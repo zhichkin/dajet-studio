@@ -17,7 +17,7 @@
 - export data to JSON file.</Description>
     <RepositoryUrl>https://github.com/zhichkin/DaJet</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>2.0.0</Version>
+    <Version>1.7.2</Version>
     <PackageReleaseNotes>Добавлена возможность управлять серверами RabbitMQ</PackageReleaseNotes>
   </PropertyGroup>
 
@@ -127,10 +127,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="DaJet.Data.Mapping" Version="3.2.0" />
+    <PackageReference Include="DaJet.Data.Mapping" Version="3.2.1" />
     <PackageReference Include="DaJet.Data.Scripting" Version="1.0.0" />
     <PackageReference Include="DaJet.Metadata" Version="3.1.7" />
-    <PackageReference Include="DaJet.RabbitMQ.HttpApi" Version="1.0.0" />
+    <PackageReference Include="DaJet.RabbitMQ.HttpApi" Version="1.1.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="6.0.0" />

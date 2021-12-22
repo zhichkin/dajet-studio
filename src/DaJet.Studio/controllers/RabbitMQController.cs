@@ -150,13 +150,13 @@ namespace DaJet.Studio
                 MenuItemCommand = new RelayCommand(EditServerNodeCommand),
                 MenuItemPayload = serverNode
             });
-            serverNode.ContextMenuItems.Add(new MenuItemViewModel()
-            {
-                MenuItemHeader = "Open server node",
-                MenuItemIcon = OPEN_CATALOG_ICON,
-                MenuItemCommand = new AsyncRelayCommand<TreeNodeViewModel>(OpenServerNodeCommand, this),
-                MenuItemPayload = serverNode
-            });
+            //serverNode.ContextMenuItems.Add(new MenuItemViewModel()
+            //{
+            //    MenuItemHeader = "Open server node",
+            //    MenuItemIcon = OPEN_CATALOG_ICON,
+            //    MenuItemCommand = new AsyncRelayCommand<TreeNodeViewModel>(OpenServerNodeCommand, this),
+            //    MenuItemPayload = serverNode
+            //});
             serverNode.ContextMenuItems.Add(new MenuItemViewModel()
             {
                 MenuItemHeader = "Create new virtual host ...",
@@ -172,6 +172,8 @@ namespace DaJet.Studio
                 MenuItemCommand = new RelayCommand(RemoveServerNodeCommand),
                 MenuItemPayload = serverNode
             });
+
+            new AsyncRelayCommand<TreeNodeViewModel>(OpenServerNodeCommand, this).Execute(serverNode);
 
             return serverNode;
         }
@@ -212,6 +214,11 @@ namespace DaJet.Studio
             _ = MessageBox.Show("Sorry, under construction ...",
                 "DaJet", MessageBoxButton.OK, MessageBoxImage.Information);
         }
+
+        #endregion
+
+        #region "VIRTUAL HOST NODE FACTORY"
+
         private async Task OpenServerNodeCommand(TreeNodeViewModel treeNode)
         {
             if (!(treeNode.NodePayload is RabbitMQServer server)) return;
@@ -228,8 +235,6 @@ namespace DaJet.Studio
             treeNode.IsExpanded = true;
         }
 
-        #endregion
-
         private TreeNodeViewModel CreateVirtualHostTreeNode(VirtualHostInfo vhost)
         {
             TreeNodeViewModel node = new TreeNodeViewModel()
@@ -240,6 +245,13 @@ namespace DaJet.Studio
                 NodeToolTip = vhost.Description,
                 NodePayload = vhost
             };
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Exchanges ...",
+                MenuItemIcon = RMQ_EXCHANGE_ICON,
+                MenuItemCommand = new RelayCommand(OpenListOfExchangesCommand),
+                MenuItemPayload = node
+            });
             return node;
         }
         private TreeNodeViewModel CreateExchangeTreeNode(ExchangeInfo exchange)
@@ -274,12 +286,13 @@ namespace DaJet.Studio
             foreach (VirtualHostInfo vhost in list)
             {
                 TreeNodeViewModel node = CreateVirtualHostTreeNode(vhost);
+                node.Parent = root;
                 root.TreeNodes.Add(node);
 
-                _ = manager.UseVirtualHost(vhost.Name);
+                //_ = manager.UseVirtualHost(vhost.Name);
 
-                await CreateExchangeNodes(node, manager);
-                await CreateQueueNodes(node, manager);
+                //await CreateExchangeNodes(node, manager);
+                //await CreateQueueNodes(node, manager);
             }
         }
         private async Task CreateExchangeNodes(TreeNodeViewModel root, IRabbitMQHttpManager manager)
@@ -301,6 +314,22 @@ namespace DaJet.Studio
                 TreeNodeViewModel node = CreateQueueTreeNode(queue);
                 root.TreeNodes.Add(node);
             }
+        }
+
+        #endregion
+
+        private void OpenListOfExchangesCommand(object parameter)
+        {
+            if (!(parameter is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is VirtualHostInfo vhost)) return;
+            RabbitMQServer server = treeNode.GetAncestorPayload<RabbitMQServer>();
+            if (server == null) return;
+
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            RabbitMQExchangeListViewModel viewModel = Services.GetService<RabbitMQExchangeListViewModel>();
+            viewModel.Initialize(server, vhost);
+            RabbitMQExchangeListView view = new RabbitMQExchangeListView() { DataContext = viewModel };
+            mainWindow.AddNewTab($"RabbitMQ EXCHANGE", view);
         }
     }
 }

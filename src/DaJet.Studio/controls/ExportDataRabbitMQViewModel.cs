@@ -552,7 +552,7 @@ namespace DaJet.Studio.UI
 
         public void HandleError(Exception error)
         {
-            ResultText = ExceptionHelper.GetErrorText(error);
+            ResultText = ExceptionHelper.GetErrorTextAndStackTrace(error);
         }
 
         #region "FILTER PARAMETERS TABLE"

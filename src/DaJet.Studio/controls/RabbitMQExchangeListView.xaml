@@ -1,0 +1,62 @@
+﻿<UserControl x:Class="DaJet.Studio.UI.RabbitMQExchangeListView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignHeight="450" d:DesignWidth="800">
+
+    <Grid>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="{Binding HostName}" Margin="5" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
+        <TextBlock Grid.Row="1" Text="{Binding HostDescription}" Margin="5,0,5,0" FontFamily="Courier New" FontSize="14"/>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="5,10,5,5">
+            <TextBlock Grid.Row="0" Text="Фильтр:" FontFamily="Courier New" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
+            <TextBox Text="{Binding ListFilter}" FontFamily="Courier New" FontSize="14" MinWidth="150"/>
+            <Button Content="О" Command="{Binding OpenExchangeListCommand}" Margin="1,0,0,0" Width="20"
+                    ToolTip="Применить фильтр" HorizontalAlignment="Left" Cursor="Hand"/>
+            <Button Content="X" Command="{Binding ClearListFilterCommand}" Margin="1,0,0,0" Width="20"
+                    ToolTip="Очистить фильтр" HorizontalAlignment="Left" Cursor="Hand"/>
+        </StackPanel>
+        
+        <ListView Grid.Row="3" ItemsSource="{Binding ExchangeList}" Margin="5">
+
+            <ListView.View>
+                <GridView>
+
+                    <GridViewColumn Header="">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+
+                                    <CheckBox IsChecked="{Binding IsMarked}"/>
+
+                                </StackPanel>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+
+                    
+                    <GridViewColumn Header="Name" DisplayMemberBinding="{Binding Path=Name}"/>
+
+                </GridView>
+            </ListView.View>
+
+        </ListView>
+
+        <TextBox Grid.Row="4" Text="{Binding ErrorMessage}"
+                 Margin="5" FontFamily="Courier New" FontSize="14"
+                 MinHeight="150" HorizontalAlignment="Stretch"
+                 TextWrapping="Wrap" AcceptsTab="True" AcceptsReturn="True"/>
+
+    </Grid>
+
+</UserControl>

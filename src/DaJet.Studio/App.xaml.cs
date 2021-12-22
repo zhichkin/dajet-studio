@@ -50,6 +50,7 @@ namespace DaJet.Studio
             services.AddSingleton<RabbitMQController>();
 
             services.AddTransient<ExportDataRabbitMQViewModel>();
+            services.AddTransient<RabbitMQExchangeListViewModel>();
 
             services.AddSingleton<ScriptingController>();
             services.AddTransient<ScriptEditorViewModel>();
