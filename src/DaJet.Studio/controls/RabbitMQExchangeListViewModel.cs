@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace DaJet.Studio.UI
 {
@@ -36,17 +37,18 @@ namespace DaJet.Studio.UI
             Manager = manager;
             ClearListFilterCommand = new AsyncRelayCommand(ClearListFilterCommandHandler, this);
             OpenExchangeListCommand = new AsyncRelayCommand(OpenExchangeListCommandHandler, this);
+            DeleteExchangeListCommand = new AsyncRelayCommand(DeleteExchangeListCommandHandler, this);
         }
 
-        private string _ErrorMessage = string.Empty;
-        public string ErrorMessage
+        private string _DisplayMessage = string.Empty;
+        public string DisplayMessage
         {
-            get { return _ErrorMessage; }
-            set { _ErrorMessage = value; OnPropertyChanged(nameof(ErrorMessage)); }
+            get { return _DisplayMessage; }
+            set { _DisplayMessage = value; OnPropertyChanged(nameof(DisplayMessage)); }
         }
         public void HandleError(Exception error)
         {
-            ErrorMessage = ExceptionHelper.GetErrorTextAndStackTrace(error);
+            DisplayMessage = ExceptionHelper.GetErrorTextAndStackTrace(error);
         }
         
         public void Initialize(RabbitMQServer server, VirtualHostInfo vhost)
@@ -67,13 +69,20 @@ namespace DaJet.Studio.UI
         public string HostName { get; private set; }
         public string HostDescription { get; private set; }
         private string _ListFilter = string.Empty;
+        private string _FilterResult = string.Empty;
         public string ListFilter
         {
             get { return _ListFilter; }
             set { _ListFilter = value; OnPropertyChanged(nameof(ListFilter)); }
         }
+        public string FilterResult
+        {
+            get { return _FilterResult; }
+            set { _FilterResult = value; OnPropertyChanged(nameof(FilterResult)); }
+        }
         public IAsyncCommand ClearListFilterCommand { get; private set; }
         public IAsyncCommand OpenExchangeListCommand { get; private set; }
+        public IAsyncCommand DeleteExchangeListCommand { get; private set; }
         public ObservableCollection<ExchangeViewModel> ExchangeList { get; private set; } = new ObservableCollection<ExchangeViewModel>();
         private HashSet<string> SystemExchanges = new HashSet<string>()
         {
@@ -101,10 +110,11 @@ namespace DaJet.Studio.UI
             }
             else
             {
-                ExchangeResponse response = await Manager.GetExchanges(1, 1000, ListFilter);
+                ExchangeResponse response = await Manager.GetExchanges(1, 5000, ListFilter);
                 list = response.Items;
             }
 
+            int count = 0;
             foreach (ExchangeInfo exchange in list)
             {
                 if (string.IsNullOrEmpty(exchange.Name) ||
@@ -113,8 +123,43 @@ namespace DaJet.Studio.UI
                     continue;
                 }
 
+                count++;
                 ExchangeList.Add(new ExchangeViewModel(exchange));
             }
+
+            if (count == 0)
+            {
+                FilterResult = "Found 0 exchanges";
+            }
+            else
+            {
+                FilterResult = $"Found {count} exchanges";
+            }
+        }
+        private async Task DeleteExchangeListCommandHandler()
+        {
+            // ^РИБ.[0-9]+.ЦБ$
+            // ^РИБ.ЦБ.[0-9]+$
+
+            MessageBoxResult answer = MessageBox.Show(
+                "Удалить выбранные точки доступа на сервере RabbitMQ ?",
+                "DaJet", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+
+            if (answer != MessageBoxResult.OK)
+            {
+                return;
+            }
+
+            int count = 0;
+            foreach (ExchangeViewModel item in ExchangeList)
+            {
+                count++;
+                await Manager.DeleteExchange(item.Name);
+                DisplayMessage = "Deleting selected exchanges:" + Environment.NewLine + item.Name;
+            }
+            DisplayMessage = "Deleting selected exchanges:" + Environment.NewLine + $"{count} exchanges have been deleted.";
+
+            await OpenExchangeListCommandHandler();
         }
     }
 }

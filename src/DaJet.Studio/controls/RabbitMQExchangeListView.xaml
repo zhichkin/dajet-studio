@@ -3,7 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignHeight="450" d:DesignWidth="800">
+             mc:Ignorable="d" d:DesignHeight="600" d:DesignWidth="800">
 
     <Grid>
 
@@ -11,20 +11,24 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"  MinHeight="200" MaxHeight="400"/>
+            <RowDefinition Height="Auto"/> <!-- horizontal splitter -->
+            <RowDefinition Height="*" MinHeight="100"/>
         </Grid.RowDefinitions>
 
         <TextBlock Grid.Row="0" Text="{Binding HostName}" Margin="5" FontFamily="Courier New" FontSize="14" FontWeight="Bold"/>
         <TextBlock Grid.Row="1" Text="{Binding HostDescription}" Margin="5,0,5,0" FontFamily="Courier New" FontSize="14"/>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="5,10,5,5">
-            <TextBlock Grid.Row="0" Text="Фильтр:" FontFamily="Courier New" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
+            <TextBlock Text="Фильтр:" FontFamily="Courier New" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
             <TextBox Text="{Binding ListFilter}" FontFamily="Courier New" FontSize="14" MinWidth="150"/>
             <Button Content="О" Command="{Binding OpenExchangeListCommand}" Margin="1,0,0,0" Width="20"
                     ToolTip="Применить фильтр" HorizontalAlignment="Left" Cursor="Hand"/>
             <Button Content="X" Command="{Binding ClearListFilterCommand}" Margin="1,0,0,0" Width="20"
                     ToolTip="Очистить фильтр" HorizontalAlignment="Left" Cursor="Hand"/>
+            <TextBlock Text="{Binding FilterResult}" Margin="5,0,0,0" FontFamily="Courier New" FontSize="14" VerticalAlignment="Center"/>
+            <!--<Button Content="Удалить !!!" Command="{Binding DeleteExchangeListCommand}" Margin="10,0,0,0"
+                    ToolTip="Удалить выбранные точки обмена на сервере RabbitMQ" HorizontalAlignment="Left" Cursor="Hand"/>-->
         </StackPanel>
         
         <ListView Grid.Row="3" ItemsSource="{Binding ExchangeList}" Margin="5">
@@ -52,9 +56,10 @@
 
         </ListView>
 
-        <TextBox Grid.Row="4" Text="{Binding ErrorMessage}"
-                 Margin="5" FontFamily="Courier New" FontSize="14"
-                 MinHeight="150" HorizontalAlignment="Stretch"
+        <GridSplitter Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="1" Height="3" ResizeBehavior="PreviousAndNext" HorizontalAlignment="Stretch"/>
+        
+        <TextBox Grid.Row="5" Text="{Binding DisplayMessage}"
+                 Margin="5" FontFamily="Courier New" FontSize="14" HorizontalAlignment="Stretch"
                  TextWrapping="Wrap" AcceptsTab="True" AcceptsReturn="True"/>
 
     </Grid>
