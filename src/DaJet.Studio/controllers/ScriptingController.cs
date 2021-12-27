@@ -1,6 +1,4 @@
 ﻿using DaJet.Data.Scripting;
-using DaJet.Data.Scripting.Wpf;
-using DaJet.Metadata.Model;
 using DaJet.Studio.MVVM;
 using DaJet.UI.Model;
 using Microsoft.Data.SqlClient;
