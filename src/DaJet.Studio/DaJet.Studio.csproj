@@ -128,7 +128,8 @@
 
   <ItemGroup>
     <PackageReference Include="DaJet.Data.Mapping" Version="3.2.1" />
-    <PackageReference Include="DaJet.Data.Scripting" Version="1.0.0" />
+    <PackageReference Include="DaJet.Data.Scripting" Version="1.1.0" />
+    <PackageReference Include="DaJet.Data.Scripting.Wpf" Version="1.0.0" />
     <PackageReference Include="DaJet.Metadata" Version="3.1.7" />
     <PackageReference Include="DaJet.RabbitMQ.HttpApi" Version="1.1.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />

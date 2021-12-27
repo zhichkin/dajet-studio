@@ -1,4 +1,6 @@
 ﻿using DaJet.Data.Scripting;
+using DaJet.Data.Scripting.Wpf;
+using DaJet.Metadata.Model;
 using DaJet.Studio.MVVM;
 using DaJet.UI.Model;
 using Microsoft.Data.SqlClient;
@@ -459,6 +461,13 @@ namespace DaJet.Studio
                 MenuItemCommand = new RelayCommand(ShowSyntaxTreeCommand),
                 MenuItemPayload = node
             });
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "New Avalon editor",
+                MenuItemIcon = EDIT_SCRIPT_ICON,
+                MenuItemCommand = new RelayCommand(AvalonEditScriptCommand),
+                MenuItemPayload = node
+            });
             node.ContextMenuItems.Add(new MenuItemViewModel() { IsSeparator = true });
             node.ContextMenuItems.Add(new MenuItemViewModel()
             {
@@ -799,6 +808,35 @@ namespace DaJet.Studio
 
             MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
             ScriptEditorView editorView = new ScriptEditorView() { DataContext = scriptEditor };
+            mainWindow.AddNewTab(scriptEditor.Name, editorView);
+        }
+        private void AvalonEditScriptCommand(object node)
+        {
+            if (!(node is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is ScriptEditorViewModel scriptEditor)) return;
+
+            DatabaseInfo database = treeNode.GetAncestorPayload<DatabaseInfo>();
+            DatabaseServer server = treeNode.GetAncestorPayload<DatabaseServer>();
+
+            string script;
+            if (string.IsNullOrWhiteSpace(scriptEditor.ScriptCode))
+            {
+                script = ReadScriptSourceCode(server, database, scriptEditor.ScriptType, scriptEditor.Name);
+            }
+            else
+            {
+                script = scriptEditor.ScriptCode;
+            }
+
+            string connectionString = GetConnectionString(server, database);
+
+            IScriptingService scripting = Services.GetService<IScriptingService>();
+            scripting.UseConnectionString(connectionString);
+            scripting.MainInfoBase = database.InfoBase;
+            scripting.Databases.Clear();
+
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            AvalonScriptEditor editorView = new AvalonScriptEditor(script, scripting);
             mainWindow.AddNewTab(scriptEditor.Name, editorView);
         }
         private void DeleteScriptCommand(object node)
