@@ -17,8 +17,8 @@
 - export data to JSON file.</Description>
     <RepositoryUrl>https://github.com/zhichkin/DaJet</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>1.7.3</Version>
-    <PackageReleaseNotes>Обновление библиотеки DaJet.Metadata до версии 3.1.8.</PackageReleaseNotes>
+    <Version>1.7.4</Version>
+    <PackageReleaseNotes>Обновление библиотеки DaJet.Metadata до версии 3.1.9.</PackageReleaseNotes>
     <AssemblyName>DaJet.Studio</AssemblyName>
     <RootNamespace>DaJet.Studio</RootNamespace>
   </PropertyGroup>
