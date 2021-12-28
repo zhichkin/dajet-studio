@@ -4,11 +4,6 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <UserSecretsId>f611fce9-152f-46b9-bd55-d73cd8f0891f</UserSecretsId>
   </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\DaJet.Metadata\DaJet.Metadata.csproj" />
-    <ProjectReference Include="..\DaJet.Scripting\DaJet.Scripting.csproj" />
-  </ItemGroup>
   
   <ItemGroup>
     <Reference Include="Microsoft.SqlServer.TransactSql.ScriptDom">
