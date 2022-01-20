@@ -17,8 +17,8 @@
 - export data to JSON file.</Description>
     <RepositoryUrl>https://github.com/zhichkin/DaJet</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>1.7.5</Version>
-    <PackageReleaseNotes>Обновление библиотеки DaJet.Data.Mapping до версии 3.2.2.</PackageReleaseNotes>
+    <Version>1.7.6</Version>
+    <PackageReleaseNotes>Обновление библиотеки DaJet.Data.Mapping до версии 3.2.3.</PackageReleaseNotes>
     <AssemblyName>DaJet.Studio</AssemblyName>
     <RootNamespace>DaJet.Studio</RootNamespace>
   </PropertyGroup>
@@ -125,7 +125,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="DaJet.Data.Mapping" Version="3.2.2" />
+    <PackageReference Include="DaJet.Data.Mapping" Version="3.2.3" />
     <PackageReference Include="DaJet.Data.Scripting" Version="1.1.0" />
     <PackageReference Include="DaJet.Data.Scripting.Wpf" Version="1.0.0" />
     <PackageReference Include="DaJet.Metadata" Version="3.1.9" />
