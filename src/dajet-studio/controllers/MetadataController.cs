@@ -52,7 +52,9 @@ namespace DaJet.Studio
         private const string METADATA_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/metadata.png";
         private const string SAVE_FILE_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/save-file.png";
         private const string KEY_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/key.png";
+        private const string SCRIPT_ICON_PATH = "pack://application:,,,/DaJet.Studio;component/images/database-script.png";
 
+        private readonly BitmapImage SCRIPT_ICON = new BitmapImage(new Uri(SCRIPT_ICON_PATH));
         private readonly BitmapImage RABBITMQ_ICON = new BitmapImage(new Uri(RABBITMQ_ICON_PATH));
         private readonly BitmapImage ADD_SERVER_ICON = new BitmapImage(new Uri(ADD_SERVER_ICON_PATH));
         private readonly BitmapImage SERVER_SETTINGS_ICON = new BitmapImage(new Uri(SERVER_SETTINGS_ICON_PATH));
@@ -519,6 +521,7 @@ namespace DaJet.Studio
                 databaseNode.TreeNodes.Add(scripts);
             }
 
+            OpenMetaObjectNode(databaseNode, "Перечисления", infoBase.Enumerations, ENUM_ICON);
             OpenMetaObjectNode(databaseNode, "Справочники", infoBase.Catalogs, CATALOG_ICON);
             OpenMetaObjectNode(databaseNode, "Документы", infoBase.Documents, DOCUMENT_ICON);
             OpenMetaObjectNode(databaseNode, "Планы видов характеристик", infoBase.Characteristics, CHARACTERISTICS_REGISTER_ICON);
@@ -540,6 +543,11 @@ namespace DaJet.Studio
 
             foreach (ApplicationObject item in collection.Values.OrderBy(i => i.Name))
             {
+                if (string.IsNullOrWhiteSpace(item.Name))
+                {
+                    continue;
+                }
+
                 TreeNodeViewModel node = new TreeNodeViewModel()
                 {
                     Parent = parentNode,
@@ -582,6 +590,11 @@ namespace DaJet.Studio
 
                     OpenMetaPropertyNode(tableNode, tablePart);
                 }
+
+                if (item is Enumeration enumeration)
+                {
+                    OpenEnumerationNode(node, enumeration);
+                }
             }
         }
         private void OpenMetaPropertyNode(TreeNodeViewModel parentNode, ApplicationObject metaObject)
@@ -600,7 +613,59 @@ namespace DaJet.Studio
                 parentNode.TreeNodes.Add(node);
             }
         }
+        private void OpenEnumerationNode(TreeNodeViewModel parentNode, Enumeration enumeration)
+        {
+            TreeNodeViewModel node = new TreeNodeViewModel()
+            {
+                Parent = parentNode,
+                IsExpanded = false,
+                NodeIcon = PROPERTY_ICON,
+                NodeText = "Values",
+                NodeToolTip = "Значения перечисления",
+                NodePayload = enumeration
+            };
+            node.ContextMenuItems.Add(new MenuItemViewModel()
+            {
+                MenuItemHeader = "Show enumeration values",
+                MenuItemIcon = SCRIPT_ICON,
+                MenuItemCommand = new RelayCommand(ShowEnumValuesCommand),
+                MenuItemPayload = node
+            });
+            parentNode.TreeNodes.Add(node);
 
+            foreach (EnumValue value in enumeration.Values)
+            {
+                TreeNodeViewModel valueNode = new TreeNodeViewModel()
+                {
+                    Parent = node,
+                    IsExpanded = false,
+                    NodeIcon = PROPERTY_ICON,
+                    NodeText = value.Name,
+                    NodeToolTip = $"{value.Alias} {{{value.Uuid}}}",
+                    NodePayload = value
+                };
+                node.TreeNodes.Add(valueNode);
+            }
+        }
+        private void ShowEnumValuesCommand(object parameter)
+        {
+            if (!(parameter is TreeNodeViewModel treeNode)) return;
+            if (!(treeNode.NodePayload is Enumeration metaObject)) return;
+            if (metaObject.Values == null || metaObject.Values.Count == 0) return;
+
+            MainWindowViewModel mainWindow = Services.GetService<MainWindowViewModel>();
+            TextTabViewModel viewModel = Services.GetService<TextTabViewModel>();
+
+            for (int i = 0; i < metaObject.Values.Count; i++)
+            {
+                EnumValue value = metaObject.Values[i];
+
+                viewModel.Text += $"{(i + 1)}. {value.Name} {{{value.Uuid}}} {(new Guid(SQLHelper.GetSqlUuid(value.Uuid.ToByteArray())))}{Environment.NewLine}";
+            }
+
+            TextTabView view = new TextTabView() { DataContext = viewModel };
+            mainWindow.AddNewTab(metaObject.Name, view);
+        }
         private void ShowIndexesCommand(object parameter)
         {
             if (!(parameter is TreeNodeViewModel treeNode)) return;
