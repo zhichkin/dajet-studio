@@ -1,0 +1,64 @@
+﻿@inject IToastService ToastService
+@inject IDialogService DialogService
+
+<FluentButton Id="DaJetHostMenuButton" OnClick="@(() => DaJetHostMenuIsOpen = !DaJetHostMenuIsOpen)"
+              Appearance="Appearance.Outline" Title="Сервера DaJet"
+              IconStart="@(new Icons.Regular.Size24.Book().WithColor(Color.Info))" />
+
+<FluentButton Id="DatabaseMenuButton" OnClick="@(() => DatabaseMenuIsOpen = !DatabaseMenuIsOpen)"
+              Appearance="Appearance.Outline" Title="Базы данных"
+              IconStart="@(new Icons.Regular.Size24.Database().WithColor(Color.Info))" />
+
+<FluentButton Appearance="Appearance.Outline" Title="Скрипты" OnClick="ScriptingMenuButtonClickHandler"
+              IconStart="@(new Icons.Regular.Size24.Script().WithColor(Color.Info))" />
+
+<FluentMenu Anchor="DaJetHostMenuButton"
+            @bind-Open="DaJetHostMenuIsOpen"
+            @onmenuchange="DaJetHostMenuChangeHandler">
+
+    <FluentMenuItem>
+        <span slot="start">
+            <FluentIcon Slot="start" Value="@(new Icons.Regular.Size20.BookAdd())" Color="Color.Success" />
+        </span>
+        Добавить ...
+    </FluentMenuItem>
+
+    <FluentDivider />
+
+    <FluentMenuItem>
+        <span slot="start">
+            <FluentIcon Slot="start" Value="@(new Icons.Regular.Size20.BookDismiss())" Color="Color.Error" />
+        </span>
+        Удалить ...
+    </FluentMenuItem>
+
+</FluentMenu>
+
+<FluentMenu Anchor="DatabaseMenuButton"
+            @bind-Open="DatabaseMenuIsOpen"
+            @onmenuchange="DatabaseMenuChangeHandler">
+
+    <FluentMenuItem>
+        <span slot="start">
+            <FluentIcon Slot="start" Value="@(new Icons.Regular.Size20.DatabasePlugConnected())" Color="Color.Success" />
+        </span>
+        Добавить ...
+    </FluentMenuItem>
+
+    <FluentMenuItem>
+        <span slot="start">
+            <FluentIcon Slot="start" Value="@(new Icons.Regular.Size20.ArrowClockwise())" Color="Color.Accent" />
+        </span>
+        Обновить ...
+    </FluentMenuItem>
+
+    <FluentDivider />
+
+    <FluentMenuItem>
+        <span slot="start">
+            <FluentIcon Slot="start" Value="@(new Icons.Regular.Size20.DatabaseWarning())" Color="Color.Error" />
+        </span>
+        Удалить ...
+    </FluentMenuItem>
+
+</FluentMenu>

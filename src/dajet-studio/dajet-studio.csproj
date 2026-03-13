@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>
+    <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
+    <AssemblyName>DaJet.Studio</AssemblyName>
+    <AssemblyTitle>DaJet Studio</AssemblyTitle>
+    <Title>DaJet Studio</Title>
+    <Copyright>Zhichkin © 2026</Copyright>
+    <RootNamespace>DaJet.Studio</RootNamespace>
+    <Version>4.0.0</Version>
+    <Authors>Zhichkin</Authors>
+    <Description>DaJet Studio</Description>
+    <PackageProjectUrl>https://zhichkin.github.io/</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/zhichkin/dajet-studio</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DaJet.Http.Client" Version="4.0.4" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.3" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.3" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" Version="4.14.0" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="4.14.0" />
+    <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js" />
+  </ItemGroup>
+
+</Project>

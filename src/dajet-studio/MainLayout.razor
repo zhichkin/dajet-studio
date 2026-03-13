@@ -1,0 +1,45 @@
+﻿@inherits LayoutComponentBase
+
+<FluentLayout>
+
+    <FluentHeader Class="appheader">
+        
+        <FluentLabel Typo="Typography.Header" Weight="FontWeight.Bold">@App.GetHeaderText()</FluentLabel>
+
+        <FluentToolbar Style="background-color: var(--neutral-layer-4);">
+            <MainMenuView />
+        </FluentToolbar>
+
+    </FluentHeader>
+
+    <FluentSplitter Orientation="@Orientation.Horizontal" BarSize="4" Panel1Size="20%" Panel1MinSize="20%" Panel2MinSize="50%">
+        <Panel1>
+            
+            <MetadataTreeView SelectedNodeChanged="@App.SelectedMetadataNodeChanged" />
+
+        </Panel1>
+        <Panel2>
+            <FluentBodyContent Class="body-content">
+                <ErrorBoundary>
+                    <ChildContent>
+                        <div class="content">
+                            @Body
+                        </div>
+                    </ChildContent>
+                    <ErrorContent Context="error">
+                        <div class="blazor-error-boundary">@error.Message</div>
+                    </ErrorContent>
+                </ErrorBoundary>
+            </FluentBodyContent>
+        </Panel2>
+    </FluentSplitter>
+
+    <FluentFooter>@App.GetFooterText()</FluentFooter>
+
+    <FluentToastProvider />
+    <FluentDialogProvider />
+    <FluentTooltipProvider />
+    <FluentMessageBarProvider />
+    <FluentMenuProvider />
+
+</FluentLayout>

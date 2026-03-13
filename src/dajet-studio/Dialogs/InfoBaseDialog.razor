@@ -1,0 +1,23 @@
+﻿
+<FluentTextField Autofocus="true" Style="width: 100%;" @bind-Value="@Content.Name">
+    Имя базы данных:
+</FluentTextField>
+
+<br>
+
+<FluentSelect Label="Тип провайдера:"
+              TOption="Option<string>"
+              Items="@DataSourceTypeOptions"
+              OptionText="@(option => option.Text)"
+              OptionValue="@(option => option.Value)"
+              OptionSelected="@(option => option.Selected)"
+              SelectedOptionChanged="@SelectedOptionChangedHandler"
+              @bind-Value="@Content.Type" />
+
+<br>
+
+<FluentTextArea Spellcheck="false"
+                Rows="4" Style="width: 100%;"
+                @bind-Value="@Content.Path">
+    Строка подключения:
+</FluentTextArea>

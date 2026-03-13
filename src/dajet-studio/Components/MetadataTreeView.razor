@@ -1,0 +1,12 @@
+﻿
+<FluentTreeView Items="@Items" Style="height: 10px;">
+    
+    <ItemTemplate>
+
+        <FluentAnchor Href="#" Appearance="Appearance.Stealth" OnClick="@(_ => NodeClickHandler(context))">
+            @context.Text
+        </FluentAnchor>
+
+    </ItemTemplate>
+
+</FluentTreeView>

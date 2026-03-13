@@ -1,0 +1,89 @@
+﻿@page "/"
+
+@inject IToastService ToastService
+@inject IDialogService DialogService
+
+<FluentTabs ShowClose="true" OnTabClose="@CloseTabHandler" Size="TabSize.Small">
+
+    @foreach (MetadataTab tab in App.MetadataTabs)
+    {
+        <FluentTab Id="@tab.Id" Label="@tab.Title" Data="@tab.Model">
+
+            <FluentLabel>Имя объекта:</FluentLabel> @tab.Model.Name
+            <FluentLabel>Имя таблицы:</FluentLabel> @tab.Model.DbName
+            
+            <FluentTabs Size="TabSize.Small">
+                
+                <FluentTab Id="Свойства" Label="Свойства">
+
+                    <FluentDataGrid Items="@tab.Model.Properties.AsQueryable()" TGridItem="PropertyDefinition"
+                                    ResizableColumns="true" MultiLine="true">
+
+                        <TemplateColumn Title="Назначение">
+                            @if (context.References.Count == 0)
+                            {
+                                <FluentLabel>@context.Purpose.ToString()</FluentLabel>
+                            }
+                            else
+                            {
+                                <FluentAnchor Href="#" Appearance="Appearance.Stealth" OnClick="@(_ => ResolveReferenceCommand(tab, context))">
+                                    @context.Purpose.ToString()
+                                </FluentAnchor>
+                            }
+                        </TemplateColumn>
+
+                        <PropertyColumn Title="Имя" Property="@(p => p.Name)" Sortable="true" />
+                        <PropertyColumn Title="Тип данных" Property="@(p => p.Type)" />
+
+                        <TemplateColumn Title="Поля таблицы">
+                            @foreach (ColumnDefinition column in context.Columns)
+                            {
+                                <FluentLabel>@column.Name</FluentLabel>
+                            }
+                        </TemplateColumn>
+
+                    </FluentDataGrid>
+
+                </FluentTab>
+
+                @foreach (EntityDefinition entity in @tab.Model.Entities)
+                {
+                    <FluentTab Id="@entity.Name" Label="@(entity.Name + " [" + entity.DbName + "]")" Size="TabSize.Small">
+
+                        <FluentDataGrid Items="@entity.Properties.AsQueryable()" TGridItem="PropertyDefinition"
+                                        ResizableColumns="true" MultiLine="true">
+
+                            <TemplateColumn Title="Назначение">
+                                @if (context.References.Count == 0)
+                                {
+                                    <FluentLabel>@context.Purpose.ToString()</FluentLabel>
+                                }
+                                else
+                                {
+                                    <FluentAnchor Href="#" Appearance="Appearance.Stealth" OnClick="@(_ => ResolveReferenceCommand(tab, context))">
+                                        @context.Purpose.ToString()
+                                    </FluentAnchor>
+                                }
+                            </TemplateColumn>
+
+                            <PropertyColumn Title="Имя" Property="@(p => p.Name)" Sortable="true" />
+                            <PropertyColumn Title="Тип данных" Property="@(p => p.Type)" />
+
+                            <TemplateColumn Title="Поля таблицы">
+                                @foreach (ColumnDefinition column in context.Columns)
+                                {
+                                    <FluentLabel>@column.Name</FluentLabel>
+                                }
+                            </TemplateColumn>
+
+                        </FluentDataGrid>
+
+                    </FluentTab>
+                }
+
+            </FluentTabs>
+
+        </FluentTab>
+    }
+
+</FluentTabs>
